@@ -23,6 +23,7 @@ from bills.schemas import (
 from bills.services.attachment_service import (
     _get_s3_client,
     delete_payment_attachment,
+    generate_presigned_download_url,
     serialize_attachment,
     upload_payment_attachment,
 )

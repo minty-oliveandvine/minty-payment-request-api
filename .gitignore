@@ -1,0 +1,13 @@
+__pycache__/
+*.pyc
+*.pyo
+.env
+db.sqlite3
+uploads/
+logs/*.log
+*.egg-info/
+.pytest_cache/
+htmlcov/
+.coverage
+minty_billing/logs/core.log
+minty_billing/logs/api.log

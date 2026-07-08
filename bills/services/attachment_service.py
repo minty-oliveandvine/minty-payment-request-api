@@ -35,6 +35,7 @@ ALLOWED_TYPES = {
     "application/pdf",
     "application/msword",
     "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    "text/html",
     # Spreadsheets
     "application/vnd.ms-excel",
     "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
@@ -65,6 +66,8 @@ ALLOWED_EXTENSIONS = {
     "xlsx": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
     "xlsm": "application/vnd.ms-excel.sheet.macroenabled.12",
     "csv": "text/csv",
+    "html": "text/html",
+    "htm": "text/html",
 }
 
 MAX_FILE_SIZE = 10 * 1024 * 1024  # 10 MB

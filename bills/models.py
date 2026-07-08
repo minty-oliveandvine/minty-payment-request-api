@@ -31,7 +31,7 @@ class Bill(models.Model):
     status = models.CharField(
         max_length=30, choices=Status.choices, default=Status.DRAFT,
     )
-    amount = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    amount = models.DecimalField(max_digits=14, decimal_places=2, default=0)
     description = models.TextField(blank=True, default="")
     invoice_date = models.DateField(null=True, blank=True)
     due_date = models.DateField(null=True, blank=True)
@@ -66,8 +66,8 @@ class BillLineItem(models.Model):
     )
     description = models.TextField(blank=True, default="")
     quantity = models.DecimalField(max_digits=12, decimal_places=4, default=1)
-    unit_amount = models.DecimalField(max_digits=12, decimal_places=2, default=0)
-    line_amount = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    unit_amount = models.DecimalField(max_digits=14, decimal_places=2, default=0)
+    line_amount = models.DecimalField(max_digits=14, decimal_places=2, default=0)
     account_code = models.CharField(max_length=20, blank=True, default="")
     account_name = models.CharField(max_length=150, blank=True, default="")
     tax_type = models.CharField(max_length=30, blank=True, default="")
