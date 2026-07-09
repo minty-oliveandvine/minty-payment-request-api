@@ -14,7 +14,6 @@ from zoneinfo import ZoneInfo
 
 import requests
 from django.conf import settings
-from django.db import transaction
 from django.utils import timezone as django_tz
 
 from core.exceptions import BillValidationError
@@ -92,46 +91,24 @@ def _persist_tokens_from_refresh(user: User, token_data: dict) -> None:
 
 
 def ensure_valid_token_persist(user: User) -> bool:
-    """Match Flask `ensure_valid_token`: refresh if expired and persist to DB.
-
-    Xero refresh tokens are single-use: whoever POSTs first invalidates the token
-    every other caller is holding. The row is locked before the expiry check so that
-    exactly one caller refreshes. Losers block on the lock, then re-check expiry
-    against the winner's freshly written row and return without a doomed POST.
-
-    The lock is held across the Xero HTTP call. The shared `user` table is also
-    written by the Flask app (`managed = False`), so this serialises against it too.
-    """
+    """Match Flask `ensure_valid_token`: refresh if expired and persist to DB."""
     if not user.refresh_token:
         return bool(user.access_token)
     if not user.access_token:
         return False
-    if not _token_expired(user):
+
+    expired = _token_expired(user)
+    if not expired:
         return True
 
-    with transaction.atomic():
-        locked = User.objects.select_for_update().filter(pk=user.pk).first()
-        if locked is None:
-            logger.warning("Xero token user %s vanished before refresh", user.pk)
-            return False
-
-        # Re-check under the lock: a concurrent caller may have refreshed while we
-        # waited, in which case their token is already live and ours is consumed.
-        if not _token_expired(locked):
-            logger.info("Xero access token already refreshed for user %s", locked.id)
-            return True
-
-        if not locked.refresh_token:
-            return False
-
-        logger.info("Xero access token expired for user %s, refreshing", locked.id)
-        token_data = refresh_access_token_for_user(locked)
-        if not token_data:
-            logger.warning("Xero token refresh returned no data for user %s", locked.id)
-            return False
-        _persist_tokens_from_refresh(locked, token_data)
-        logger.info("Xero access token refreshed successfully for user %s", locked.id)
-        return True
+    logger.info("Xero access token expired for user %s, refreshing", user.id)
+    token_data = refresh_access_token_for_user(user)
+    if not token_data:
+        logger.warning("Xero token refresh returned no data for user %s", user.id)
+        return False
+    _persist_tokens_from_refresh(user, token_data)
+    logger.info("Xero access token refreshed successfully for user %s", user.id)
+    return True
 
 
 def _resolve_token_user(entity_id: str, jwt_user_id: str) -> tuple[User | None, str | None]:
@@ -179,12 +156,12 @@ def _resolve_token_user(entity_id: str, jwt_user_id: str) -> tuple[User | None, 
 def resolve_xero_access_token_for_entity(entity_id: str, jwt_user_id: str) -> str | None:
     """Return a usable access token after refresh-if-needed; persist like Module 1.
 
-    `ensure_valid_token_persist` serialises refreshes under a row lock, so a losing
-    caller normally returns True having adopted the winner's token. If it returns
-    False the refresh genuinely failed: re-read the row once in case a writer outside
-    this lock (the Flask app shares this table) landed a fresh token, and accept it
-    only if it is *unexpired*. A non-empty but consumed token must not be returned —
-    that sends a stale bearer to Xero and surfaces as a 401 far from here.
+    Concurrent refresh race: Xero refresh tokens are single-use. If two requests both
+    find the token expired, both attempt a refresh. The second caller's POST returns 400
+    and `ensure_valid_token_persist` returns False. The subsequent `refresh_from_db()`
+    in the failure branch re-reads the row written by the first (winning) caller before
+    checking `user.access_token`. If the winner persisted a valid token the check passes
+    and the loser proceeds with that token — no error is surfaced unnecessarily.
     """
     user, failure_reason = _resolve_token_user(entity_id, jwt_user_id)
     if not user:
@@ -196,9 +173,9 @@ def resolve_xero_access_token_for_entity(entity_id: str, jwt_user_id: str) -> st
             "No Xero account is connected for this entity. Please reconnect to Xero."
         )
     if not ensure_valid_token_persist(user):
-        # Refresh failed — re-read in case a writer outside our lock refreshed.
+        # Refresh failed — re-read DB in case a concurrent request already refreshed.
         user.refresh_from_db()
-        if not user.access_token or _token_expired(user):
+        if not user.access_token:
             raise BillValidationError(
                 "Your Xero connection has expired. Please reconnect to Xero."
             )
