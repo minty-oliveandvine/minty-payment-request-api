@@ -162,7 +162,12 @@ class TestResolveAccessTokenForEntity:
 
     # TC-XERO-010: concurrent refresh race — second caller recovers token from DB
     def test_tc_xero_010_concurrent_refresh_race_recovery(self, test_entity, test_user, test_user_entity):
-        """TC-XERO-010: When refresh POST fails (race loser), re-read DB recovers winner's token."""
+        """TC-XERO-010: When refresh POST fails (race loser), re-read DB recovers winner's token.
+
+        The winner writes both `access_token` and a fresh `token_created_at` — the
+        latter is what makes the token usable. A winner that only wrote the token
+        string would leave an expired row; see TC-XERO-012.
+        """
         test_entity.xero_org_id = "org-tc010"
         test_entity.save()
 
@@ -177,8 +182,11 @@ class TestResolveAccessTokenForEntity:
 
         def fake_post(*args, **kwargs):
             # Simulate race: refresh POST fails (400) but the winner already wrote
-            # a new access_token to the DB row.
-            User.objects.filter(pk=test_user.pk).update(access_token=winner_token)
+            # a new access_token — and stamped its creation time — to the DB row.
+            User.objects.filter(pk=test_user.pk).update(
+                access_token=winner_token,
+                token_created_at=django_tz.now(),
+            )
             resp = MagicMock()
             resp.status_code = 400
             resp.text = "invalid_grant"
@@ -188,6 +196,59 @@ class TestResolveAccessTokenForEntity:
             token = resolve_xero_access_token_for_entity(test_entity.id, test_user.id)
 
         assert token == winner_token
+
+    # TC-XERO-012: refresh fails and nobody else refreshed — must not return the stale token
+    def test_tc_xero_012_failed_refresh_never_returns_expired_token(
+        self, test_entity, test_user, test_user_entity
+    ):
+        """A non-empty but expired access_token must raise, not be handed to Xero.
+
+        Regression guard: the failure branch once checked only for a *present*
+        access_token, so a consumed single-use refresh left the caller publishing
+        with a token that was days past expiry.
+        """
+        test_entity.xero_org_id = "org-tc012"
+        test_entity.save()
+
+        test_user.xero_entity_id = "org-tc012"
+        test_user.access_token = "consumed-at"  # present, but stale
+        test_user.refresh_token = "already-consumed-rt"
+        test_user.expires_in = 1800
+        test_user.token_created_at = django_tz.now() - timedelta(days=2)
+        test_user.save()
+
+        fake_400 = MagicMock()
+        fake_400.status_code = 400
+        fake_400.text = "invalid_grant"
+
+        with patch("bills.services.xero_token_service.requests.post", return_value=fake_400):
+            with pytest.raises(BillValidationError) as exc_info:
+                resolve_xero_access_token_for_entity(test_entity.id, test_user.id)
+
+        assert "reconnect to xero" in str(exc_info.value).lower()
+
+        # The stale token is still on the row — the guard, not absence, is what stopped it.
+        test_user.refresh_from_db()
+        assert test_user.access_token == "consumed-at"
+
+    # TC-XERO-013: a live token is never refreshed and never re-POSTed
+    def test_tc_xero_013_valid_token_skips_refresh(self, test_entity, test_user, test_user_entity):
+        """TC-XERO-013: Unexpired token short-circuits before acquiring the lock or POSTing."""
+        test_entity.xero_org_id = "org-tc013"
+        test_entity.save()
+
+        test_user.xero_entity_id = "org-tc013"
+        test_user.access_token = "live-at"
+        test_user.refresh_token = "rt"
+        test_user.expires_in = 1800
+        test_user.token_created_at = django_tz.now()
+        test_user.save()
+
+        with patch("bills.services.xero_token_service.requests.post") as mock_post:
+            token = resolve_xero_access_token_for_entity(test_entity.id, test_user.id)
+
+        assert token == "live-at"
+        mock_post.assert_not_called()
 
     # TC-XERO-011: Files API upload with empty token uses guard, does not send any HTTP request
     def test_tc_xero_011_attachment_upload_empty_token_guard(self):
