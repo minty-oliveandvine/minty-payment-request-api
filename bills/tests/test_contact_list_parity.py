@@ -7,6 +7,8 @@ Verify the bill contacts endpoint now matches Module 1 behaviour:
 import pytest
 from unittest.mock import patch, MagicMock
 
+from django.utils import timezone as django_tz
+
 from shared_models.models import User, XeroContactSync
 
 
@@ -183,6 +185,8 @@ class TestContactListParity:
             system_role="user",
             xero_entity_id="org-abc",
             access_token="owner-only-token",
+            expires_in=1800,
+            token_created_at=django_tz.now(),
         )
         test_entity.status = "connected"
         test_entity.xero_org_id = "org-abc"

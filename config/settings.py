@@ -102,10 +102,23 @@ S3_REGION = os.environ.get("S3_REGION", "us-east-1")
 S3_ENDPOINT_URL = os.environ.get("S3_ENDPOINT_URL", "")
 
 # ---------------------------------------------------------------------------
-# Xero OAuth (same env vars as Module 1 Flask — used for token refresh)
+# Xero OAuth
+#
+# Intentionally empty. Xero rotates refresh tokens on every use and invalidates
+# the previous one, so only ONE service may ever call /connect/token. That service
+# is the Flask app. Populating these makes billing a second refresher, which will
+# brick the Xero connection until a user manually reconnects. To obtain a fresh
+# token, billing calls the Flask app (see XERO_TOKEN_SERVICE_URL below).
 # ---------------------------------------------------------------------------
 XERO_CLIENT_ID = os.environ.get("XERO_CLIENT_ID", "")
 XERO_CLIENT_SECRET = os.environ.get("XERO_CLIENT_SECRET", "")
+
+# Flask app's internal token endpoint. Authenticated with the shared SECRET_KEY.
+XERO_TOKEN_SERVICE_URL = os.environ.get(
+    "XERO_TOKEN_SERVICE_URL",
+    f"{os.environ.get('FLASK_APP_URL', 'http://localhost:5001')}/api/internal/xero/token",
+)
+XERO_TOKEN_SERVICE_TIMEOUT = int(os.environ.get("XERO_TOKEN_SERVICE_TIMEOUT", "15"))
 
 # ---------------------------------------------------------------------------
 # Cross-module
