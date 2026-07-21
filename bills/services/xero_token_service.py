@@ -1,19 +1,33 @@
-"""Xero OAuth token refresh — mirrors Module 1 Flask `ensure_valid_token` / `auto_refresh_token`.
+"""Xero access-token resolution for billing.
 
-Resolves which user's tokens to use (org-linked owner vs JWT user), refreshes when
-expired, and persists new tokens to the shared `user` table so Module 1 and Module 2
-stay aligned.
+Billing is a token *reader*. The Flask app (Module 1) is the only service that calls
+Xero's /connect/token, because Xero rotates refresh tokens on every use and
+immediately invalidates the one it was sent — two refreshers racing on a single-use
+token leave one side holding a dead credential, and the Xero connection stays broken
+until a user manually reconnects.
+
+So: read the token the Flask app persisted; if it is missing or expired, ask the Flask
+app for a fresh one over `XERO_TOKEN_SERVICE_URL`, where the refresh is serialized
+behind a Postgres advisory lock.
+
+`refresh_access_token_for_user`, `_persist_tokens_from_refresh` and
+`ensure_valid_token_persist` implement the refresh path and are intentionally NOT
+called from the request path. They are retained only for their unit tests and should
+be deleted once nothing references them. Populating XERO_CLIENT_ID/XERO_CLIENT_SECRET
+would let them run and break the Xero connection; see `.env.example`.
 """
 
 from __future__ import annotations
 
 import base64
 import logging
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 from zoneinfo import ZoneInfo
 
+import jwt
 import requests
 from django.conf import settings
+from django.db.models import F
 from django.utils import timezone as django_tz
 
 from core.exceptions import BillValidationError
@@ -22,6 +36,23 @@ from shared_models.models import Entity, User
 logger = logging.getLogger("minty-api")
 
 HK = ZoneInfo("Asia/Hong_Kong")
+
+
+def _hk_wall_clock_now() -> datetime:
+    """Now, encoded so the shared naive timestamp column stores Hong Kong wall time.
+
+    `user.token_created_at` is `timestamp without time zone`, and every reader — this
+    module and the Flask app — interprets it as Hong Kong local time. Postgres converts
+    an aware datetime for that column using the *connection's* session timezone, and the
+    two apps differ: Django sets it to UTC (USE_TZ), while Flask inherits the server
+    default (UTC+8). So `django_tz.now()` from here lands 8 hours behind what readers
+    assume, and a token written by billing reads back as instantly expired — which drove
+    an unbounded refresh loop against Xero's single-use refresh tokens.
+
+    Labelling the HK wall clock as UTC makes Postgres store the HK wall clock, matching
+    what the Flask app writes and what both apps read.
+    """
+    return datetime.now(HK).replace(tzinfo=timezone.utc)
 
 
 def _token_expired(user: User) -> bool:
@@ -86,7 +117,7 @@ def _persist_tokens_from_refresh(user: User, token_data: dict) -> None:
         refresh_token=new_rt,
         expires_in=new_exp,
         id_token=new_id,
-        token_created_at=django_tz.now(),
+        token_created_at=_hk_wall_clock_now(),
     )
 
 
@@ -123,10 +154,15 @@ def _resolve_token_user(entity_id: str, jwt_user_id: str) -> tuple[User | None, 
         logger.warning("Xero: entity %s has no Xero org linked", entity_id)
         return None, "no_org"
 
+    # Several users may share an org's xero_entity_id. Without an explicit order,
+    # .first() picks arbitrarily and can select a different user per request. Prefer
+    # the most recently refreshed token. The Flask app resolves this deterministically
+    # via entities.connected_by_user_id; billing cannot until that column is backfilled.
     owner = (
         User.objects.filter(xero_entity_id=str(entity.xero_org_id))
         .exclude(access_token__isnull=True)
         .exclude(access_token="")
+        .order_by(F("token_created_at").desc(nulls_last=True), "id")
         .first()
     )
     if owner and owner.access_token:
@@ -153,32 +189,108 @@ def _resolve_token_user(entity_id: str, jwt_user_id: str) -> tuple[User | None, 
     return None, "no_token_user"
 
 
-def resolve_xero_access_token_for_entity(entity_id: str, jwt_user_id: str) -> str | None:
-    """Return a usable access token after refresh-if-needed; persist like Module 1.
+_TOKEN_SERVICE_SCOPE = "xero-access-token"
 
-    Concurrent refresh race: Xero refresh tokens are single-use. If two requests both
-    find the token expired, both attempt a refresh. The second caller's POST returns 400
-    and `ensure_valid_token_persist` returns False. The subsequent `refresh_from_db()`
-    in the failure branch re-reads the row written by the first (winning) caller before
-    checking `user.access_token`. If the winner persisted a valid token the check passes
-    and the loser proceeds with that token — no error is surfaced unnecessarily.
+
+def _request_token_from_flask(entity_id: str) -> str | None:
+    """Ask the Flask app for a currently-valid access token for `entity_id`.
+
+    The Flask app is the only service permitted to call Xero's /connect/token, and it
+    serializes refreshes behind an advisory lock. `entity_id` travels inside the signed
+    claims, not the body, so a leaked assertion cannot be replayed for another entity.
+
+    Returns None on any failure; the caller then surfaces a reconnect prompt. Never
+    raises — a token service outage must not become a 500 on the publish path.
+    """
+    url = getattr(settings, "XERO_TOKEN_SERVICE_URL", "") or ""
+    secret = getattr(settings, "SECRET_KEY", "") or ""
+    if not url or not secret:
+        logger.error("XERO_TOKEN_SERVICE_URL/SECRET_KEY unset; cannot obtain Xero token")
+        return None
+
+    now = datetime.now(tz=timezone.utc)
+    assertion = jwt.encode(
+        {
+            "scope": _TOKEN_SERVICE_SCOPE,
+            "entity_id": str(entity_id),
+            "iat": now,
+            "exp": now + timedelta(seconds=60),
+        },
+        secret,
+        algorithm="HS256",
+    )
+
+    try:
+        resp = requests.post(
+            url,
+            headers={"Authorization": f"Bearer {assertion}"},
+            timeout=getattr(settings, "XERO_TOKEN_SERVICE_TIMEOUT", 15),
+        )
+    except requests.RequestException as exc:
+        logger.error("Xero token service unreachable for entity %s: %s", entity_id, exc)
+        return None
+
+    if resp.status_code == 200:
+        try:
+            access_token = (resp.json() or {}).get("access_token")
+        except ValueError:
+            logger.error("Xero token service returned malformed JSON for entity %s", entity_id)
+            return None
+        if access_token:
+            logger.info("Xero token service issued a token for entity %s", entity_id)
+            return access_token
+        logger.error("Xero token service returned no access_token for entity %s", entity_id)
+        return None
+
+    if resp.status_code == 409:
+        logger.info("Xero token service: reconnect required for entity %s", entity_id)
+        return None
+
+    logger.error(
+        "Xero token service error for entity %s: %s %s",
+        entity_id,
+        resp.status_code,
+        (resp.text or "")[:200],
+    )
+    return None
+
+
+def resolve_xero_access_token_for_entity(entity_id: str, jwt_user_id: str) -> str | None:
+    """Return a currently-valid access token for the entity, or raise.
+
+    Billing never refreshes. Xero rotates refresh tokens on use and invalidates the
+    previous one, so a second refresher racing the Flask app would leave one side
+    holding a dead token and break the connection until a user manually reconnects.
+    When the locally-stored token is missing or expired, billing asks the Flask app,
+    which refreshes behind a lock. `ensure_valid_token_persist` is deliberately not
+    called here — see the module docstring.
+
+    A token that is merely *present* is not usable. Xero access tokens live ~30 minutes,
+    so an unexpired check is required before returning one; otherwise Xero rejects the
+    subsequent API call with 403 AuthenticationUnsuccessful.
     """
     user, failure_reason = _resolve_token_user(entity_id, jwt_user_id)
-    if not user:
-        if failure_reason == "no_org":
-            raise BillValidationError(
-                "Entity is not linked to a Xero organization. Contact your administrator."
-            )
+    if failure_reason == "no_org":
         raise BillValidationError(
-            "No Xero account is connected for this entity. Please reconnect to Xero."
+            "Entity is not linked to a Xero organization. Contact your administrator."
         )
-    if not ensure_valid_token_persist(user):
-        # Refresh failed — re-read DB in case a concurrent request already refreshed.
+
+    # Fast path: the Flask app refreshes on its own traffic and mirrors the result
+    # to the user row, so most publishes find a live token without a round trip.
+    if user is not None:
         user.refresh_from_db()
-        if not user.access_token:
-            raise BillValidationError(
-                "Your Xero connection has expired. Please reconnect to Xero."
-            )
-    else:
-        user.refresh_from_db()
-    return user.access_token or None
+        if user.access_token and not _token_expired(user):
+            return user.access_token
+
+    access_token = _request_token_from_flask(entity_id)
+    if access_token:
+        return access_token
+
+    logger.warning(
+        "Xero: no valid access token for entity %s (token user %s); reconnect required",
+        entity_id,
+        getattr(user, "id", None),
+    )
+    raise BillValidationError(
+        "Your Xero connection has expired. Please reconnect to Xero."
+    )

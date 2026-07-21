@@ -1,10 +1,30 @@
 import jwt as pyjwt
 import pytest
+import requests
 from django.conf import settings
 from django.test import Client
+from django.utils import timezone as django_tz
 
 from bills.models import Attachment, Bill, BillAttachment, BillLineItem
 from shared_models.models import Entity, User, UserEntity
+
+
+@pytest.fixture(autouse=True)
+def _block_real_token_service_calls(monkeypatch):
+    """Stop the suite reaching a live Flask app over HTTP.
+
+    `resolve_xero_access_token_for_entity` POSTs to the Flask token service whenever the
+    stored token is expired or absent. Unblocked, the suite talks to whatever is
+    listening on FLASK_APP_URL — on a developer machine that is a running Minty against
+    a real database, and that endpoint can spend a single-use Xero refresh token.
+
+    Tests that exercise the token service patch `requests.post` themselves; those
+    patches are applied inside the test and take precedence over this one.
+    """
+    def _blocked(*args, **kwargs):
+        raise requests.ConnectionError("real HTTP blocked in tests")
+
+    monkeypatch.setattr("bills.services.xero_token_service.requests.post", _blocked)
 
 
 @pytest.fixture
@@ -14,6 +34,10 @@ def api_client():
 
 @pytest.fixture
 def test_user(db):
+    # The Flask app always writes access_token, refresh_token, expires_in and
+    # token_created_at together, so a token with unknown expiry never occurs in
+    # practice. Tests that set access_token must inherit valid expiry metadata,
+    # otherwise `_token_expired` treats the token as expired and callers refuse it.
     return User.objects.create(
         id="test-user-001",
         email="test@minty.com",
@@ -22,6 +46,8 @@ def test_user(db):
         last_name="User",
         username="testuser",
         system_role="user",
+        expires_in=1800,
+        token_created_at=django_tz.now(),
     )
 
 
