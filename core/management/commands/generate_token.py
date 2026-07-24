@@ -26,7 +26,9 @@ class Command(BaseCommand):
 
     def add_arguments(self, parser):
         parser.add_argument("--user_id", type=str, help="User ID to generate token for")
-        parser.add_argument("--entity_id", type=str, help="Entity ID to embed in the token")
+        parser.add_argument(
+            "--entity_id", type=str, help="Entity ID to embed in the token"
+        )
         parser.add_argument(
             "--list", action="store_true", help="List available users and entities"
         )
@@ -62,7 +64,7 @@ class Command(BaseCommand):
         self.stdout.write("Usage:")
         self.stdout.write(f'  curl -H "Authorization: Bearer {token}" \\')
         self.stdout.write(f'       -H "X-Entity-Id: {entity.id}" \\')
-        self.stdout.write(f"       http://localhost:8000/api/v1/bills/")
+        self.stdout.write("       http://localhost:8000/api/v1/bills/")
         self.stdout.write("")
 
     def _resolve(self, user_id, entity_id):
@@ -82,7 +84,7 @@ class Command(BaseCommand):
         if not ue:
             self.stderr.write(
                 self.style.WARNING(
-                    f"Warning: User has no role for this entity. "
+                    "Warning: User has no role for this entity. "
                     "Token will be generated but API calls will be rejected."
                 )
             )
@@ -99,7 +101,9 @@ class Command(BaseCommand):
             self.stdout.write(f"Auto-selected user={ue.user_id}, entity={ue.entity_id}")
             return ue.user, ue.entity, ue
 
-        self.stdout.write(self.style.WARNING("No users found — creating dev records..."))
+        self.stdout.write(
+            self.style.WARNING("No users found — creating dev records...")
+        )
 
         dev_user_id = str(uuid.uuid4())
         dev_entity_id = str(uuid.uuid4())
@@ -122,13 +126,14 @@ class Command(BaseCommand):
         with connection.cursor() as cur:
             cur.execute(
                 "SELECT country_code FROM pettycashv2.country_info "
-                "WHERE country_code = %s", ["HK"],
+                "WHERE country_code = %s",
+                ["HK"],
             )
             row = cur.fetchone()
             hk_country_code = row[0] if row else None
             cur.execute(
-                "SELECT id FROM pettycashv2.currency_info "
-                "WHERE currency_code = %s", ["HKD"],
+                "SELECT id FROM pettycashv2.currency_info " "WHERE currency_code = %s",
+                ["HKD"],
             )
             row = cur.fetchone()
             hkd_currency_id = row[0] if row else None

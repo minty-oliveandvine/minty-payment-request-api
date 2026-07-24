@@ -23,7 +23,9 @@ Matrix:
 from core.exceptions import PermissionDeniedError
 
 ELEVATED_ROLES = frozenset({"accountant", "admin", "super_admin"})
-ALL_BILL_ROLES = frozenset({"cashier", "shop_manager", "accountant", "admin", "super_admin"})
+ALL_BILL_ROLES = frozenset(
+    {"cashier", "shop_manager", "accountant", "admin", "super_admin"}
+)
 PAID_LIKE_STATUSES = frozenset({"paid", "partially_paid"})
 
 
@@ -32,58 +34,73 @@ def normalize_role(role: str) -> str:
     return (role or "").strip().lower().replace(" ", "_").replace("-", "_")
 
 
+def _require_elevated(role: str, message: str):
+    """Raise PermissionDeniedError with `message` unless `role` is elevated.
+
+    The shared gate behind every "Accountant, Admin, or Super Admin only"
+    action. The message is passed in rather than derived so each endpoint keeps
+    its own exact user-facing wording.
+    """
+    if normalize_role(role) not in ELEVATED_ROLES:
+        raise PermissionDeniedError(message)
+
+
+def _check_bill_action(role: str, bill_status: str, elevated_message: str, verb: str):
+    """Shared gate for status-dependent bill actions (edit / delete).
+
+    Paid-like bills are restricted to elevated roles; every other status is open
+    to all bill roles. `verb` fills the generic denial, `elevated_message` is the
+    paid-like denial — both kept as caller-supplied strings so the rendered text
+    is unchanged.
+    """
+    normalized = normalize_role(role)
+    if bill_status in PAID_LIKE_STATUSES:
+        if normalized not in ELEVATED_ROLES:
+            raise PermissionDeniedError(elevated_message)
+    elif normalized not in ALL_BILL_ROLES:
+        raise PermissionDeniedError(f"Role '{role}' is not allowed to {verb} bills")
+
+
 def check_create_bill(role: str):
     if normalize_role(role) not in ALL_BILL_ROLES:
-        raise PermissionDeniedError(
-            f"Role '{role}' is not allowed to create bills"
-        )
+        raise PermissionDeniedError(f"Role '{role}' is not allowed to create bills")
 
 
 def check_edit_bill(role: str, bill_status: str):
-    normalized = normalize_role(role)
-    if bill_status in PAID_LIKE_STATUSES:
-        if normalized not in ELEVATED_ROLES:
-            raise PermissionDeniedError(
-                "Only Accountant, Admin, or Super Admin can edit paid or partially paid bills"
-            )
-    elif normalized not in ALL_BILL_ROLES:
-        raise PermissionDeniedError(
-            f"Role '{role}' is not allowed to edit bills"
-        )
+    _check_bill_action(
+        role,
+        bill_status,
+        "Only Accountant, Admin, or Super Admin can edit paid or partially paid bills",
+        "edit",
+    )
 
 
 def check_delete_bill(role: str, bill_status: str):
-    normalized = normalize_role(role)
-    if bill_status in PAID_LIKE_STATUSES:
-        if normalized not in ELEVATED_ROLES:
-            raise PermissionDeniedError(
-                "Only Accountant, Admin, or Super Admin can delete paid or partially paid bills"
-            )
-    elif normalized not in ALL_BILL_ROLES:
-        raise PermissionDeniedError(
-            f"Role '{role}' is not allowed to delete bills"
-        )
+    _check_bill_action(
+        role,
+        bill_status,
+        "Only Accountant, Admin, or Super Admin can delete paid or partially paid bills",
+        "delete",
+    )
 
 
 def check_mark_paid(role: str):
-    if normalize_role(role) not in ELEVATED_ROLES:
-        raise PermissionDeniedError(
-            "Only Accountant, Admin, or Super Admin can change paid status"
-        )
+    _require_elevated(
+        role, "Only Accountant, Admin, or Super Admin can change paid status"
+    )
 
 
 def check_publish_xero(role: str):
-    if normalize_role(role) not in ELEVATED_ROLES:
-        raise PermissionDeniedError(
-            "Only Accountant, Admin, or Super Admin can publish to Xero"
-        )
+    _require_elevated(
+        role, "Only Accountant, Admin, or Super Admin can publish to Xero"
+    )
 
 
 def check_return_bill(role: str):
-    if normalize_role(role) not in ELEVATED_ROLES:
-        raise PermissionDeniedError(
-            "Only Accountant, Admin, or Super Admin can return or void a payment request."
-        )
+    _require_elevated(
+        role,
+        "Only Accountant, Admin, or Super Admin can return or void a payment request.",
+    )
 
 
 def check_edit_bill_settings(role: str):
@@ -93,10 +110,9 @@ def check_edit_bill_settings(role: str):
     check_mark_paid, etc.: ELEVATED_ROLES is the canonical "no cashier and no
     shop_manager" set, which is the same logic we want for bill settings.
     """
-    if normalize_role(role) not in ELEVATED_ROLES:
-        raise PermissionDeniedError(
-            "Only Accountant, Admin, or Super Admin can edit bill settings"
-        )
+    _require_elevated(
+        role, "Only Accountant, Admin, or Super Admin can edit bill settings"
+    )
 
 
 def check_bill_mutable(bill_status: str):
@@ -116,10 +132,6 @@ def check_bill_mutable(bill_status: str):
         raise PermissionDeniedError(
             "This bill is fully paid and immutable. No changes are allowed."
         )
-
-
-def is_elevated(role: str) -> bool:
-    return normalize_role(role) in ELEVATED_ROLES
 
 
 def check_not_system_superuser(request, action: str = "modify data") -> None:

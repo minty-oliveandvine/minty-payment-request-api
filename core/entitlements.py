@@ -29,14 +29,17 @@ def is_module_enabled(entity_id: str, function_code: str) -> bool:
         return True
 
     catalog = (
-        EntityFunction.objects.filter(function_code=function_code).only("id", "is_active").first()
+        EntityFunction.objects.filter(function_code=function_code)
+        .only("id", "is_active")
+        .first()
     )
     if catalog is None:
         return True
 
     mapping = (
-        EntityFunctionMap.objects
-        .filter(entity_id=entity_id, entity_function_id=catalog.id)
+        EntityFunctionMap.objects.filter(
+            entity_id=entity_id, entity_function_id=catalog.id
+        )
         .only("is_enabled")
         .first()
     )

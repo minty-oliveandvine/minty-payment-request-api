@@ -58,7 +58,9 @@ class UserEntity(models.Model):
     """Read-only mirror of pettycashv2.user_entity managed by the Flask app."""
 
     user = models.OneToOneField(
-        User, on_delete=models.DO_NOTHING, db_column="user_id",
+        User,
+        on_delete=models.DO_NOTHING,
+        db_column="user_id",
         primary_key=True,
     )
     entity = models.ForeignKey(

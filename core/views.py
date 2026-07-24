@@ -4,23 +4,12 @@ from urllib.parse import urlencode
 
 import jwt
 from django.conf import settings
-from django.db import connection
 from django.http import HttpResponse, HttpResponseRedirect
 
+from core.auth import get_entity_role as _get_entity_role
 from shared_models.models import Entity, User
 
 logger = logging.getLogger("minty-api.auth")
-
-
-def _get_entity_role(user_id: str, entity_id: str) -> str | None:
-    """Return the user's role for the entity from the DB, or None if no membership."""
-    with connection.cursor() as cursor:
-        cursor.execute(
-            "SELECT role FROM user_entity WHERE user_id = %s AND entity_id = %s LIMIT 1",
-            [user_id, entity_id],
-        )
-        row = cursor.fetchone()
-        return row[0] if row else None
 
 
 def landing(request):
@@ -40,13 +29,13 @@ def landing(request):
         user = User.objects.get(id=user_id)
 
         entity_role = _get_entity_role(user_id, entity_id) or ""
-        
+
         # Check if user is a system superuser without entity membership (view-only mode)
         is_system_superuser = user.system_role == "superuser"
         is_view_only = is_system_superuser and not entity_role
         if is_view_only:
             entity_role = "super_admin"
-        
+
         billing_token = jwt.encode(
             {
                 "user_id": user_id,
@@ -72,11 +61,13 @@ def landing(request):
         logger.info("Landing handoff user_id=%s entity_id=%s", user_id, entity_id)
 
         frontend_url = settings.FRONTEND_APP_URL.rstrip("/")
-        qs = urlencode({
-            "token": billing_token,
-            "entity_id": entity_id,
-            "entity_name": entity_name,
-        })
+        qs = urlencode(
+            {
+                "token": billing_token,
+                "entity_id": entity_id,
+                "entity_name": entity_name,
+            }
+        )
         return HttpResponseRedirect(f"{frontend_url}/module-selection?{qs}")
 
     except jwt.ExpiredSignatureError:

@@ -42,11 +42,21 @@ api.add_router("/bills", xero_syncs_router, tags=["Xero Bill Syncs"])
 api.add_router("/xero", xero_actions_router, tags=["Xero Actions"])
 api.add_router("/entities", entities_router, tags=["Entities"])
 api.add_router("/entity-functions", entity_functions_router, tags=["Entity Functions"])
-api.add_router("/entity-function-maps", entity_function_maps_router, tags=["Entity Function Maps"])
-api.add_router("/entity-bill-accounts", entity_bill_accounts_router, tags=["Entity Bill Accounts"])
-api.add_router("/entity-bill-contacts", entity_bill_contacts_router, tags=["Entity Bill Contacts"])
+api.add_router(
+    "/entity-function-maps", entity_function_maps_router, tags=["Entity Function Maps"]
+)
+api.add_router(
+    "/entity-bill-accounts", entity_bill_accounts_router, tags=["Entity Bill Accounts"]
+)
+api.add_router(
+    "/entity-bill-contacts", entity_bill_contacts_router, tags=["Entity Bill Contacts"]
+)
 api.add_router("/currencies", currencies_router, tags=["Currencies"])
-api.add_router("/entity-bill-currencies", entity_bill_currencies_router, tags=["Entity Bill Currencies"])
+api.add_router(
+    "/entity-bill-currencies",
+    entity_bill_currencies_router,
+    tags=["Entity Bill Currencies"],
+)
 
 urlpatterns = [
     path("landing", landing, name="auth_landing"),
