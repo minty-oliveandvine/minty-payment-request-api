@@ -549,7 +549,7 @@ class TestMultiEntityIsolation:
 
         entity_b = Entity.objects.create(
             id="entity-b-001", name="Entity B", country_code="HK",
-            currency_code="HKD", status="active",
+            currency_id="11111111-1111-1111-1111-111111111111", status="active",
         )
 
         # Contacts for entity A.

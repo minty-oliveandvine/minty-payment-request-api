@@ -114,11 +114,30 @@ class Command(BaseCommand):
             system_role="admin",
             approved=True,
         )
+        # entities.country_code / currency_id are FKs into the registries —
+        # confirm HK exists and resolve HKD to its uuid (None when the
+        # registries are empty).
+        from django.db import connection
+
+        with connection.cursor() as cur:
+            cur.execute(
+                "SELECT country_code FROM pettycashv2.country_info "
+                "WHERE country_code = %s", ["HK"],
+            )
+            row = cur.fetchone()
+            hk_country_code = row[0] if row else None
+            cur.execute(
+                "SELECT id FROM pettycashv2.currency_info "
+                "WHERE currency_code = %s", ["HKD"],
+            )
+            row = cur.fetchone()
+            hkd_currency_id = row[0] if row else None
+
         entity = Entity.objects.create(
             id=dev_entity_id,
             name="Dev Entity",
-            country_code="HK",
-            currency_code="HKD",
+            country_code=hk_country_code,
+            currency_id=hkd_currency_id,
             status="active",
         )
         ue = UserEntity.objects.create(user=user, entity=entity, role="admin")

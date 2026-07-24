@@ -1,5 +1,6 @@
 import logging
 
+from django.core.exceptions import ValidationError
 from django.db import connection
 from django.http import Http404
 from ninja import Query, Router, Schema
@@ -504,9 +505,11 @@ def list_currencies(request):
     summary="Get currency detail",
 )
 def get_currency(request, currency_id: str):
+    # ValidationError/ValueError: id is a UUIDField — a malformed path param
+    # should read as "not found", not a 500.
     try:
         return CurrencyInfo.objects.get(id=currency_id)
-    except CurrencyInfo.DoesNotExist:
+    except (CurrencyInfo.DoesNotExist, ValidationError, ValueError):
         raise Http404("Currency not found")
 
 
@@ -520,7 +523,7 @@ def update_currency(request, currency_id: str, payload: CurrencyInfoUpdateIn):
     check_edit_bill_settings(request.entity_role)
     try:
         currency = CurrencyInfo.objects.get(id=currency_id)
-    except CurrencyInfo.DoesNotExist:
+    except (CurrencyInfo.DoesNotExist, ValidationError, ValueError):
         raise Http404("Currency not found")
 
     for field, value in payload.dict(exclude_unset=True).items():
@@ -541,7 +544,7 @@ def delete_currency(request, currency_id: str):
     check_edit_bill_settings(request.entity_role)
     try:
         currency = CurrencyInfo.objects.get(id=currency_id)
-    except CurrencyInfo.DoesNotExist:
+    except (CurrencyInfo.DoesNotExist, ValidationError, ValueError):
         raise Http404("Currency not found")
 
     currency.delete()

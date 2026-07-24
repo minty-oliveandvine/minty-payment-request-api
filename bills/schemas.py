@@ -1,5 +1,6 @@
 from datetime import date, datetime
 from decimal import Decimal
+from uuid import UUID
 
 from ninja import Schema
 
@@ -401,7 +402,7 @@ class CurrencyInfoUpdateIn(Schema):
 
 
 class CurrencyInfoOut(Schema):
-    id: str
+    id: UUID
     currency_code: str
     currency_name: str
     symbol: str
@@ -431,7 +432,7 @@ class EntityBillCurrencyUpdateIn(Schema):
 class EntityBillCurrencyOut(Schema):
     id: str
     entity_id: str
-    currency_info_id: str
+    currency_info_id: UUID
     is_default: bool
     is_enabled: bool
     sort_order: int

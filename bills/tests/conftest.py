@@ -57,7 +57,7 @@ def test_entity(db):
         id="test-entity-001",
         name="Test Entity",
         country_code="HK",
-        currency_code="HKD",
+        currency_id="11111111-1111-1111-1111-111111111111",
         status="active",
     )
 

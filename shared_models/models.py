@@ -33,8 +33,11 @@ class Entity(models.Model):
 
     id = models.CharField(max_length=36, primary_key=True)
     name = models.CharField(max_length=100)
-    country_code = models.CharField(max_length=3, null=True, blank=True)
-    currency_code = models.CharField(max_length=10, null=True, blank=True)
+    # FKs into the registries: country_code is the ISO alpha-2
+    # country_info PK; currency_id is a uuid into currency_info(id)
+    # (Alembic c8e0a2b4d6f8 / d0f2b4c6e8a0 reshaped both).
+    country_code = models.CharField(max_length=2, null=True, blank=True)
+    currency_id = models.UUIDField(null=True, blank=True)
     xero_org_id = models.CharField(max_length=36, null=True, blank=True)
     xero_short_code = models.CharField(max_length=50, null=True, blank=True)
     status = models.CharField(max_length=20, default="active")

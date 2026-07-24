@@ -43,7 +43,7 @@ def entity(db):
         id="deprec-entity",
         name="Deprec Entity",
         country_code="HK",
-        currency_code="HKD",
+        currency_id="11111111-1111-1111-1111-111111111111",
         status="active",
     )
 
