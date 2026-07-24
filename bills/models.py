@@ -361,7 +361,9 @@ class EntityBillAccountXero(models.Model):
 # ═══════════════════════════════════════════════════════════════════════════
 
 class CurrencyInfo(models.Model):
-    id = models.CharField(max_length=36, primary_key=True, default=uuid.uuid4)
+    # The pettycashv2.currency_info PK is a real uuid column (Alembic
+    # c8e0a2b4d6f8) — UUIDField so the ORM round-trips it cleanly.
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4)
     currency_code = models.CharField(max_length=10, unique=True)
     currency_name = models.CharField(max_length=100)
     symbol = models.CharField(max_length=10, blank=True, default="")

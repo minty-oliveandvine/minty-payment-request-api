@@ -40,7 +40,7 @@ def entity(db):
         id="restore-entity",
         name="Restore Entity",
         country_code="HK",
-        currency_code="HKD",
+        currency_id="11111111-1111-1111-1111-111111111111",
         status="active",
     )
 

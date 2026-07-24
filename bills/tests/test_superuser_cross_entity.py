@@ -61,7 +61,7 @@ def member_entity(db):
         id="member-entity-001",
         name="Member Entity",
         country_code="HK",
-        currency_code="HKD",
+        currency_id="11111111-1111-1111-1111-111111111111",
         status="active",
     )
 
@@ -73,7 +73,7 @@ def foreign_entity(db):
         id="foreign-entity-001",
         name="Foreign Entity",
         country_code="HK",
-        currency_code="HKD",
+        currency_id="11111111-1111-1111-1111-111111111111",
         status="active",
     )
 

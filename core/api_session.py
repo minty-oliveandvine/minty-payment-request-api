@@ -47,6 +47,11 @@ class LogoutOut(Schema):
     detail: str
 
 
+class EntityCurrencyOut(Schema):
+    # ISO 4217 code of the entity's selected currency ("" when unset).
+    currency_code: str
+
+
 @session_router.get(
     "/session",
     response={200: BillingSessionOut},
@@ -121,6 +126,36 @@ def token_refresh(request):
         request.entity_id,
     )
     return TokenRefreshOut(token=new_token, expires_in=expires_in)
+
+
+@session_router.get(
+    "/entity-currency",
+    response={200: EntityCurrencyOut},
+    summary="ISO currency code of the current entity (entities.currency_id)",
+)
+def entity_currency(request):
+    """Resolve the JWT entity's selected currency to its ISO code.
+
+    entities.currency_id is a uuid FK into pettycashv2.currency_info(id); the
+    UI renders money amounts with the currency_code. Raw SQL because entities
+    is Flask-managed and only mirrored read-only here.
+    """
+    from django.db import connection
+
+    code = ""
+    entity_id = str(getattr(request, "entity_id", "") or "")
+    if entity_id:
+        with connection.cursor() as cur:
+            cur.execute(
+                "SELECT ci.currency_code FROM pettycashv2.entities e "
+                "JOIN pettycashv2.currency_info ci ON ci.id = e.currency_id "
+                "WHERE e.id = %s",
+                [entity_id],
+            )
+            row = cur.fetchone()
+            if row and row[0]:
+                code = row[0]
+    return EntityCurrencyOut(currency_code=code)
 
 
 @session_router.get(

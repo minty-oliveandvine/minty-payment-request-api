@@ -93,7 +93,7 @@ def fall_entity(db) -> Entity:
         id="fall-entity-001",
         name="Fallback Entity",
         country_code="HK",
-        currency_code="HKD",
+        currency_id="11111111-1111-1111-1111-111111111111",
         status="connected",
         xero_org_id=FAKE_ORG_ID,
     )
@@ -473,7 +473,7 @@ class TestContactFallbackPersistsToDatabase:
             id="other-entity-999",
             name="Other Entity",
             country_code="HK",
-            currency_code="HKD",
+            currency_id="11111111-1111-1111-1111-111111111111",
             status="connected",
             xero_org_id="other-org-999",
         )

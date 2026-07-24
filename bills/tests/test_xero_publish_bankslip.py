@@ -62,7 +62,7 @@ def entity(db) -> Entity:
         id="bs-entity-001",
         name="Bankslip Entity",
         country_code="HK",
-        currency_code="HKD",
+        currency_id="11111111-1111-1111-1111-111111111111",
         status="connected",
         xero_org_id=FAKE_ORG_ID,
     )
