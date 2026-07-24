@@ -1,0 +1,24 @@
+# Development overrides — applied automatically on top of docker-compose.yml.
+#
+# This mounts your local source code into the running container so edits show up
+# instantly (no rebuild needed), and swaps gunicorn for Django's dev server, which
+# auto-reloads on file changes.
+#
+# It is picked up automatically ONLY when compose is run from THIS directory:
+#   cd docker && docker compose up
+#
+# When you run compose with an explicit -f flag from the project root, pass this
+# file too so it is applied:
+#   docker compose -f docker/docker-compose.yml -f docker/docker-compose.override.yml up
+services:
+  app:
+    environment:
+      DEBUG: "True"
+    volumes:
+      # Mount the whole project into /app so local edits are seen live.
+      - ..:/app
+    command:
+      - "python"
+      - "manage.py"
+      - "runserver"
+      - "0.0.0.0:5002"
