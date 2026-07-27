@@ -4,9 +4,9 @@ Verify the bill contacts endpoint now matches Module 1 behaviour:
   - Contacts with NULL/empty xero_org_id are included.
 """
 
-import pytest
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock, patch
 
+import pytest
 from django.utils import timezone as django_tz
 
 from shared_models.models import User, XeroContactSync
@@ -62,7 +62,11 @@ class TestContactListParity:
     """Confirm the bill contacts endpoint returns the same list as Module 1."""
 
     def test_db_fallback_returns_all_contacts_including_missing_org_id(
-        self, api_client, auth_headers, test_user_entity, _seed_contacts,
+        self,
+        api_client,
+        auth_headers,
+        test_user_entity,
+        _seed_contacts,
     ):
         """When entity is disconnected, all DB contacts are returned."""
         resp = api_client.get("/api/v1/entity-bill-contacts/", **auth_headers)
@@ -75,21 +79,33 @@ class TestContactListParity:
         assert "Epsilon Trading" in names
 
     def test_db_fallback_returns_all_five_contacts(
-        self, api_client, auth_headers, test_user_entity, _seed_contacts,
+        self,
+        api_client,
+        auth_headers,
+        test_user_entity,
+        _seed_contacts,
     ):
         resp = api_client.get("/api/v1/entity-bill-contacts/", **auth_headers)
         assert resp.status_code == 200
         assert len(resp.json()) == 5
 
     def test_contacts_sorted_alphabetically(
-        self, api_client, auth_headers, test_user_entity, _seed_contacts,
+        self,
+        api_client,
+        auth_headers,
+        test_user_entity,
+        _seed_contacts,
     ):
         resp = api_client.get("/api/v1/entity-bill-contacts/", **auth_headers)
         names = [c["name"] for c in resp.json()]
         assert names == sorted(names, key=str.lower)
 
     def test_response_shape(
-        self, api_client, auth_headers, test_user_entity, _seed_contacts,
+        self,
+        api_client,
+        auth_headers,
+        test_user_entity,
+        _seed_contacts,
     ):
         resp = api_client.get("/api/v1/entity-bill-contacts/", **auth_headers)
         contact = resp.json()[0]
@@ -99,7 +115,13 @@ class TestContactListParity:
         assert "name" in contact
 
     def test_xero_live_fetch_used_when_connected(
-        self, db, api_client, auth_headers, test_user, test_entity, test_user_entity,
+        self,
+        db,
+        api_client,
+        auth_headers,
+        test_user,
+        test_entity,
+        test_user_entity,
     ):
         """When entity is connected and user has token, Xero API is called."""
         test_entity.status = "connected"
@@ -129,8 +151,14 @@ class TestContactListParity:
         assert "Live Contact B" in names
 
     def test_falls_back_to_db_when_xero_fails(
-        self, db, api_client, auth_headers, test_user, test_entity,
-        test_user_entity, _seed_contacts,
+        self,
+        db,
+        api_client,
+        auth_headers,
+        test_user,
+        test_entity,
+        test_user_entity,
+        _seed_contacts,
     ):
         """When Xero API fails, falls back to DB with all contacts."""
         test_entity.status = "connected"
@@ -156,8 +184,14 @@ class TestContactListParity:
         assert "Delta Inc (empty org id)" in names
 
     def test_falls_back_to_db_when_no_access_token(
-        self, db, api_client, auth_headers, test_user, test_entity,
-        test_user_entity, _seed_contacts,
+        self,
+        db,
+        api_client,
+        auth_headers,
+        test_user,
+        test_entity,
+        test_user_entity,
+        _seed_contacts,
     ):
         """When no usable Xero token (JWT empty and no org owner), falls back to DB."""
         test_entity.status = "connected"
@@ -171,8 +205,14 @@ class TestContactListParity:
         assert len(resp.json()) == 5
 
     def test_live_xero_uses_org_owner_token_when_jwt_has_none(
-        self, db, api_client, auth_headers, test_user, test_entity,
-        test_user_entity, _seed_contacts,
+        self,
+        db,
+        api_client,
+        auth_headers,
+        test_user,
+        test_entity,
+        test_user_entity,
+        _seed_contacts,
     ):
         """Match Flask: org-linked user supplies Xero token when JWT user has none."""
         User.objects.create(
@@ -215,7 +255,13 @@ class TestContactListParity:
         assert auth_hdr == "Bearer owner-only-token"
 
     def test_live_xero_merges_db_row_not_yet_in_xero_get(
-        self, db, api_client, auth_headers, test_user, test_entity, test_user_entity,
+        self,
+        db,
+        api_client,
+        auth_headers,
+        test_user,
+        test_entity,
+        test_user_entity,
     ):
         """Live GET can lag; xero_contact_sync row must still appear in the list."""
         test_entity.status = "connected"

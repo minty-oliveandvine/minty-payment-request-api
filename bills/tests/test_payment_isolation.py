@@ -42,7 +42,9 @@ def bill_b(db, test_user, test_entity):
 class TestPaymentIsolationDifferentSuppliers:
     """Different contact names => payment lists do not mix."""
 
-    def test_list_payments_empty_by_default(self, api_client, auth_headers, test_user_entity, bill_a):
+    def test_list_payments_empty_by_default(
+        self, api_client, auth_headers, test_user_entity, bill_a
+    ):
         resp = api_client.get(f"/api/v1/bills/{bill_a.id}/payments", **auth_headers)
         assert resp.status_code == 200
         body = resp.json()
@@ -54,11 +56,13 @@ class TestPaymentIsolationDifferentSuppliers:
     ):
         resp_a = api_client.post(
             f"/api/v1/bills/{bill_a.id}/payments",
-            data=json.dumps({
-                "payment_date": "2026-03-20",
-                "amount": 300,
-                "payment_status": "pending",
-            }),
+            data=json.dumps(
+                {
+                    "payment_date": "2026-03-20",
+                    "amount": 300,
+                    "payment_status": "pending",
+                }
+            ),
             content_type="application/json",
             **auth_headers,
         )
@@ -67,11 +71,13 @@ class TestPaymentIsolationDifferentSuppliers:
 
         resp_b = api_client.post(
             f"/api/v1/bills/{bill_b.id}/payments",
-            data=json.dumps({
-                "payment_date": "2026-03-21",
-                "amount": 750,
-                "payment_status": "pending",
-            }),
+            data=json.dumps(
+                {
+                    "payment_date": "2026-03-21",
+                    "amount": 750,
+                    "payment_status": "pending",
+                }
+            ),
             content_type="application/json",
             **auth_headers,
         )
@@ -98,14 +104,26 @@ class TestPaymentIsolationDifferentSuppliers:
         for amt in [100, 200, 150]:
             api_client.post(
                 f"/api/v1/bills/{bill_a.id}/payments",
-                data=json.dumps({"amount": amt, "payment_status": "pending", "payment_date": "2026-03-20"}),
+                data=json.dumps(
+                    {
+                        "amount": amt,
+                        "payment_status": "pending",
+                        "payment_date": "2026-03-20",
+                    }
+                ),
                 content_type="application/json",
                 **auth_headers,
             )
 
         api_client.post(
             f"/api/v1/bills/{bill_b.id}/payments",
-            data=json.dumps({"amount": 999, "payment_status": "pending", "payment_date": "2026-03-21"}),
+            data=json.dumps(
+                {
+                    "amount": 999,
+                    "payment_status": "pending",
+                    "payment_date": "2026-03-21",
+                }
+            ),
             content_type="application/json",
             **auth_headers,
         )
@@ -126,7 +144,13 @@ class TestPaymentIsolationDifferentSuppliers:
     ):
         resp_a = api_client.post(
             f"/api/v1/bills/{bill_a.id}/payments",
-            data=json.dumps({"amount": 500, "payment_status": "pending", "payment_date": "2026-03-20"}),
+            data=json.dumps(
+                {
+                    "amount": 500,
+                    "payment_status": "pending",
+                    "payment_date": "2026-03-20",
+                }
+            ),
             content_type="application/json",
             **auth_headers,
         )
@@ -134,7 +158,13 @@ class TestPaymentIsolationDifferentSuppliers:
 
         api_client.post(
             f"/api/v1/bills/{bill_b.id}/payments",
-            data=json.dumps({"amount": 800, "payment_status": "pending", "payment_date": "2026-03-21"}),
+            data=json.dumps(
+                {
+                    "amount": 800,
+                    "payment_status": "pending",
+                    "payment_date": "2026-03-21",
+                }
+            ),
             content_type="application/json",
             **auth_headers,
         )
@@ -155,7 +185,13 @@ class TestPaymentIsolationDifferentSuppliers:
     ):
         resp = api_client.post(
             f"/api/v1/bills/{bill_a.id}/payments",
-            data=json.dumps({"amount": 400, "payment_status": "pending", "payment_date": "2026-03-20"}),
+            data=json.dumps(
+                {
+                    "amount": 400,
+                    "payment_status": "pending",
+                    "payment_date": "2026-03-20",
+                }
+            ),
             content_type="application/json",
             **auth_headers,
         )
@@ -184,20 +220,38 @@ class TestPaymentIsolationDifferentSuppliers:
     ):
         api_client.post(
             f"/api/v1/bills/{bill_a.id}/payments",
-            data=json.dumps({"amount": 200, "payment_status": "completed", "payment_date": "2026-03-20"}),
+            data=json.dumps(
+                {
+                    "amount": 200,
+                    "payment_status": "completed",
+                    "payment_date": "2026-03-20",
+                }
+            ),
             content_type="application/json",
             **auth_headers,
         )
         api_client.post(
             f"/api/v1/bills/{bill_a.id}/payments",
-            data=json.dumps({"amount": 300, "payment_status": "completed", "payment_date": "2026-03-21"}),
+            data=json.dumps(
+                {
+                    "amount": 300,
+                    "payment_status": "completed",
+                    "payment_date": "2026-03-21",
+                }
+            ),
             content_type="application/json",
             **auth_headers,
         )
 
         api_client.post(
             f"/api/v1/bills/{bill_b.id}/payments",
-            data=json.dumps({"amount": 900, "payment_status": "completed", "payment_date": "2026-03-22"}),
+            data=json.dumps(
+                {
+                    "amount": 900,
+                    "payment_status": "completed",
+                    "payment_date": "2026-03-22",
+                }
+            ),
             content_type="application/json",
             **auth_headers,
         )
@@ -247,11 +301,13 @@ class TestSameSupplierPaymentHistory:
     ):
         r1 = api_client.post(
             f"/api/v1/bills/{bill_supplier_a1.id}/payments",
-            data=json.dumps({
-                "amount": 20000,
-                "payment_status": "completed",
-                "payment_date": "2026-03-15",
-            }),
+            data=json.dumps(
+                {
+                    "amount": 20000,
+                    "payment_status": "completed",
+                    "payment_date": "2026-03-15",
+                }
+            ),
             content_type="application/json",
             **auth_headers,
         )
@@ -260,11 +316,13 @@ class TestSameSupplierPaymentHistory:
 
         r2 = api_client.post(
             f"/api/v1/bills/{bill_supplier_a2.id}/payments",
-            data=json.dumps({
-                "amount": 5000,
-                "payment_status": "pending",
-                "payment_date": "2026-03-30",
-            }),
+            data=json.dumps(
+                {
+                    "amount": 5000,
+                    "payment_status": "pending",
+                    "payment_date": "2026-03-30",
+                }
+            ),
             content_type="application/json",
             **auth_headers,
         )
@@ -308,13 +366,25 @@ class TestSameSupplierPaymentHistory:
         )
         api_client.post(
             f"/api/v1/bills/{b1.id}/payments",
-            data=json.dumps({"amount": 10, "payment_status": "pending", "payment_date": "2026-01-01"}),
+            data=json.dumps(
+                {
+                    "amount": 10,
+                    "payment_status": "pending",
+                    "payment_date": "2026-01-01",
+                }
+            ),
             content_type="application/json",
             **auth_headers,
         )
         api_client.post(
             f"/api/v1/bills/{b2.id}/payments",
-            data=json.dumps({"amount": 20, "payment_status": "pending", "payment_date": "2026-01-02"}),
+            data=json.dumps(
+                {
+                    "amount": 20,
+                    "payment_status": "pending",
+                    "payment_date": "2026-01-02",
+                }
+            ),
             content_type="application/json",
             **auth_headers,
         )

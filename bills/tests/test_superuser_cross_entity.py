@@ -20,7 +20,6 @@ from django.test import Client
 from bills.models import Bill
 from shared_models.models import Entity, User, UserEntity
 
-
 # ── Fixtures ────────────────────────────────────────────────────────────────
 
 
@@ -120,12 +119,19 @@ def _make_bill(entity, user, status="draft"):
 class TestSuperuserSeesAllBills:
     """System superuser can list bills from any entity even without membership."""
 
-    def test_superuser_can_list_bills_without_membership(self, api, superuser, foreign_entity):
+    def test_superuser_can_list_bills_without_membership(
+        self, api, superuser, foreign_entity
+    ):
         _make_bill(foreign_entity, superuser)
         resp = api.get("/api/v1/bills/", **_auth(superuser, foreign_entity))
         assert resp.status_code == 200
         data = resp.json()
-        assert "items" in data or isinstance(data, list) or data.get("count") is not None or len(data) >= 0
+        assert (
+            "items" in data
+            or isinstance(data, list)
+            or data.get("count") is not None
+            or len(data) >= 0
+        )
 
 
 # ── (b) Superuser GET on non-member entity succeeds ──────────────────────────
@@ -170,10 +176,14 @@ class TestSuperuserWriteBlockedOnNonMemberEntity:
 
     def test_superuser_delete_bill_blocked(self, api, superuser, foreign_entity):
         bill = _make_bill(foreign_entity, superuser)
-        resp = api.delete(f"/api/v1/bills/{bill.id}", **_auth(superuser, foreign_entity))
+        resp = api.delete(
+            f"/api/v1/bills/{bill.id}", **_auth(superuser, foreign_entity)
+        )
         assert resp.status_code == 403
 
-    def test_superuser_create_blocked_error_message(self, api, superuser, foreign_entity):
+    def test_superuser_create_blocked_error_message(
+        self, api, superuser, foreign_entity
+    ):
         resp = api.post(
             "/api/v1/bills/",
             data=json.dumps({"contact": "Vendor"}),
@@ -289,7 +299,9 @@ class TestProfileMemberEntityIds:
     def test_regular_user_with_membership_lists_entity(
         self, api, regular_user, member_entity, db
     ):
-        UserEntity.objects.create(user=regular_user, entity=member_entity, role="cashier")
+        UserEntity.objects.create(
+            user=regular_user, entity=member_entity, role="cashier"
+        )
         resp = api.get(
             "/api/v1/profile/me",
             **_auth(regular_user, member_entity),

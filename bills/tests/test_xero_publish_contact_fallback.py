@@ -23,7 +23,6 @@ from bills.services.xero_publish_service import publish_bill_to_xero
 from core.exceptions import BillValidationError
 from shared_models.models import Entity, User, UserEntity, XeroContactSync
 
-
 # ═══════════════════════════════════════════════════════════════════════════
 # CONSTANTS
 # ═══════════════════════════════════════════════════════════════════════════
@@ -38,15 +37,22 @@ FAKE_XERO_CONTACT_UUID = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"
 # Patch targets — mirror what test_xero_publish.py uses
 _PUT_PATH = "bills.services.xero_publish_service.requests.put"
 _POST_PATH = "bills.services.xero_publish_service.requests.post"
-_UPLOAD_ATTACHMENTS_PATH = "bills.services.xero_publish_service._upload_bill_attachments_to_xero"
-_UPLOAD_BANKSLIPS_PATH = "bills.services.xero_publish_service._upload_existing_bankslips_to_xero"
+_UPLOAD_ATTACHMENTS_PATH = (
+    "bills.services.xero_publish_service._upload_bill_attachments_to_xero"
+)
+_UPLOAD_BANKSLIPS_PATH = (
+    "bills.services.xero_publish_service._upload_existing_bankslips_to_xero"
+)
 
 
 # ═══════════════════════════════════════════════════════════════════════════
 # HELPERS
 # ═══════════════════════════════════════════════════════════════════════════
 
-def _xero_200(invoice_id=FAKE_INVOICE_ID, invoice_number=FAKE_INVOICE_NUMBER) -> MagicMock:
+
+def _xero_200(
+    invoice_id=FAKE_INVOICE_ID, invoice_number=FAKE_INVOICE_NUMBER
+) -> MagicMock:
     """Return a mock requests.Response that looks like a successful Xero 200."""
     resp = MagicMock()
     resp.status_code = 200
@@ -86,6 +92,7 @@ def _xero_200(invoice_id=FAKE_INVOICE_ID, invoice_number=FAKE_INVOICE_NUMBER) ->
 # ═══════════════════════════════════════════════════════════════════════════
 # FIXTURES
 # ═══════════════════════════════════════════════════════════════════════════
+
 
 @pytest.fixture
 def fall_entity(db) -> Entity:
@@ -175,6 +182,7 @@ def contact_sync_row(db, fall_entity) -> XeroContactSync:
 # TESTS
 # ═══════════════════════════════════════════════════════════════════════════
 
+
 @pytest.mark.django_db
 class TestContactFallbackSkippedWhenContactIdPresent:
     """TC-FALL-001: bill.xero_contact_id is already set — fallback is never triggered."""
@@ -263,9 +271,9 @@ class TestContactFallbackSuccessExactCase:
 
         put_body = mock_put.call_args[1].get("json") or mock_put.call_args[0][1]
         contact_id_sent = put_body["Invoices"][0]["Contact"]["ContactID"]
-        assert contact_id_sent == FAKE_XERO_CONTACT_UUID, (
-            f"Expected ContactID={FAKE_XERO_CONTACT_UUID!r}, got {contact_id_sent!r}"
-        )
+        assert (
+            contact_id_sent == FAKE_XERO_CONTACT_UUID
+        ), f"Expected ContactID={FAKE_XERO_CONTACT_UUID!r}, got {contact_id_sent!r}"
 
 
 @pytest.mark.django_db
@@ -278,7 +286,7 @@ class TestContactFallbackSuccessCaseInsensitive:
         # Bill has lowercase contact name
         bill = Bill.objects.create(
             entity_id=fall_entity.id,
-            contact="24 locks",          # all-lowercase
+            contact="24 locks",  # all-lowercase
             xero_contact_id="",
             status=Bill.Status.AUTHORISED,
             amount=Decimal("500.00"),
@@ -296,7 +304,7 @@ class TestContactFallbackSuccessCaseInsensitive:
             entity_id=fall_entity.id,
             xero_contact_id=FAKE_XERO_CONTACT_UUID,
             xero_org_id=FAKE_ORG_ID,
-            name="24 Locks",             # title-case
+            name="24 Locks",  # title-case
         )
 
         with (
@@ -313,9 +321,9 @@ class TestContactFallbackSuccessCaseInsensitive:
 
         put_body = mock_put.call_args[1].get("json") or mock_put.call_args[0][1]
         contact_id_sent = put_body["Invoices"][0]["Contact"]["ContactID"]
-        assert contact_id_sent == FAKE_XERO_CONTACT_UUID, (
-            f"Case-insensitive lookup failed: ContactID={contact_id_sent!r}"
-        )
+        assert (
+            contact_id_sent == FAKE_XERO_CONTACT_UUID
+        ), f"Case-insensitive lookup failed: ContactID={contact_id_sent!r}"
 
 
 @pytest.mark.django_db
@@ -355,9 +363,9 @@ class TestContactFallbackFailureNoSyncRow:
                     FAKE_ACCESS_TOKEN,
                 )
 
-        assert "24 Locks" in str(exc_info.value), (
-            f"Error message should mention the contact name; got: {exc_info.value!r}"
-        )
+        assert "24 Locks" in str(
+            exc_info.value
+        ), f"Error message should mention the contact name; got: {exc_info.value!r}"
 
     def test_xero_put_never_called(
         self, bill_without_contact_id, fall_entity, fall_user_entity
@@ -390,7 +398,7 @@ class TestContactFallbackFailureEmptySyncContactId:
         XeroContactSync.objects.create(
             id=str(uuid.uuid4()),
             entity_id=fall_entity.id,
-            xero_contact_id="",          # empty — the bad state the fix guards against
+            xero_contact_id="",  # empty — the bad state the fix guards against
             xero_org_id=FAKE_ORG_ID,
             name="24 Locks",
         )
@@ -442,9 +450,9 @@ class TestContactFallbackPersistsToDatabase:
     def test_healed_contact_id_survives_db_round_trip(
         self, bill_without_contact_id, contact_sync_row, fall_entity, fall_user_entity
     ):
-        assert bill_without_contact_id.xero_contact_id == "", (
-            "Precondition: bill must start with an empty xero_contact_id"
-        )
+        assert (
+            bill_without_contact_id.xero_contact_id == ""
+        ), "Precondition: bill must start with an empty xero_contact_id"
 
         with (
             patch(_PUT_PATH, return_value=_xero_200()),
@@ -461,9 +469,9 @@ class TestContactFallbackPersistsToDatabase:
         # Reload from the database — this confirms save(update_fields=["xero_contact_id"])
         # was called, not just an in-memory attribute assignment.
         bill_without_contact_id.refresh_from_db()
-        assert bill_without_contact_id.xero_contact_id == FAKE_XERO_CONTACT_UUID, (
-            f"Expected healed UUID in DB, got: {bill_without_contact_id.xero_contact_id!r}"
-        )
+        assert (
+            bill_without_contact_id.xero_contact_id == FAKE_XERO_CONTACT_UUID
+        ), f"Expected healed UUID in DB, got: {bill_without_contact_id.xero_contact_id!r}"
 
     def test_healed_contact_id_is_isolated_to_correct_entity(
         self, db, fall_entity, fall_user, fall_user_entity
@@ -514,6 +522,6 @@ class TestContactFallbackPersistsToDatabase:
                 )
 
         bill.refresh_from_db()
-        assert bill.xero_contact_id == "", (
-            "A sync row for a different entity must not heal a bill in the wrong entity"
-        )
+        assert (
+            bill.xero_contact_id == ""
+        ), "A sync row for a different entity must not heal a bill in the wrong entity"

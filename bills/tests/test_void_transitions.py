@@ -24,10 +24,10 @@ from django.test import Client
 from bills.models import Audit, Bill, Payment
 from shared_models.models import Entity, User, UserEntity
 
-
 # ═══════════════════════════════════════════════════════════════════════════
 # FIXTURES
 # ═══════════════════════════════════════════════════════════════════════════
+
 
 @pytest.fixture
 def api():
@@ -101,32 +101,33 @@ def _add_completed_payment(bill, user, amount):
 # HELPERS — reusable assertion sequences
 # ═══════════════════════════════════════════════════════════════════════════
 
+
 def _assert_void_succeeds(api, bill, auth_headers):
     """DELETE returns 200, body says 'voided', DB row still exists with status=voided."""
     resp = api.delete(f"/api/v1/bills/{bill.id}", **auth_headers)
-    assert resp.status_code == 200, (
-        f"Expected 200 voiding a {bill.status!r} bill, got {resp.status_code}: {resp.json()}"
-    )
-    assert "void" in resp.json().get("message", "").lower(), (
-        f"Expected 'void' in response message, got: {resp.json()}"
-    )
+    assert (
+        resp.status_code == 200
+    ), f"Expected 200 voiding a {bill.status!r} bill, got {resp.status_code}: {resp.json()}"
+    assert (
+        "void" in resp.json().get("message", "").lower()
+    ), f"Expected 'void' in response message, got: {resp.json()}"
 
     # Soft-delete: row must still exist
     bill.refresh_from_db()
-    assert bill.status == "voided", (
-        f"Expected DB status='voided' after DELETE, got '{bill.status}'"
-    )
+    assert (
+        bill.status == "voided"
+    ), f"Expected DB status='voided' after DELETE, got '{bill.status}'"
 
 
 def _assert_draft_hard_delete_succeeds(api, bill, auth_headers):
     """DELETE returns 200, message 'deleted', bill row removed."""
     resp = api.delete(f"/api/v1/bills/{bill.id}", **auth_headers)
-    assert resp.status_code == 200, (
-        f"Expected 200 deleting draft bill, got {resp.status_code}: {resp.json()}"
-    )
-    assert "delet" in resp.json().get("message", "").lower(), (
-        f"Expected delete wording in response message, got: {resp.json()}"
-    )
+    assert (
+        resp.status_code == 200
+    ), f"Expected 200 deleting draft bill, got {resp.status_code}: {resp.json()}"
+    assert (
+        "delet" in resp.json().get("message", "").lower()
+    ), f"Expected delete wording in response message, got: {resp.json()}"
     assert not Bill.objects.filter(pk=bill.id).exists()
 
 
@@ -138,13 +139,11 @@ def _assert_update_blocked(api, bill_id, auth_headers):
         content_type="application/json",
         **auth_headers,
     )
-    assert resp.status_code == 403, (
-        f"Expected 403 editing voided bill via PUT /bills/{{id}}, got {resp.status_code}: {resp.json()}"
-    )
+    assert (
+        resp.status_code == 403
+    ), f"Expected 403 editing voided bill via PUT /bills/{{id}}, got {resp.status_code}: {resp.json()}"
     body_text = json.dumps(resp.json()).lower()
-    assert "void" in body_text, (
-        f"Expected 'void' in 403 body, got: {resp.json()}"
-    )
+    assert "void" in body_text, f"Expected 'void' in 403 body, got: {resp.json()}"
 
 
 def _assert_draft_update_blocked(api, bill_id, auth_headers):
@@ -160,24 +159,32 @@ def _assert_draft_update_blocked(api, bill_id, auth_headers):
         f"got {resp.status_code}: {resp.json()}"
     )
     body_text = json.dumps(resp.json()).lower()
-    assert "void" in body_text, (
-        f"Expected 'void' in 403 body, got: {resp.json()}"
-    )
+    assert "void" in body_text, f"Expected 'void' in 403 body, got: {resp.json()}"
 
 
 # ═══════════════════════════════════════════════════════════════════════════
 # TEST CLASS — void soft-delete semantics
 # ═══════════════════════════════════════════════════════════════════════════
 
+
 @pytest.mark.django_db
 class TestVoidIsSoftDelete:
     """Non-draft DELETE sets status=voided; the bill row is kept."""
 
-    @pytest.mark.parametrize("initial_status", [
-        "submitted", "authorised", "partially_paid", "paid",
-        "cancelled", "sync_failed",
-    ])
-    def test_bill_row_survives_void(self, api, user, entity, membership, initial_status):
+    @pytest.mark.parametrize(
+        "initial_status",
+        [
+            "submitted",
+            "authorised",
+            "partially_paid",
+            "paid",
+            "cancelled",
+            "sync_failed",
+        ],
+    )
+    def test_bill_row_survives_void(
+        self, api, user, entity, membership, initial_status
+    ):
         bill = _make_bill(entity, user, status=initial_status)
         if initial_status == "partially_paid":
             _add_completed_payment(bill, user, 100)
@@ -190,10 +197,17 @@ class TestVoidIsSoftDelete:
         surviving = Bill.objects.get(pk=bill_id)
         assert surviving.status == "voided"
 
-    @pytest.mark.parametrize("initial_status", [
-        "submitted", "authorised", "partially_paid", "paid",
-        "cancelled", "sync_failed",
-    ])
+    @pytest.mark.parametrize(
+        "initial_status",
+        [
+            "submitted",
+            "authorised",
+            "partially_paid",
+            "paid",
+            "cancelled",
+            "sync_failed",
+        ],
+    )
     def test_void_response_message(self, api, user, entity, membership, initial_status):
         bill = _make_bill(entity, user, status=initial_status)
         if initial_status == "partially_paid":
@@ -209,18 +223,29 @@ class TestVoidIsSoftDelete:
         assert resp.status_code == 200
         assert "delet" in resp.json().get("message", "").lower()
 
-    @pytest.mark.parametrize("initial_status", [
-        "submitted", "authorised", "partially_paid", "paid",
-        "cancelled", "sync_failed",
-    ])
-    def test_void_writes_audit_entry(self, api, user, entity, membership, initial_status):
+    @pytest.mark.parametrize(
+        "initial_status",
+        [
+            "submitted",
+            "authorised",
+            "partially_paid",
+            "paid",
+            "cancelled",
+            "sync_failed",
+        ],
+    )
+    def test_void_writes_audit_entry(
+        self, api, user, entity, membership, initial_status
+    ):
         bill = _make_bill(entity, user, status=initial_status)
         if initial_status == "partially_paid":
             _add_completed_payment(bill, user, 100)
 
         api.delete(f"/api/v1/bills/{bill.id}", **_auth(user, entity))
 
-        assert Audit.objects.filter(bill=bill, action=Audit.Action.VOIDED).exists(), (
+        assert Audit.objects.filter(
+            bill=bill, action=Audit.Action.VOIDED
+        ).exists(), (
             f"Expected a VOIDED audit entry for initial_status={initial_status!r}"
         )
 
@@ -237,6 +262,7 @@ class TestVoidIsSoftDelete:
 # ═══════════════════════════════════════════════════════════════════════════
 # TEST CLASS — void from each initial status
 # ═══════════════════════════════════════════════════════════════════════════
+
 
 @pytest.mark.django_db
 class TestVoidFromDraft:
@@ -316,12 +342,16 @@ class TestVoidFromPartiallyPaid:
         bill = self._make_partially_paid(entity, user)
         _assert_void_succeeds(api, bill, _auth(user, entity))
 
-    def test_void_partially_paid_blocks_full_update(self, api, user, entity, membership):
+    def test_void_partially_paid_blocks_full_update(
+        self, api, user, entity, membership
+    ):
         bill = self._make_partially_paid(entity, user)
         api.delete(f"/api/v1/bills/{bill.id}", **_auth(user, entity))
         _assert_update_blocked(api, bill.id, _auth(user, entity))
 
-    def test_void_partially_paid_blocks_draft_update(self, api, user, entity, membership):
+    def test_void_partially_paid_blocks_draft_update(
+        self, api, user, entity, membership
+    ):
         bill = self._make_partially_paid(entity, user)
         api.delete(f"/api/v1/bills/{bill.id}", **_auth(user, entity))
         _assert_draft_update_blocked(api, bill.id, _auth(user, entity))
@@ -340,9 +370,9 @@ class TestVoidFromPartiallyPaid:
         api.delete(f"/api/v1/bills/{bill.id}", **_auth(user, entity))
 
         bill.refresh_from_db()
-        assert bill.payments.count() == payment_count_before, (
-            "Payment records must survive a void operation"
-        )
+        assert (
+            bill.payments.count() == payment_count_before
+        ), "Payment records must survive a void operation"
 
 
 @pytest.mark.django_db
@@ -468,6 +498,7 @@ class TestVoidFromSyncFailed:
 # TEST CLASS — idempotency / double-void
 # ═══════════════════════════════════════════════════════════════════════════
 
+
 @pytest.mark.django_db
 class TestDoubleVoid:
     """
@@ -475,7 +506,9 @@ class TestDoubleVoid:
     Second DELETE on an already-voided bill still succeeds (200) — current behaviour.
     """
 
-    def test_second_delete_on_removed_draft_returns_404(self, api, user, entity, membership):
+    def test_second_delete_on_removed_draft_returns_404(
+        self, api, user, entity, membership
+    ):
         bill = _make_bill(entity, user, status="draft")
         auth = _auth(user, entity)
         bid = bill.id
@@ -486,7 +519,9 @@ class TestDoubleVoid:
         second = api.delete(f"/api/v1/bills/{bid}", **auth)
         assert second.status_code == 404
 
-    def test_double_void_voided_bill_current_behaviour(self, api, user, entity, membership):
+    def test_double_void_voided_bill_current_behaviour(
+        self, api, user, entity, membership
+    ):
         bill = _make_bill(entity, user, status="submitted")
         auth = _auth(user, entity)
 
@@ -504,14 +539,22 @@ class TestDoubleVoid:
 # TEST CLASS — voided bills cannot receive new payments
 # ═══════════════════════════════════════════════════════════════════════════
 
+
 @pytest.mark.django_db
 class TestVoidedBillPaymentBlocked:
     """No new payment operations are allowed once a bill is voided."""
 
-    @pytest.mark.parametrize("initial_status", [
-        "draft", "submitted", "authorised", "partially_paid",
-        "cancelled", "sync_failed",
-    ])
+    @pytest.mark.parametrize(
+        "initial_status",
+        [
+            "draft",
+            "submitted",
+            "authorised",
+            "partially_paid",
+            "cancelled",
+            "sync_failed",
+        ],
+    )
     def test_cannot_add_payment_to_voided_bill(
         self, api, user, entity, membership, initial_status
     ):

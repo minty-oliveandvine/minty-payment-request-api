@@ -184,19 +184,17 @@ def test_bill_dropdown_includes_only_allowed_types(
 
 
 @pytest.mark.django_db
-def test_all_eight_permitted_types_appear(
-    api, entity, auth_headers, user_entity
-):
+def test_all_eight_permitted_types_appear(api, entity, auth_headers, user_entity):
     """All 8 permitted account types are returned; nothing else is."""
     permitted = [
-        ("100", "Current Asset",         "CURRENT",    "xero-cur-1"),
-        ("110", "Non-current Asset",      "NONCURRENT", "xero-nc-1"),
-        ("200", "Current Liability",      "CURRLIAB",   "xero-cl-1"),
-        ("210", "Non-current Liability",  "TERMLIAB",   "xero-nl-1"),
-        ("300", "Fixed Asset",            "FIXED",      "xero-fa-1"),
-        ("400", "Inventory",              "INVENTORY",  "xero-inv-1"),
-        ("600", "Direct Cost",            "DIRECTCOSTS","xero-dc-3"),
-        ("700", "Expense",                "EXPENSE",    "xero-exp-3"),
+        ("100", "Current Asset", "CURRENT", "xero-cur-1"),
+        ("110", "Non-current Asset", "NONCURRENT", "xero-nc-1"),
+        ("200", "Current Liability", "CURRLIAB", "xero-cl-1"),
+        ("210", "Non-current Liability", "TERMLIAB", "xero-nl-1"),
+        ("300", "Fixed Asset", "FIXED", "xero-fa-1"),
+        ("400", "Inventory", "INVENTORY", "xero-inv-1"),
+        ("600", "Direct Cost", "DIRECTCOSTS", "xero-dc-3"),
+        ("700", "Expense", "EXPENSE", "xero-exp-3"),
     ]
     for code, name, acc_type, xero_id in permitted:
         EntityBillAccountXero.objects.create(
@@ -243,8 +241,14 @@ def test_all_eight_permitted_types_appear(
     data = json.loads(resp.content)
     returned_types = {row["account_type"] for row in data}
     assert returned_types == {
-        "CURRENT", "NONCURRENT", "CURRLIAB", "TERMLIAB",
-        "FIXED", "INVENTORY", "DIRECTCOSTS", "EXPENSE",
+        "CURRENT",
+        "NONCURRENT",
+        "CURRLIAB",
+        "TERMLIAB",
+        "FIXED",
+        "INVENTORY",
+        "DIRECTCOSTS",
+        "EXPENSE",
     }
     assert len(data) == 8
 

@@ -279,7 +279,43 @@ Full detail in `.cleanse/patch_targets.md`. Summary of what is load-bearing:
       and `import requests as _requests` (module form) — the names tests patch as
       `bills.api.*` are untouched.
     - verify: 14 failed / 398 passed at all 3 checkpoints — **no regressions**.
-  - [ ] stage 4: `bills/tests/`
+  - [x] **stage 4: `bills/tests/`** (27 files, ~7,700 LOC) — **dead code + format; helpers left alone.**
+    - *dead code:*
+      - Removed 6 unused imports (F401): `BillLineItem` (conftest.py), `Entity`
+        (test_contact_list_exact_match.py — the *word* "Entity" appears in docstrings, but
+        the imported symbol is unused; `XeroContactSync` on the same line stays),
+        `_xero_to_bill_contact` (test_contact_no_duplicates.py), `User`
+        (test_profile_update.py, test_xero_token_service.py), `call` from unittest.mock
+        (test_xero_publish.py — "call" appears only in docstrings). Confirmed each by hand
+        before removing, because ruff's count and a naive grep disagreed (docstring words).
+      - Removed 1 unused local (F841): `page1` in
+        `test_contact_no_duplicates.py::test_paginated_xero_response_no_duplicates`. It was
+        assigned then never used — the fake builds its own inline 1000-item page-1 list.
+        Test passes at baseline and still does. **Flagged (not fixed):** `page1` was written
+        with `range(10)` while the real page-1 fake uses `range(1000)` — a latent
+        test-clarity inconsistency in the *test*, not a bug in tested code. Left as-is.
+      - Fixed 7 × F541 stray f-prefixes in `test_account_restoration.py` (a
+        **baseline-failing** file). All 7 are plain URL literals with no placeholders;
+        captured the 7 URL strings via AST before/after and proved them byte-identical, so
+        this neither changes behaviour nor masks why those tests fail.
+    - *duplication — deliberately NOT consolidated (the conservative call for the safety net):*
+      test helpers look duplicated but are per-file variants. `_make_bill` has **4 different
+      signatures**; `_auth` has **6** across two+ signatures (`(user, entity)` /
+      `(user_id, entity_id)` / `(token, entity_id)`), and even the 4 sharing
+      `(user, entity)` are **not byte-identical** (checked via AST). Fixtures (`user`,
+      `entity`, `api`, `membership`, `auth_headers`) are duplicated across files but are
+      pytest fixtures whose local definitions may differ; hoisting them into `conftest.py`
+      risks silently changing fixture resolution. Merging any of these means picking a
+      winner among genuine variants — exactly what the rules forbid — for the benefit of
+      DRY-ing the test scaffold. Not worth weakening the safety net. Left entirely alone.
+    - *format*: `isort --profile black` + `black` on 25 of 27 files. **`test_xero_publish.py`
+      (1,367 LOC) excluded** — over the ~1000-LOC guard; goes in the optional format commit.
+      Verified string constants per-file: 23 byte-identical; `test_account_restoration.py`
+      (3) and `test_contact_no_duplicates.py` (1) show only **docstring re-indentation**
+      (whitespace-only, proven identical after `\s+`→` ` normalization) — no assertion
+      string, log line, or URL changed.
+    - verify: 14 failed / 398 passed at both checkpoints; the same 14 baseline failures,
+      no test that passed started failing — **no regressions**.
   - [ ] `bills/migrations/` — **excluded, see below**
 
 ## Tooling decision: isort MUST use `--profile black`
@@ -308,6 +344,10 @@ set `[tool.isort] profile = "black"` so this is not rediscovered each session.
   `InvalidSettingsPath`. Pass explicit files and add `--filter-files`, excluding
   `__init__.py`, e.g.
   `isort --profile black --filter-files $(ls bills/services/*.py | grep -v '__init__')`.
+- **Formatting a file list: watch the shell.** `isort --filter-files $FILES` and `black
+  $FILES` both choke if `$FILES` is a newline-joined string (they read it as one bogus
+  path). This shell is **zsh, not bash** — `mapfile` does not exist. Use a zsh glob array:
+  `FILES=(bills/tests/*.py); FILES=(${FILES:#*test_xero_publish.py}); black -q $FILES`.
 - **Extracting a helper can silently move a transaction boundary.** The first cut of
   `_upload_file_to_s3` pulled the S3 upload *inside* `transaction.atomic()`, which would
   have held a DB transaction open across a network call. Caught by diffing the atomic

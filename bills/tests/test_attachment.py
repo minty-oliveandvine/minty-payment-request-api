@@ -7,7 +7,9 @@ from django.core.files.uploadedfile import SimpleUploadedFile
 @pytest.mark.django_db
 class TestAttachmentUpload:
     @patch("bills.services.attachment_service._get_s3_client")
-    def test_upload_pdf(self, mock_s3, api_client, auth_headers, draft_bill, test_user_entity):
+    def test_upload_pdf(
+        self, mock_s3, api_client, auth_headers, draft_bill, test_user_entity
+    ):
         mock_s3.return_value = MagicMock()
         file = SimpleUploadedFile(
             "invoice.pdf",
@@ -27,7 +29,9 @@ class TestAttachmentUpload:
         assert body[0]["attachment_role"] == "other"
 
     @patch("bills.services.attachment_service._get_s3_client")
-    def test_upload_image(self, mock_s3, api_client, auth_headers, draft_bill, test_user_entity):
+    def test_upload_image(
+        self, mock_s3, api_client, auth_headers, draft_bill, test_user_entity
+    ):
         mock_s3.return_value = MagicMock()
         file = SimpleUploadedFile(
             "photo.jpg",
@@ -43,10 +47,14 @@ class TestAttachmentUpload:
         assert len(resp.json()) == 1
 
     @patch("bills.services.attachment_service._get_s3_client")
-    def test_upload_multiple_files(self, mock_s3, api_client, auth_headers, draft_bill, test_user_entity):
+    def test_upload_multiple_files(
+        self, mock_s3, api_client, auth_headers, draft_bill, test_user_entity
+    ):
         """Uploading two files in one request creates two BillAttachment records."""
         mock_s3.return_value = MagicMock()
-        pdf = SimpleUploadedFile("invoice.pdf", b"pdf-data", content_type="application/pdf")
+        pdf = SimpleUploadedFile(
+            "invoice.pdf", b"pdf-data", content_type="application/pdf"
+        )
         jpg = SimpleUploadedFile("photo.jpg", b"jpg-data", content_type="image/jpeg")
         resp = api_client.post(
             f"/api/v1/bills/{draft_bill.id}/attachments",
@@ -82,7 +90,12 @@ class TestAttachmentUpload:
 
     @patch("bills.services.attachment_service._get_s3_client")
     def test_delete_attachment(
-        self, mock_s3, api_client, auth_headers, draft_bill_with_attachment, test_user_entity
+        self,
+        mock_s3,
+        api_client,
+        auth_headers,
+        draft_bill_with_attachment,
+        test_user_entity,
     ):
         mock_s3.return_value = MagicMock()
         ba_id = str(draft_bill_with_attachment.bill_attachments.first().id)

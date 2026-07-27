@@ -9,7 +9,9 @@ from shared_models.models import XeroContactSync
 
 @pytest.mark.django_db
 class TestEntityBillContactsCreate:
-    def test_requires_bill_role(self, api_client, auth_token, test_entity, test_user_entity):
+    def test_requires_bill_role(
+        self, api_client, auth_token, test_entity, test_user_entity
+    ):
         test_user_entity.role = "guest"
         test_user_entity.save(update_fields=["role"])
         try:
@@ -36,7 +38,11 @@ class TestEntityBillContactsCreate:
         assert "required" in resp.json()["detail"].lower()
 
     def test_requires_xero_connected_entity(
-        self, api_client, auth_headers, test_entity, test_user_entity,
+        self,
+        api_client,
+        auth_headers,
+        test_entity,
+        test_user_entity,
     ):
         test_entity.status = "active"
         test_entity.xero_org_id = None
@@ -51,7 +57,13 @@ class TestEntityBillContactsCreate:
         assert "connected" in resp.json()["detail"].lower()
 
     def test_creates_contact_and_db_row(
-        self, db, api_client, auth_headers, test_user, test_entity, test_user_entity,
+        self,
+        db,
+        api_client,
+        auth_headers,
+        test_user,
+        test_entity,
+        test_user_entity,
     ):
         test_entity.status = "connected"
         test_entity.xero_org_id = "org-abc"
@@ -94,7 +106,13 @@ class TestEntityBillContactsCreate:
         assert row.category is None
 
     def test_xero_error_status_maps_to_422(
-        self, db, api_client, auth_headers, test_user, test_entity, test_user_entity,
+        self,
+        db,
+        api_client,
+        auth_headers,
+        test_user,
+        test_entity,
+        test_user_entity,
     ):
         test_entity.status = "connected"
         test_entity.xero_org_id = "org-abc"

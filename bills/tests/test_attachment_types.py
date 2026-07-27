@@ -26,7 +26,6 @@ from bills.services.xero_publish_service import (
     _sanitize_xero_filename,
 )
 
-
 # ─── _resolve_content_type ──────────────────────────────────────────────
 
 
@@ -50,7 +49,9 @@ class TestResolveContentType:
     def test_octet_stream_heic_falls_back_to_extension(self):
         # iPhones / Safari sometimes upload HEIC as application/octet-stream.
         f = SimpleUploadedFile(
-            "photo.HEIC", b"x", content_type="application/octet-stream",
+            "photo.HEIC",
+            b"x",
+            content_type="application/octet-stream",
         )
         assert _resolve_content_type(f) == "image/heic"
 
@@ -60,21 +61,25 @@ class TestResolveContentType:
 
     def test_csv_accepted_via_extension(self):
         f = SimpleUploadedFile(
-            "rows.csv", b"a,b\n1,2\n", content_type="application/octet-stream",
+            "rows.csv",
+            b"a,b\n1,2\n",
+            content_type="application/octet-stream",
         )
         assert _resolve_content_type(f) == "text/csv"
 
     def test_unknown_extension_and_type_rejected(self):
         f = SimpleUploadedFile(
-            "malware.exe", b"x", content_type="application/x-msdownload",
+            "malware.exe",
+            b"x",
+            content_type="application/x-msdownload",
         )
         assert _resolve_content_type(f) is None
 
     def test_every_listed_extension_resolves_to_an_allowed_type(self):
         for ext, mime in ALLOWED_EXTENSIONS.items():
-            assert mime in ALLOWED_TYPES, (
-                f"extension '{ext}' maps to '{mime}' which is not in ALLOWED_TYPES"
-            )
+            assert (
+                mime in ALLOWED_TYPES
+            ), f"extension '{ext}' maps to '{mime}' which is not in ALLOWED_TYPES"
 
 
 # ─── End-to-end: upload via API ────────────────────────────────────────
@@ -84,7 +89,12 @@ class TestResolveContentType:
 class TestExpandedUploadTypes:
     @patch("bills.services.attachment_service._get_s3_client")
     def test_upload_xlsx_succeeds(
-        self, mock_s3, api_client, auth_headers, draft_bill, test_user_entity,
+        self,
+        mock_s3,
+        api_client,
+        auth_headers,
+        draft_bill,
+        test_user_entity,
     ):
         client = MagicMock()
         client.generate_presigned_url.return_value = "https://example/download"
@@ -110,7 +120,12 @@ class TestExpandedUploadTypes:
 
     @patch("bills.services.attachment_service._get_s3_client")
     def test_upload_heic_with_octet_stream_succeeds(
-        self, mock_s3, api_client, auth_headers, draft_bill, test_user_entity,
+        self,
+        mock_s3,
+        api_client,
+        auth_headers,
+        draft_bill,
+        test_user_entity,
     ):
         client = MagicMock()
         client.generate_presigned_url.return_value = "https://example/download"
@@ -163,7 +178,4 @@ class TestResolveXeroContentType:
         assert _resolve_xero_content_type("", "jpg") == "image/jpeg"
 
     def test_unknown_extension_falls_back_to_octet_stream(self):
-        assert (
-            _resolve_xero_content_type("", "weirdext")
-            == "application/octet-stream"
-        )
+        assert _resolve_xero_content_type("", "weirdext") == "application/octet-stream"

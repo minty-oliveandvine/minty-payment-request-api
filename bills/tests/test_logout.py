@@ -1,4 +1,5 @@
 """Tests for the POST /api/v1/auth/logout endpoint."""
+
 from __future__ import annotations
 
 import jwt as pyjwt

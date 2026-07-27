@@ -102,6 +102,7 @@ def _make_payment(bill, user, amount, status="completed"):
 # AUTO STATUS CALCULATION
 # ═══════════════════════════════════════════════════════════════════════════
 
+
 @pytest.mark.django_db
 class TestAutoStatusCalculation:
     """Payment creation automatically updates bill status."""
@@ -112,10 +113,12 @@ class TestAutoStatusCalculation:
         bill = _make_bill(entity, user, amount=200)
         resp = api.post(
             f"/api/v1/bills/{bill.id}/payments",
-            data=json.dumps({
-                "amount": "80.00",
-                "payment_status": "completed",
-            }),
+            data=json.dumps(
+                {
+                    "amount": "80.00",
+                    "payment_status": "completed",
+                }
+            ),
             content_type="application/json",
             **_auth(user, entity),
         )
@@ -127,10 +130,12 @@ class TestAutoStatusCalculation:
         bill = _make_bill(entity, user, amount=100)
         resp = api.post(
             f"/api/v1/bills/{bill.id}/payments",
-            data=json.dumps({
-                "amount": "100.00",
-                "payment_status": "completed",
-            }),
+            data=json.dumps(
+                {
+                    "amount": "100.00",
+                    "payment_status": "completed",
+                }
+            ),
             content_type="application/json",
             **_auth(user, entity),
         )
@@ -145,10 +150,12 @@ class TestAutoStatusCalculation:
         for amt in ["100.00", "100.00", "100.00"]:
             resp = api.post(
                 f"/api/v1/bills/{bill.id}/payments",
-                data=json.dumps({
-                    "amount": amt,
-                    "payment_status": "completed",
-                }),
+                data=json.dumps(
+                    {
+                        "amount": amt,
+                        "payment_status": "completed",
+                    }
+                ),
                 content_type="application/json",
                 **headers,
             )
@@ -161,10 +168,12 @@ class TestAutoStatusCalculation:
         bill = _make_bill(entity, user, amount=50)
         resp = api.post(
             f"/api/v1/bills/{bill.id}/payments",
-            data=json.dumps({
-                "amount": "75.00",
-                "payment_status": "completed",
-            }),
+            data=json.dumps(
+                {
+                    "amount": "75.00",
+                    "payment_status": "completed",
+                }
+            ),
             content_type="application/json",
             **_auth(user, entity),
         )
@@ -179,10 +188,12 @@ class TestAutoStatusCalculation:
         bill = _make_bill(entity, user, amount=100)
         resp = api.post(
             f"/api/v1/bills/{bill.id}/payments",
-            data=json.dumps({
-                "amount": "100.00",
-                "payment_status": "pending",
-            }),
+            data=json.dumps(
+                {
+                    "amount": "100.00",
+                    "payment_status": "pending",
+                }
+            ),
             content_type="application/json",
             **_auth(user, entity),
         )
@@ -196,10 +207,12 @@ class TestAutoStatusCalculation:
         bill = _make_bill(entity, user, amount=100)
         resp = api.post(
             f"/api/v1/bills/{bill.id}/payments",
-            data=json.dumps({
-                "amount": "100.01",
-                "payment_status": "pending",
-            }),
+            data=json.dumps(
+                {
+                    "amount": "100.01",
+                    "payment_status": "pending",
+                }
+            ),
             content_type="application/json",
             **_auth(user, entity),
         )
@@ -213,20 +226,24 @@ class TestAutoStatusCalculation:
         headers = _auth(user, entity)
         resp = api.post(
             f"/api/v1/bills/{bill.id}/payments",
-            data=json.dumps({
-                "amount": "60.00",
-                "payment_status": "pending",
-            }),
+            data=json.dumps(
+                {
+                    "amount": "60.00",
+                    "payment_status": "pending",
+                }
+            ),
             content_type="application/json",
             **headers,
         )
         assert resp.status_code == 201
         resp = api.post(
             f"/api/v1/bills/{bill.id}/payments",
-            data=json.dumps({
-                "amount": "50.00",
-                "payment_status": "pending",
-            }),
+            data=json.dumps(
+                {
+                    "amount": "50.00",
+                    "payment_status": "pending",
+                }
+            ),
             content_type="application/json",
             **headers,
         )
@@ -241,10 +258,12 @@ class TestAutoStatusCalculation:
 
         resp = api.post(
             f"/api/v1/bills/{bill.id}/payments",
-            data=json.dumps({
-                "amount": "100.00",
-                "payment_status": "pending",
-            }),
+            data=json.dumps(
+                {
+                    "amount": "100.00",
+                    "payment_status": "pending",
+                }
+            ),
             content_type="application/json",
             **headers,
         )
@@ -270,10 +289,12 @@ class TestAutoStatusCalculation:
 
         resp = api.post(
             f"/api/v1/bills/{bill.id}/payments",
-            data=json.dumps({
-                "amount": "80.00",
-                "payment_status": "completed",
-            }),
+            data=json.dumps(
+                {
+                    "amount": "80.00",
+                    "payment_status": "completed",
+                }
+            ),
             content_type="application/json",
             **headers,
         )
@@ -312,9 +333,7 @@ class TestAutoStatusCalculation:
         assert resp.status_code == 422
         assert "exceeds" in resp.json()["detail"].lower()
 
-    def test_exact_remaining_amount_accepted(
-        self, api, user, entity, membership
-    ):
+    def test_exact_remaining_amount_accepted(self, api, user, entity, membership):
         bill = _make_bill(entity, user, amount=100)
         headers = _auth(user, entity)
 
@@ -494,6 +513,7 @@ class TestElevatedEditIncreasesPaidBillTotal:
 # PAID BILL IMMUTABILITY
 # ═══════════════════════════════════════════════════════════════════════════
 
+
 @pytest.mark.django_db
 class TestPaidBillImmutability:
     """Paid bills: cashiers cannot edit, void, add/update/delete payments, or add payments.
@@ -583,6 +603,7 @@ class TestPaidBillImmutability:
 # PAID BILL STILL VIEWABLE
 # ═══════════════════════════════════════════════════════════════════════════
 
+
 @pytest.mark.django_db
 class TestPaidBillViewable:
     """Payment history on paid bills remains viewable."""
@@ -601,9 +622,7 @@ class TestPaidBillViewable:
         assert resp.status_code == 200
         assert resp.json()["status"] == "paid"
 
-    def test_can_list_payments_on_paid_bill(
-        self, api, user, entity, membership
-    ):
+    def test_can_list_payments_on_paid_bill(self, api, user, entity, membership):
         bill = self._make_paid_bill(entity, user)
         resp = api.get(
             f"/api/v1/bills/{bill.id}/payments",
@@ -614,9 +633,7 @@ class TestPaidBillViewable:
         assert len(body["payments"]) == 1
         assert Decimal(body["paid_total"]) == Decimal("100")
 
-    def test_can_view_single_payment_on_paid_bill(
-        self, api, user, entity, membership
-    ):
+    def test_can_view_single_payment_on_paid_bill(self, api, user, entity, membership):
         bill = self._make_paid_bill(entity, user)
         payment = bill.payments.first()
         resp = api.get(

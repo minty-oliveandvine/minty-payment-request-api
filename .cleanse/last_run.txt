@@ -39,87 +39,87 @@ bills/tests/test_xero_publish_bankslip.py .....                          [100%]
 
 =================================== FAILURES ===================================
 ______________ test_archived_then_restored_account_becomes_active ______________
-bills/tests/test_account_restoration.py:92: in test_archived_then_restored_account_becomes_active
+bills/tests/test_account_restoration.py:95: in test_archived_then_restored_account_becomes_active
     assert len(data) == 1
 E   assert 0 == 1
 E    +  where 0 = len([])
 ----------------------------- Captured stderr call -----------------------------
-2026-07-27T01:22:43Z INFO minty-api Auth attempt: key_len=23 key_hash=92809ab604c93772 token_len=155
-2026-07-27T01:22:43Z INFO minty-api.http request_id=req_a292 user_id=restore-user endpoint=/api/v1/entity-bill-accounts/ method=GET 200 335ms
+2026-07-27T01:35:18Z INFO minty-api Auth attempt: key_len=23 key_hash=92809ab604c93772 token_len=155
+2026-07-27T01:35:18Z INFO minty-api.http request_id=req_682e user_id=restore-user endpoint=/api/v1/entity-bill-accounts/ method=GET 200 256ms
 ------------------------------ Captured log call -------------------------------
 INFO     minty-api:auth.py:38 Auth attempt: key_len=23 key_hash=92809ab604c93772 token_len=155
-INFO     minty-api.http:middleware.py:21 200 335ms
+INFO     minty-api.http:middleware.py:21 200 256ms
 _________ test_inactive_account_archived_then_restored_becomes_active __________
-bills/tests/test_account_restoration.py:147: in test_inactive_account_archived_then_restored_becomes_active
+bills/tests/test_account_restoration.py:152: in test_inactive_account_archived_then_restored_becomes_active
     assert len(data) == 1
 E   assert 0 == 1
 E    +  where 0 = len([])
 ----------------------------- Captured stderr call -----------------------------
-2026-07-27T01:22:43Z INFO minty-api Auth attempt: key_len=23 key_hash=92809ab604c93772 token_len=155
-2026-07-27T01:22:43Z ERROR minty-api Chart change sync request failed entity=restore-entity: real HTTP blocked in tests — accounts list may be empty or stale
-2026-07-27T01:22:44Z INFO minty-api.http request_id=req_223e user_id=restore-user endpoint=/api/v1/entity-bill-accounts/ method=GET 200 5ms
+2026-07-27T01:35:19Z INFO minty-api Auth attempt: key_len=23 key_hash=92809ab604c93772 token_len=155
+2026-07-27T01:35:19Z ERROR minty-api Chart change sync request failed entity=restore-entity: real HTTP blocked in tests — accounts list may be empty or stale
+2026-07-27T01:35:19Z INFO minty-api.http request_id=req_e93b user_id=restore-user endpoint=/api/v1/entity-bill-accounts/ method=GET 200 3ms
 ------------------------------ Captured log call -------------------------------
 INFO     minty-api:auth.py:38 Auth attempt: key_len=23 key_hash=92809ab604c93772 token_len=155
 ERROR    minty-api:flask_billing_sync.py:178 Chart change sync request failed entity=restore-entity: real HTTP blocked in tests — accounts list may be empty or stale
-INFO     minty-api.http:middleware.py:21 200 5ms
+INFO     minty-api.http:middleware.py:21 200 3ms
 _________________ test_multiple_accounts_archived_and_restored _________________
-bills/tests/test_account_restoration.py:231: in test_multiple_accounts_archived_and_restored
+bills/tests/test_account_restoration.py:239: in test_multiple_accounts_archived_and_restored
     assert len(data) == 3
 E   assert 0 == 3
 E    +  where 0 = len([])
 ----------------------------- Captured stderr call -----------------------------
-2026-07-27T01:22:44Z INFO minty-api Auth attempt: key_len=23 key_hash=92809ab604c93772 token_len=155
-2026-07-27T01:22:44Z INFO minty-api.http request_id=req_0099 user_id=restore-user endpoint=/api/v1/entity-bill-accounts/ method=GET 200 2ms
-2026-07-27T01:22:44Z INFO minty-api Auth attempt: key_len=23 key_hash=92809ab604c93772 token_len=155
-2026-07-27T01:22:44Z INFO minty-api.http request_id=req_420c user_id=restore-user endpoint=/api/v1/entity-bill-accounts/ method=GET 200 2ms
+2026-07-27T01:35:19Z INFO minty-api Auth attempt: key_len=23 key_hash=92809ab604c93772 token_len=155
+2026-07-27T01:35:19Z INFO minty-api.http request_id=req_b7b2 user_id=restore-user endpoint=/api/v1/entity-bill-accounts/ method=GET 200 2ms
+2026-07-27T01:35:19Z INFO minty-api Auth attempt: key_len=23 key_hash=92809ab604c93772 token_len=155
+2026-07-27T01:35:19Z INFO minty-api.http request_id=req_a067 user_id=restore-user endpoint=/api/v1/entity-bill-accounts/ method=GET 200 1ms
 ------------------------------ Captured log call -------------------------------
 INFO     minty-api:auth.py:38 Auth attempt: key_len=23 key_hash=92809ab604c93772 token_len=155
 INFO     minty-api.http:middleware.py:21 200 2ms
 INFO     minty-api:auth.py:38 Auth attempt: key_len=23 key_hash=92809ab604c93772 token_len=155
-INFO     minty-api.http:middleware.py:21 200 2ms
+INFO     minty-api.http:middleware.py:21 200 1ms
 ______________________ test_restoration_with_code_change _______________________
-bills/tests/test_account_restoration.py:266: in test_restoration_with_code_change
+bills/tests/test_account_restoration.py:275: in test_restoration_with_code_change
     assert len(data) == 1
 E   assert 0 == 1
 E    +  where 0 = len([])
 ----------------------------- Captured stderr call -----------------------------
-2026-07-27T01:22:44Z INFO minty-api Auth attempt: key_len=23 key_hash=92809ab604c93772 token_len=155
-2026-07-27T01:22:44Z INFO minty-api.http request_id=req_6a31 user_id=restore-user endpoint=/api/v1/entity-bill-accounts/ method=GET 200 3ms
+2026-07-27T01:35:19Z INFO minty-api Auth attempt: key_len=23 key_hash=92809ab604c93772 token_len=155
+2026-07-27T01:35:19Z INFO minty-api.http request_id=req_d4f3 user_id=restore-user endpoint=/api/v1/entity-bill-accounts/ method=GET 200 2ms
 ------------------------------ Captured log call -------------------------------
 INFO     minty-api:auth.py:38 Auth attempt: key_len=23 key_hash=92809ab604c93772 token_len=155
-INFO     minty-api.http:middleware.py:21 200 3ms
+INFO     minty-api.http:middleware.py:21 200 2ms
 _________ test_inactive_not_deleted_account_stays_inactive_until_sync __________
-bills/tests/test_account_restoration.py:295: in test_inactive_not_deleted_account_stays_inactive_until_sync
+bills/tests/test_account_restoration.py:306: in test_inactive_not_deleted_account_stays_inactive_until_sync
     assert len(data) == 1
 E   assert 0 == 1
 E    +  where 0 = len([])
 ----------------------------- Captured stderr call -----------------------------
-2026-07-27T01:22:44Z INFO minty-api Auth attempt: key_len=23 key_hash=92809ab604c93772 token_len=155
-2026-07-27T01:22:44Z INFO minty-api.http request_id=req_4057 user_id=restore-user endpoint=/api/v1/entity-bill-accounts/ method=GET 200 3ms
+2026-07-27T01:35:19Z INFO minty-api Auth attempt: key_len=23 key_hash=92809ab604c93772 token_len=155
+2026-07-27T01:35:19Z INFO minty-api.http request_id=req_33f2 user_id=restore-user endpoint=/api/v1/entity-bill-accounts/ method=GET 200 2ms
 ------------------------------ Captured log call -------------------------------
 INFO     minty-api:auth.py:38 Auth attempt: key_len=23 key_hash=92809ab604c93772 token_len=155
-INFO     minty-api.http:middleware.py:21 200 3ms
+INFO     minty-api.http:middleware.py:21 200 2ms
 _____________________ TestAttachmentUpload.test_upload_pdf _____________________
-bills/tests/test_attachment.py:22: in test_upload_pdf
+bills/tests/test_attachment.py:24: in test_upload_pdf
     assert resp.status_code == 201
 E   assert 500 == 201
 E    +  where 500 = <HttpResponse status_code=500, "application/json; charset=utf-8">.status_code
 ----------------------------- Captured stderr call -----------------------------
-2026-07-27T01:22:44Z INFO minty-api Auth attempt: key_len=23 key_hash=92809ab604c93772 token_len=157
-2026-07-27T01:22:44Z INFO minty-api Audit: bill=6cb3c084-847a-428c-af17-56ae6054fbb9 action=attachment_uploaded user=test-user-001 detail=File 'invoice.pdf' uploaded
-2026-07-27T01:22:44Z INFO minty-api Attachment uploaded bill_id=6cb3c084-847a-428c-af17-56ae6054fbb9 file=invoice.pdf mime=application/pdf
-2026-07-27T01:22:44Z ERROR minty-api Unhandled error: 1 validation error for NinjaResponseSchema
+2026-07-27T01:35:19Z INFO minty-api Auth attempt: key_len=23 key_hash=92809ab604c93772 token_len=157
+2026-07-27T01:35:19Z INFO minty-api Audit: bill=4c81ef8d-1f80-46f4-9c1d-febb201ddcf5 action=attachment_uploaded user=test-user-001 detail=File 'invoice.pdf' uploaded
+2026-07-27T01:35:19Z INFO minty-api Attachment uploaded bill_id=4c81ef8d-1f80-46f4-9c1d-febb201ddcf5 file=invoice.pdf mime=application/pdf
+2026-07-27T01:35:19Z ERROR minty-api Unhandled error: 1 validation error for NinjaResponseSchema
 response.0.attachment.download_url
-  Input should be a valid string [type=string_type, input_value=<MagicMock name='_get_s3_...rl()()' id='4413468656'>, input_type=MagicMock]
+  Input should be a valid string [type=string_type, input_value=<MagicMock name='_get_s3_...rl()()' id='4417168416'>, input_type=MagicMock]
     For further information visit https://errors.pydantic.dev/2.13/v/string_type
-2026-07-27T01:22:44Z INFO minty-api.http request_id=req_1ce6 user_id=test-user-001 endpoint=/api/v1/bills/6cb3c084-847a-428c-af17-56ae6054fbb9/attachments method=POST 500 11ms
+2026-07-27T01:35:19Z INFO minty-api.http request_id=req_f7fc user_id=test-user-001 endpoint=/api/v1/bills/4c81ef8d-1f80-46f4-9c1d-febb201ddcf5/attachments method=POST 500 6ms
 ------------------------------ Captured log call -------------------------------
 INFO     minty-api:auth.py:38 Auth attempt: key_len=23 key_hash=92809ab604c93772 token_len=157
-INFO     minty-api:audit_service.py:16 Audit: bill=6cb3c084-847a-428c-af17-56ae6054fbb9 action=attachment_uploaded user=test-user-001 detail=File 'invoice.pdf' uploaded
-INFO     minty-api:attachment_service.py:200 Attachment uploaded bill_id=6cb3c084-847a-428c-af17-56ae6054fbb9 file=invoice.pdf mime=application/pdf
+INFO     minty-api:audit_service.py:16 Audit: bill=4c81ef8d-1f80-46f4-9c1d-febb201ddcf5 action=attachment_uploaded user=test-user-001 detail=File 'invoice.pdf' uploaded
+INFO     minty-api:attachment_service.py:200 Attachment uploaded bill_id=4c81ef8d-1f80-46f4-9c1d-febb201ddcf5 file=invoice.pdf mime=application/pdf
 ERROR    minty-api:exceptions.py:27 Unhandled error: 1 validation error for NinjaResponseSchema
 response.0.attachment.download_url
-  Input should be a valid string [type=string_type, input_value=<MagicMock name='_get_s3_...rl()()' id='4413468656'>, input_type=MagicMock]
+  Input should be a valid string [type=string_type, input_value=<MagicMock name='_get_s3_...rl()()' id='4417168416'>, input_type=MagicMock]
     For further information visit https://errors.pydantic.dev/2.13/v/string_type
 Traceback (most recent call last):
   File "/Users/sunnyyunseolee/Documents/GitHub/billing-backend/.cleanse-venv/lib/python3.12/site-packages/ninja/operation.py", line 219, in run
@@ -133,79 +133,79 @@ Traceback (most recent call last):
            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 pydantic_core._pydantic_core.ValidationError: 1 validation error for NinjaResponseSchema
 response.0.attachment.download_url
-  Input should be a valid string [type=string_type, input_value=<MagicMock name='_get_s3_...rl()()' id='4413468656'>, input_type=MagicMock]
-    For further information visit https://errors.pydantic.dev/2.13/v/string_type
-INFO     minty-api.http:middleware.py:21 500 11ms
-ERROR    django.request:log.py:253 Internal Server Error: /api/v1/bills/6cb3c084-847a-428c-af17-56ae6054fbb9/attachments
-____________________ TestAttachmentUpload.test_upload_image ____________________
-bills/tests/test_attachment.py:42: in test_upload_image
-    assert resp.status_code == 201
-E   assert 500 == 201
-E    +  where 500 = <HttpResponse status_code=500, "application/json; charset=utf-8">.status_code
------------------------------ Captured stderr call -----------------------------
-2026-07-27T01:22:44Z INFO minty-api Auth attempt: key_len=23 key_hash=92809ab604c93772 token_len=157
-2026-07-27T01:22:44Z INFO minty-api Audit: bill=916f3868-c49c-4323-82c1-a1f296da2cf0 action=attachment_uploaded user=test-user-001 detail=File 'photo.jpg' uploaded
-2026-07-27T01:22:44Z INFO minty-api Attachment uploaded bill_id=916f3868-c49c-4323-82c1-a1f296da2cf0 file=photo.jpg mime=image/jpeg
-2026-07-27T01:22:44Z ERROR minty-api Unhandled error: 1 validation error for NinjaResponseSchema
-response.0.attachment.download_url
-  Input should be a valid string [type=string_type, input_value=<MagicMock name='_get_s3_...rl()()' id='4413716096'>, input_type=MagicMock]
-    For further information visit https://errors.pydantic.dev/2.13/v/string_type
-2026-07-27T01:22:44Z INFO minty-api.http request_id=req_e5ae user_id=test-user-001 endpoint=/api/v1/bills/916f3868-c49c-4323-82c1-a1f296da2cf0/attachments method=POST 500 6ms
------------------------------- Captured log call -------------------------------
-INFO     minty-api:auth.py:38 Auth attempt: key_len=23 key_hash=92809ab604c93772 token_len=157
-INFO     minty-api:audit_service.py:16 Audit: bill=916f3868-c49c-4323-82c1-a1f296da2cf0 action=attachment_uploaded user=test-user-001 detail=File 'photo.jpg' uploaded
-INFO     minty-api:attachment_service.py:200 Attachment uploaded bill_id=916f3868-c49c-4323-82c1-a1f296da2cf0 file=photo.jpg mime=image/jpeg
-ERROR    minty-api:exceptions.py:27 Unhandled error: 1 validation error for NinjaResponseSchema
-response.0.attachment.download_url
-  Input should be a valid string [type=string_type, input_value=<MagicMock name='_get_s3_...rl()()' id='4413716096'>, input_type=MagicMock]
-    For further information visit https://errors.pydantic.dev/2.13/v/string_type
-Traceback (most recent call last):
-  File "/Users/sunnyyunseolee/Documents/GitHub/billing-backend/.cleanse-venv/lib/python3.12/site-packages/ninja/operation.py", line 219, in run
-    return self._result_to_response(request, result, temporal_response)
-           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/Users/sunnyyunseolee/Documents/GitHub/billing-backend/.cleanse-venv/lib/python3.12/site-packages/ninja/operation.py", line 422, in _result_to_response
-    validated_object = response_model.model_validate(
-                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/Users/sunnyyunseolee/Documents/GitHub/billing-backend/.cleanse-venv/lib/python3.12/site-packages/pydantic/main.py", line 732, in model_validate
-    return cls.__pydantic_validator__.validate_python(
-           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-pydantic_core._pydantic_core.ValidationError: 1 validation error for NinjaResponseSchema
-response.0.attachment.download_url
-  Input should be a valid string [type=string_type, input_value=<MagicMock name='_get_s3_...rl()()' id='4413716096'>, input_type=MagicMock]
+  Input should be a valid string [type=string_type, input_value=<MagicMock name='_get_s3_...rl()()' id='4417168416'>, input_type=MagicMock]
     For further information visit https://errors.pydantic.dev/2.13/v/string_type
 INFO     minty-api.http:middleware.py:21 500 6ms
-ERROR    django.request:log.py:253 Internal Server Error: /api/v1/bills/916f3868-c49c-4323-82c1-a1f296da2cf0/attachments
-_______________ TestAttachmentUpload.test_upload_multiple_files ________________
-bills/tests/test_attachment.py:56: in test_upload_multiple_files
+ERROR    django.request:log.py:253 Internal Server Error: /api/v1/bills/4c81ef8d-1f80-46f4-9c1d-febb201ddcf5/attachments
+____________________ TestAttachmentUpload.test_upload_image ____________________
+bills/tests/test_attachment.py:46: in test_upload_image
     assert resp.status_code == 201
 E   assert 500 == 201
 E    +  where 500 = <HttpResponse status_code=500, "application/json; charset=utf-8">.status_code
 ----------------------------- Captured stderr call -----------------------------
-2026-07-27T01:22:44Z INFO minty-api Auth attempt: key_len=23 key_hash=92809ab604c93772 token_len=157
-2026-07-27T01:22:44Z INFO minty-api Audit: bill=ac85514a-95f5-4c51-a355-f474e8509478 action=attachment_uploaded user=test-user-001 detail=File 'invoice.pdf' uploaded
-2026-07-27T01:22:44Z INFO minty-api Attachment uploaded bill_id=ac85514a-95f5-4c51-a355-f474e8509478 file=invoice.pdf mime=application/pdf
-2026-07-27T01:22:44Z INFO minty-api Audit: bill=ac85514a-95f5-4c51-a355-f474e8509478 action=attachment_uploaded user=test-user-001 detail=File 'photo.jpg' uploaded
-2026-07-27T01:22:44Z INFO minty-api Attachment uploaded bill_id=ac85514a-95f5-4c51-a355-f474e8509478 file=photo.jpg mime=image/jpeg
-2026-07-27T01:22:44Z ERROR minty-api Unhandled error: 2 validation errors for NinjaResponseSchema
+2026-07-27T01:35:19Z INFO minty-api Auth attempt: key_len=23 key_hash=92809ab604c93772 token_len=157
+2026-07-27T01:35:19Z INFO minty-api Audit: bill=558af792-4313-40b9-b647-03af3d0f241c action=attachment_uploaded user=test-user-001 detail=File 'photo.jpg' uploaded
+2026-07-27T01:35:19Z INFO minty-api Attachment uploaded bill_id=558af792-4313-40b9-b647-03af3d0f241c file=photo.jpg mime=image/jpeg
+2026-07-27T01:35:19Z ERROR minty-api Unhandled error: 1 validation error for NinjaResponseSchema
 response.0.attachment.download_url
-  Input should be a valid string [type=string_type, input_value=<MagicMock name='_get_s3_...rl()()' id='4413814592'>, input_type=MagicMock]
+  Input should be a valid string [type=string_type, input_value=<MagicMock name='_get_s3_...rl()()' id='4417514160'>, input_type=MagicMock]
     For further information visit https://errors.pydantic.dev/2.13/v/string_type
-response.1.attachment.download_url
-  Input should be a valid string [type=string_type, input_value=<MagicMock name='_get_s3_...rl()()' id='4413814592'>, input_type=MagicMock]
-    For further information visit https://errors.pydantic.dev/2.13/v/string_type
-2026-07-27T01:22:44Z INFO minty-api.http request_id=req_f5cc user_id=test-user-001 endpoint=/api/v1/bills/ac85514a-95f5-4c51-a355-f474e8509478/attachments method=POST 500 7ms
+2026-07-27T01:35:19Z INFO minty-api.http request_id=req_50a7 user_id=test-user-001 endpoint=/api/v1/bills/558af792-4313-40b9-b647-03af3d0f241c/attachments method=POST 500 4ms
 ------------------------------ Captured log call -------------------------------
 INFO     minty-api:auth.py:38 Auth attempt: key_len=23 key_hash=92809ab604c93772 token_len=157
-INFO     minty-api:audit_service.py:16 Audit: bill=ac85514a-95f5-4c51-a355-f474e8509478 action=attachment_uploaded user=test-user-001 detail=File 'invoice.pdf' uploaded
-INFO     minty-api:attachment_service.py:200 Attachment uploaded bill_id=ac85514a-95f5-4c51-a355-f474e8509478 file=invoice.pdf mime=application/pdf
-INFO     minty-api:audit_service.py:16 Audit: bill=ac85514a-95f5-4c51-a355-f474e8509478 action=attachment_uploaded user=test-user-001 detail=File 'photo.jpg' uploaded
-INFO     minty-api:attachment_service.py:200 Attachment uploaded bill_id=ac85514a-95f5-4c51-a355-f474e8509478 file=photo.jpg mime=image/jpeg
-ERROR    minty-api:exceptions.py:27 Unhandled error: 2 validation errors for NinjaResponseSchema
+INFO     minty-api:audit_service.py:16 Audit: bill=558af792-4313-40b9-b647-03af3d0f241c action=attachment_uploaded user=test-user-001 detail=File 'photo.jpg' uploaded
+INFO     minty-api:attachment_service.py:200 Attachment uploaded bill_id=558af792-4313-40b9-b647-03af3d0f241c file=photo.jpg mime=image/jpeg
+ERROR    minty-api:exceptions.py:27 Unhandled error: 1 validation error for NinjaResponseSchema
 response.0.attachment.download_url
-  Input should be a valid string [type=string_type, input_value=<MagicMock name='_get_s3_...rl()()' id='4413814592'>, input_type=MagicMock]
+  Input should be a valid string [type=string_type, input_value=<MagicMock name='_get_s3_...rl()()' id='4417514160'>, input_type=MagicMock]
+    For further information visit https://errors.pydantic.dev/2.13/v/string_type
+Traceback (most recent call last):
+  File "/Users/sunnyyunseolee/Documents/GitHub/billing-backend/.cleanse-venv/lib/python3.12/site-packages/ninja/operation.py", line 219, in run
+    return self._result_to_response(request, result, temporal_response)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/sunnyyunseolee/Documents/GitHub/billing-backend/.cleanse-venv/lib/python3.12/site-packages/ninja/operation.py", line 422, in _result_to_response
+    validated_object = response_model.model_validate(
+                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/sunnyyunseolee/Documents/GitHub/billing-backend/.cleanse-venv/lib/python3.12/site-packages/pydantic/main.py", line 732, in model_validate
+    return cls.__pydantic_validator__.validate_python(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+pydantic_core._pydantic_core.ValidationError: 1 validation error for NinjaResponseSchema
+response.0.attachment.download_url
+  Input should be a valid string [type=string_type, input_value=<MagicMock name='_get_s3_...rl()()' id='4417514160'>, input_type=MagicMock]
+    For further information visit https://errors.pydantic.dev/2.13/v/string_type
+INFO     minty-api.http:middleware.py:21 500 4ms
+ERROR    django.request:log.py:253 Internal Server Error: /api/v1/bills/558af792-4313-40b9-b647-03af3d0f241c/attachments
+_______________ TestAttachmentUpload.test_upload_multiple_files ________________
+bills/tests/test_attachment.py:64: in test_upload_multiple_files
+    assert resp.status_code == 201
+E   assert 500 == 201
+E    +  where 500 = <HttpResponse status_code=500, "application/json; charset=utf-8">.status_code
+----------------------------- Captured stderr call -----------------------------
+2026-07-27T01:35:19Z INFO minty-api Auth attempt: key_len=23 key_hash=92809ab604c93772 token_len=157
+2026-07-27T01:35:19Z INFO minty-api Audit: bill=748c9448-ad98-4126-acb2-fff0bcc5715c action=attachment_uploaded user=test-user-001 detail=File 'invoice.pdf' uploaded
+2026-07-27T01:35:19Z INFO minty-api Attachment uploaded bill_id=748c9448-ad98-4126-acb2-fff0bcc5715c file=invoice.pdf mime=application/pdf
+2026-07-27T01:35:19Z INFO minty-api Audit: bill=748c9448-ad98-4126-acb2-fff0bcc5715c action=attachment_uploaded user=test-user-001 detail=File 'photo.jpg' uploaded
+2026-07-27T01:35:19Z INFO minty-api Attachment uploaded bill_id=748c9448-ad98-4126-acb2-fff0bcc5715c file=photo.jpg mime=image/jpeg
+2026-07-27T01:35:19Z ERROR minty-api Unhandled error: 2 validation errors for NinjaResponseSchema
+response.0.attachment.download_url
+  Input should be a valid string [type=string_type, input_value=<MagicMock name='_get_s3_...rl()()' id='4417171584'>, input_type=MagicMock]
     For further information visit https://errors.pydantic.dev/2.13/v/string_type
 response.1.attachment.download_url
-  Input should be a valid string [type=string_type, input_value=<MagicMock name='_get_s3_...rl()()' id='4413814592'>, input_type=MagicMock]
+  Input should be a valid string [type=string_type, input_value=<MagicMock name='_get_s3_...rl()()' id='4417171584'>, input_type=MagicMock]
+    For further information visit https://errors.pydantic.dev/2.13/v/string_type
+2026-07-27T01:35:19Z INFO minty-api.http request_id=req_60c5 user_id=test-user-001 endpoint=/api/v1/bills/748c9448-ad98-4126-acb2-fff0bcc5715c/attachments method=POST 500 4ms
+------------------------------ Captured log call -------------------------------
+INFO     minty-api:auth.py:38 Auth attempt: key_len=23 key_hash=92809ab604c93772 token_len=157
+INFO     minty-api:audit_service.py:16 Audit: bill=748c9448-ad98-4126-acb2-fff0bcc5715c action=attachment_uploaded user=test-user-001 detail=File 'invoice.pdf' uploaded
+INFO     minty-api:attachment_service.py:200 Attachment uploaded bill_id=748c9448-ad98-4126-acb2-fff0bcc5715c file=invoice.pdf mime=application/pdf
+INFO     minty-api:audit_service.py:16 Audit: bill=748c9448-ad98-4126-acb2-fff0bcc5715c action=attachment_uploaded user=test-user-001 detail=File 'photo.jpg' uploaded
+INFO     minty-api:attachment_service.py:200 Attachment uploaded bill_id=748c9448-ad98-4126-acb2-fff0bcc5715c file=photo.jpg mime=image/jpeg
+ERROR    minty-api:exceptions.py:27 Unhandled error: 2 validation errors for NinjaResponseSchema
+response.0.attachment.download_url
+  Input should be a valid string [type=string_type, input_value=<MagicMock name='_get_s3_...rl()()' id='4417171584'>, input_type=MagicMock]
+    For further information visit https://errors.pydantic.dev/2.13/v/string_type
+response.1.attachment.download_url
+  Input should be a valid string [type=string_type, input_value=<MagicMock name='_get_s3_...rl()()' id='4417171584'>, input_type=MagicMock]
     For further information visit https://errors.pydantic.dev/2.13/v/string_type
 Traceback (most recent call last):
   File "/Users/sunnyyunseolee/Documents/GitHub/billing-backend/.cleanse-venv/lib/python3.12/site-packages/ninja/operation.py", line 219, in run
@@ -219,13 +219,13 @@ Traceback (most recent call last):
            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 pydantic_core._pydantic_core.ValidationError: 2 validation errors for NinjaResponseSchema
 response.0.attachment.download_url
-  Input should be a valid string [type=string_type, input_value=<MagicMock name='_get_s3_...rl()()' id='4413814592'>, input_type=MagicMock]
+  Input should be a valid string [type=string_type, input_value=<MagicMock name='_get_s3_...rl()()' id='4417171584'>, input_type=MagicMock]
     For further information visit https://errors.pydantic.dev/2.13/v/string_type
 response.1.attachment.download_url
-  Input should be a valid string [type=string_type, input_value=<MagicMock name='_get_s3_...rl()()' id='4413814592'>, input_type=MagicMock]
+  Input should be a valid string [type=string_type, input_value=<MagicMock name='_get_s3_...rl()()' id='4417171584'>, input_type=MagicMock]
     For further information visit https://errors.pydantic.dev/2.13/v/string_type
-INFO     minty-api.http:middleware.py:21 500 7ms
-ERROR    django.request:log.py:253 Internal Server Error: /api/v1/bills/ac85514a-95f5-4c51-a355-f474e8509478/attachments
+INFO     minty-api.http:middleware.py:21 500 4ms
+ERROR    django.request:log.py:253 Internal Server Error: /api/v1/bills/748c9448-ad98-4126-acb2-fff0bcc5715c/attachments
 ______ test_depreciatn_mixed_with_permitted_types_only_permitted_returned ______
 bills/tests/test_depreciatn_account.py:256: in test_depreciatn_mixed_with_permitted_types_only_permitted_returned
     assert codes == {"600", "610", "820"}
@@ -235,11 +235,11 @@ E     Extra items in the right set:
 E     '820'
 E     Use -v to get more diff
 ----------------------------- Captured stderr call -----------------------------
-2026-07-27T01:22:46Z INFO minty-api Auth attempt: key_len=23 key_hash=92809ab604c93772 token_len=152
-2026-07-27T01:22:46Z INFO minty-api.http request_id=req_72fb user_id=deprec-user endpoint=/api/v1/entity-bill-accounts/ method=GET 200 2ms
+2026-07-27T01:35:20Z INFO minty-api Auth attempt: key_len=23 key_hash=92809ab604c93772 token_len=152
+2026-07-27T01:35:20Z INFO minty-api.http request_id=req_c91c user_id=deprec-user endpoint=/api/v1/entity-bill-accounts/ method=GET 200 1ms
 ------------------------------ Captured log call -------------------------------
 INFO     minty-api:auth.py:38 Auth attempt: key_len=23 key_hash=92809ab604c93772 token_len=152
-INFO     minty-api.http:middleware.py:21 200 2ms
+INFO     minty-api.http:middleware.py:21 200 1ms
 ________________ test_default_list_includes_only_allowed_types _________________
 bills/tests/test_entity_bill_accounts_list.py:121: in test_default_list_includes_only_allowed_types
     assert codes == {"600", "610", "820"}
@@ -249,11 +249,11 @@ E     Extra items in the right set:
 E     '820'
 E     Use -v to get more diff
 ----------------------------- Captured stderr call -----------------------------
-2026-07-27T01:22:46Z INFO minty-api Auth attempt: key_len=23 key_hash=92809ab604c93772 token_len=160
-2026-07-27T01:22:46Z INFO minty-api.http request_id=req_9016 user_id=acct-list-user endpoint=/api/v1/entity-bill-accounts/ method=GET 200 2ms
+2026-07-27T01:35:20Z INFO minty-api Auth attempt: key_len=23 key_hash=92809ab604c93772 token_len=160
+2026-07-27T01:35:20Z INFO minty-api.http request_id=req_3d38 user_id=acct-list-user endpoint=/api/v1/entity-bill-accounts/ method=GET 200 1ms
 ------------------------------ Captured log call -------------------------------
 INFO     minty-api:auth.py:38 Auth attempt: key_len=23 key_hash=92809ab604c93772 token_len=160
-INFO     minty-api.http:middleware.py:21 200 2ms
+INFO     minty-api.http:middleware.py:21 200 1ms
 ________________ test_bill_dropdown_includes_only_allowed_types ________________
 bills/tests/test_entity_bill_accounts_list.py:183: in test_bill_dropdown_includes_only_allowed_types
     assert codes == {"600", "610", "820"}
@@ -263,29 +263,29 @@ E     Extra items in the right set:
 E     '820'
 E     Use -v to get more diff
 ----------------------------- Captured stderr call -----------------------------
-2026-07-27T01:22:46Z INFO minty-api Auth attempt: key_len=23 key_hash=92809ab604c93772 token_len=160
-2026-07-27T01:22:46Z INFO minty-api.http request_id=req_b6ac user_id=acct-list-user endpoint=/api/v1/entity-bill-accounts/ method=GET 200 2ms
+2026-07-27T01:35:20Z INFO minty-api Auth attempt: key_len=23 key_hash=92809ab604c93772 token_len=160
+2026-07-27T01:35:20Z INFO minty-api.http request_id=req_ad8c user_id=acct-list-user endpoint=/api/v1/entity-bill-accounts/ method=GET 200 1ms
 ------------------------------ Captured log call -------------------------------
 INFO     minty-api:auth.py:38 Auth attempt: key_len=23 key_hash=92809ab604c93772 token_len=160
-INFO     minty-api.http:middleware.py:21 200 2ms
+INFO     minty-api.http:middleware.py:21 200 1ms
 ____________________ test_all_eight_permitted_types_appear _____________________
-bills/tests/test_entity_bill_accounts_list.py:245: in test_all_eight_permitted_types_appear
+bills/tests/test_entity_bill_accounts_list.py:243: in test_all_eight_permitted_types_appear
     assert returned_types == {
 E   AssertionError: assert {'DIRECTCOSTS...NSE', 'FIXED'} == {'CURRENT', '...VENTORY', ...}
 E     
 E     Extra items in the right set:
+E     'CURRENT'
 E     'INVENTORY'
+E     'CURRLIAB'
 E     'NONCURRENT'
 E     'TERMLIAB'
-E     'CURRLIAB'
-E     'CURRENT'
 E     Use -v to get more diff
 ----------------------------- Captured stderr call -----------------------------
-2026-07-27T01:22:46Z INFO minty-api Auth attempt: key_len=23 key_hash=92809ab604c93772 token_len=160
-2026-07-27T01:22:46Z INFO minty-api.http request_id=req_3aec user_id=acct-list-user endpoint=/api/v1/entity-bill-accounts/ method=GET 200 2ms
+2026-07-27T01:35:20Z INFO minty-api Auth attempt: key_len=23 key_hash=92809ab604c93772 token_len=160
+2026-07-27T01:35:20Z INFO minty-api.http request_id=req_16ea user_id=acct-list-user endpoint=/api/v1/entity-bill-accounts/ method=GET 200 1ms
 ------------------------------ Captured log call -------------------------------
 INFO     minty-api:auth.py:38 Auth attempt: key_len=23 key_hash=92809ab604c93772 token_len=160
-INFO     minty-api.http:middleware.py:21 200 2ms
+INFO     minty-api.http:middleware.py:21 200 1ms
 _ TestPaymentAttachmentBankSlipUpload.test_upload_bank_slip_pdf_calls_s3_and_persists_db _
 bills/tests/test_payment_attachment_upload.py:56: in test_upload_bank_slip_pdf_calls_s3_and_persists_db
     assert resp.status_code == 201, resp.content
@@ -293,19 +293,19 @@ E   AssertionError: b'{"detail": "Internal server error"}'
 E   assert 500 == 201
 E    +  where 500 = <HttpResponse status_code=500, "application/json; charset=utf-8">.status_code
 ----------------------------- Captured stderr call -----------------------------
-2026-07-27T01:22:46Z INFO minty-api Auth attempt: key_len=23 key_hash=92809ab604c93772 token_len=157
-2026-07-27T01:22:46Z INFO minty-api Payment attachment uploaded payment_id=dd4742c1-fd40-4fe6-ac67-3d25fe62925f file=bank-slip-demo.pdf mime=application/pdf
-2026-07-27T01:22:46Z ERROR minty-api Unhandled error: 1 validation error for NinjaResponseSchema
+2026-07-27T01:35:20Z INFO minty-api Auth attempt: key_len=23 key_hash=92809ab604c93772 token_len=157
+2026-07-27T01:35:20Z INFO minty-api Payment attachment uploaded payment_id=233c35c4-31e0-47e8-a034-9ddf10ec6f1a file=bank-slip-demo.pdf mime=application/pdf
+2026-07-27T01:35:20Z ERROR minty-api Unhandled error: 1 validation error for NinjaResponseSchema
 response.attachment.download_url
-  Input should be a valid string [type=string_type, input_value=<MagicMock name='_get_s3_...rl()()' id='4425022592'>, input_type=MagicMock]
+  Input should be a valid string [type=string_type, input_value=<MagicMock name='_get_s3_...rl()()' id='4497430800'>, input_type=MagicMock]
     For further information visit https://errors.pydantic.dev/2.13/v/string_type
-2026-07-27T01:22:46Z INFO minty-api.http request_id=req_4090 user_id=test-user-001 endpoint=/api/v1/bills/2f38ea75-bbe3-454c-a7de-2c8fab8bcfc8/payments/dd4742c1-fd40-4fe6-ac67-3d25fe62925f/attachments method=POST 500 6ms
+2026-07-27T01:35:20Z INFO minty-api.http request_id=req_15d5 user_id=test-user-001 endpoint=/api/v1/bills/871233b7-bcbc-4090-84d9-81afbebcd1b6/payments/233c35c4-31e0-47e8-a034-9ddf10ec6f1a/attachments method=POST 500 4ms
 ------------------------------ Captured log call -------------------------------
 INFO     minty-api:auth.py:38 Auth attempt: key_len=23 key_hash=92809ab604c93772 token_len=157
-INFO     minty-api:attachment_service.py:347 Payment attachment uploaded payment_id=dd4742c1-fd40-4fe6-ac67-3d25fe62925f file=bank-slip-demo.pdf mime=application/pdf
+INFO     minty-api:attachment_service.py:347 Payment attachment uploaded payment_id=233c35c4-31e0-47e8-a034-9ddf10ec6f1a file=bank-slip-demo.pdf mime=application/pdf
 ERROR    minty-api:exceptions.py:27 Unhandled error: 1 validation error for NinjaResponseSchema
 response.attachment.download_url
-  Input should be a valid string [type=string_type, input_value=<MagicMock name='_get_s3_...rl()()' id='4425022592'>, input_type=MagicMock]
+  Input should be a valid string [type=string_type, input_value=<MagicMock name='_get_s3_...rl()()' id='4497430800'>, input_type=MagicMock]
     For further information visit https://errors.pydantic.dev/2.13/v/string_type
 Traceback (most recent call last):
   File "/Users/sunnyyunseolee/Documents/GitHub/billing-backend/.cleanse-venv/lib/python3.12/site-packages/ninja/operation.py", line 219, in run
@@ -319,29 +319,29 @@ Traceback (most recent call last):
            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 pydantic_core._pydantic_core.ValidationError: 1 validation error for NinjaResponseSchema
 response.attachment.download_url
-  Input should be a valid string [type=string_type, input_value=<MagicMock name='_get_s3_...rl()()' id='4425022592'>, input_type=MagicMock]
+  Input should be a valid string [type=string_type, input_value=<MagicMock name='_get_s3_...rl()()' id='4497430800'>, input_type=MagicMock]
     For further information visit https://errors.pydantic.dev/2.13/v/string_type
-INFO     minty-api.http:middleware.py:21 500 6ms
-ERROR    django.request:log.py:253 Internal Server Error: /api/v1/bills/2f38ea75-bbe3-454c-a7de-2c8fab8bcfc8/payments/dd4742c1-fd40-4fe6-ac67-3d25fe62925f/attachments
+INFO     minty-api.http:middleware.py:21 500 4ms
+ERROR    django.request:log.py:253 Internal Server Error: /api/v1/bills/871233b7-bcbc-4090-84d9-81afbebcd1b6/payments/233c35c4-31e0-47e8-a034-9ddf10ec6f1a/attachments
 _ TestPaymentAttachmentBankSlipUpload.test_upload_default_role_other_without_query _
 bills/tests/test_payment_attachment_upload.py:100: in test_upload_default_role_other_without_query
     assert resp.status_code == 201
 E   assert 500 == 201
 E    +  where 500 = <HttpResponse status_code=500, "application/json; charset=utf-8">.status_code
 ----------------------------- Captured stderr call -----------------------------
-2026-07-27T01:22:46Z INFO minty-api Auth attempt: key_len=23 key_hash=92809ab604c93772 token_len=157
-2026-07-27T01:22:46Z INFO minty-api Payment attachment uploaded payment_id=d6e82207-71a9-4574-81b1-9a21caa443b4 file=x.pdf mime=application/pdf
-2026-07-27T01:22:46Z ERROR minty-api Unhandled error: 1 validation error for NinjaResponseSchema
+2026-07-27T01:35:20Z INFO minty-api Auth attempt: key_len=23 key_hash=92809ab604c93772 token_len=157
+2026-07-27T01:35:20Z INFO minty-api Payment attachment uploaded payment_id=564f2dbd-c62b-43db-84e3-4f0d8caf3a2a file=x.pdf mime=application/pdf
+2026-07-27T01:35:20Z ERROR minty-api Unhandled error: 1 validation error for NinjaResponseSchema
 response.attachment.download_url
-  Input should be a valid string [type=string_type, input_value=<MagicMock name='_get_s3_...rl()()' id='4425459488'>, input_type=MagicMock]
+  Input should be a valid string [type=string_type, input_value=<MagicMock name='_get_s3_...rl()()' id='4497751888'>, input_type=MagicMock]
     For further information visit https://errors.pydantic.dev/2.13/v/string_type
-2026-07-27T01:22:46Z INFO minty-api.http request_id=req_daac user_id=test-user-001 endpoint=/api/v1/bills/581b0207-2f60-4169-9672-66d30f0928e5/payments/d6e82207-71a9-4574-81b1-9a21caa443b4/attachments method=POST 500 7ms
+2026-07-27T01:35:20Z INFO minty-api.http request_id=req_2e4b user_id=test-user-001 endpoint=/api/v1/bills/a5a457b3-1eff-4e63-8d3f-7384d828ceb7/payments/564f2dbd-c62b-43db-84e3-4f0d8caf3a2a/attachments method=POST 500 4ms
 ------------------------------ Captured log call -------------------------------
 INFO     minty-api:auth.py:38 Auth attempt: key_len=23 key_hash=92809ab604c93772 token_len=157
-INFO     minty-api:attachment_service.py:347 Payment attachment uploaded payment_id=d6e82207-71a9-4574-81b1-9a21caa443b4 file=x.pdf mime=application/pdf
+INFO     minty-api:attachment_service.py:347 Payment attachment uploaded payment_id=564f2dbd-c62b-43db-84e3-4f0d8caf3a2a file=x.pdf mime=application/pdf
 ERROR    minty-api:exceptions.py:27 Unhandled error: 1 validation error for NinjaResponseSchema
 response.attachment.download_url
-  Input should be a valid string [type=string_type, input_value=<MagicMock name='_get_s3_...rl()()' id='4425459488'>, input_type=MagicMock]
+  Input should be a valid string [type=string_type, input_value=<MagicMock name='_get_s3_...rl()()' id='4497751888'>, input_type=MagicMock]
     For further information visit https://errors.pydantic.dev/2.13/v/string_type
 Traceback (most recent call last):
   File "/Users/sunnyyunseolee/Documents/GitHub/billing-backend/.cleanse-venv/lib/python3.12/site-packages/ninja/operation.py", line 219, in run
@@ -355,10 +355,10 @@ Traceback (most recent call last):
            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 pydantic_core._pydantic_core.ValidationError: 1 validation error for NinjaResponseSchema
 response.attachment.download_url
-  Input should be a valid string [type=string_type, input_value=<MagicMock name='_get_s3_...rl()()' id='4425459488'>, input_type=MagicMock]
+  Input should be a valid string [type=string_type, input_value=<MagicMock name='_get_s3_...rl()()' id='4497751888'>, input_type=MagicMock]
     For further information visit https://errors.pydantic.dev/2.13/v/string_type
-INFO     minty-api.http:middleware.py:21 500 7ms
-ERROR    django.request:log.py:253 Internal Server Error: /api/v1/bills/581b0207-2f60-4169-9672-66d30f0928e5/payments/d6e82207-71a9-4574-81b1-9a21caa443b4/attachments
+INFO     minty-api.http:middleware.py:21 500 4ms
+ERROR    django.request:log.py:253 Internal Server Error: /api/v1/bills/a5a457b3-1eff-4e63-8d3f-7384d828ceb7/payments/564f2dbd-c62b-43db-84e3-4f0d8caf3a2a/attachments
 =============================== warnings summary ===============================
 bills/tests/test_account_restoration.py: 5 warnings
 bills/tests/test_attachment.py: 7 warnings
@@ -435,4 +435,4 @@ FAILED bills/tests/test_entity_bill_accounts_list.py::test_bill_dropdown_include
 FAILED bills/tests/test_entity_bill_accounts_list.py::test_all_eight_permitted_types_appear
 FAILED bills/tests/test_payment_attachment_upload.py::TestPaymentAttachmentBankSlipUpload::test_upload_bank_slip_pdf_calls_s3_and_persists_db
 FAILED bills/tests/test_payment_attachment_upload.py::TestPaymentAttachmentBankSlipUpload::test_upload_default_role_other_without_query
-================= 14 failed, 398 passed, 615 warnings in 5.55s =================
+================= 14 failed, 398 passed, 615 warnings in 4.44s =================

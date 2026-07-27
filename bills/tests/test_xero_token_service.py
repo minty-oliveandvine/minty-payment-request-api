@@ -14,7 +14,6 @@ from bills.services.xero_token_service import (
     resolve_xero_access_token_for_entity,
 )
 from core.exceptions import BillValidationError
-from shared_models.models import User
 
 
 @pytest.mark.django_db
@@ -72,7 +71,9 @@ class TestEnsureValidTokenPersist:
 
 @pytest.mark.django_db
 class TestResolveAccessTokenForEntity:
-    def test_resolves_expired_token_via_token_service(self, test_entity, test_user, test_user_entity):
+    def test_resolves_expired_token_via_token_service(
+        self, test_entity, test_user, test_user_entity
+    ):
         """An expired stored token is replaced by one fetched from the Flask token service."""
         test_entity.status = "connected"
         test_entity.xero_org_id = "org-abc"
@@ -86,7 +87,10 @@ class TestResolveAccessTokenForEntity:
 
         fake = MagicMock()
         fake.status_code = 200
-        fake.json.return_value = {"access_token": "resolved-at", "xero_org_id": "org-abc"}
+        fake.json.return_value = {
+            "access_token": "resolved-at",
+            "xero_org_id": "org-abc",
+        }
 
         with patch(
             "bills.services.xero_token_service.requests.post",
@@ -97,7 +101,9 @@ class TestResolveAccessTokenForEntity:
         assert token == "resolved-at"
 
     # TC-XERO-002: token expired, token service supplies a fresh one, publish proceeds
-    def test_tc_xero_002_expired_token_service_supplies_fresh(self, test_entity, test_user, test_user_entity):
+    def test_tc_xero_002_expired_token_service_supplies_fresh(
+        self, test_entity, test_user, test_user_entity
+    ):
         """TC-XERO-002: Expired token is replaced by the token service's value.
 
         Billing does not refresh; the Flask app does, behind an advisory lock.
@@ -114,7 +120,10 @@ class TestResolveAccessTokenForEntity:
 
         fake = MagicMock()
         fake.status_code = 200
-        fake.json.return_value = {"access_token": "fresh-at", "xero_org_id": "org-tc002"}
+        fake.json.return_value = {
+            "access_token": "fresh-at",
+            "xero_org_id": "org-tc002",
+        }
 
         with patch(
             "bills.services.xero_token_service.requests.post",
@@ -125,7 +134,9 @@ class TestResolveAccessTokenForEntity:
         assert token == "fresh-at"
 
     # TC-XERO-003: token service cannot produce a token, raises with clear message
-    def test_tc_xero_003_token_service_failure_raises(self, test_entity, test_user, test_user_entity):
+    def test_tc_xero_003_token_service_failure_raises(
+        self, test_entity, test_user, test_user_entity
+    ):
         """TC-XERO-003: When the token service errors (500), billing raises rather than
         falling back to the stale token still sitting in the row."""
         test_entity.xero_org_id = "org-tc003"
@@ -206,7 +217,10 @@ class TestResolveAccessTokenForEntity:
 
         service_resp = MagicMock()
         service_resp.status_code = 200
-        service_resp.json.return_value = {"access_token": "at", "xero_org_id": "org-tc015"}
+        service_resp.json.return_value = {
+            "access_token": "at",
+            "xero_org_id": "org-tc015",
+        }
 
         with patch(
             "bills.services.xero_token_service.requests.post",
@@ -222,7 +236,9 @@ class TestResolveAccessTokenForEntity:
         assert "exp" in claims
 
     # TC-XERO-016: the token service says the connection needs re-establishing
-    def test_tc_xero_016_service_reconnect_required_raises(self, test_entity, test_user, test_user_entity):
+    def test_tc_xero_016_service_reconnect_required_raises(
+        self, test_entity, test_user, test_user_entity
+    ):
         """TC-XERO-016: A 409 from the token service means no usable token exists."""
         test_entity.xero_org_id = "org-tc016"
         test_entity.save()
@@ -238,14 +254,18 @@ class TestResolveAccessTokenForEntity:
         service_resp.status_code = 409
         service_resp.text = '{"status":"reconnect_required"}'
 
-        with patch("bills.services.xero_token_service.requests.post", return_value=service_resp):
+        with patch(
+            "bills.services.xero_token_service.requests.post", return_value=service_resp
+        ):
             with pytest.raises(BillValidationError) as exc_info:
                 resolve_xero_access_token_for_entity(test_entity.id, test_user.id)
 
         assert "reconnect to xero" in str(exc_info.value).lower()
 
     # TC-XERO-017: token service unreachable must not become a 500 on the publish path
-    def test_tc_xero_017_service_unreachable_raises_validation_error(self, test_entity, test_user, test_user_entity):
+    def test_tc_xero_017_service_unreachable_raises_validation_error(
+        self, test_entity, test_user, test_user_entity
+    ):
         """TC-XERO-017: If the Flask app is down, billing surfaces a reconnect prompt rather
         than letting a RequestException escape as an unhandled 500."""
         test_entity.xero_org_id = "org-tc017"
@@ -268,7 +288,9 @@ class TestResolveAccessTokenForEntity:
         assert "reconnect to xero" in str(exc_info.value).lower()
 
     # TC-XERO-012: a present-but-expired access_token must never be handed to Xero
-    def test_tc_xero_012_expired_token_is_never_returned(self, test_entity, test_user, test_user_entity):
+    def test_tc_xero_012_expired_token_is_never_returned(
+        self, test_entity, test_user, test_user_entity
+    ):
         """TC-XERO-012: Regression. Billing checked `if user.access_token:` — presence, not
         validity — and returned an expired token, which Xero rejects with 403
         AuthenticationUnsuccessful instead of a clean reconnect prompt."""
@@ -286,7 +308,9 @@ class TestResolveAccessTokenForEntity:
         fake_400.status_code = 400
         fake_400.text = "invalid_grant"
 
-        with patch("bills.services.xero_token_service.requests.post", return_value=fake_400):
+        with patch(
+            "bills.services.xero_token_service.requests.post", return_value=fake_400
+        ):
             with pytest.raises(BillValidationError) as exc_info:
                 resolve_xero_access_token_for_entity(test_entity.id, test_user.id)
 
