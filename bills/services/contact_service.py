@@ -185,7 +185,9 @@ def get_entity_bill_contacts(
     try:
         access_token = resolve_xero_access_token_for_entity(entity_id, jwt_user_id)
     except BillValidationError as exc:
-        logger.warning("Xero token unavailable for contact fetch, falling back to DB: %s", exc)
+        logger.warning(
+            "Xero token unavailable for contact fetch, falling back to DB: %s", exc
+        )
         access_token = None
 
     # Skip live Xero fetch when a category filter is requested: Xero contacts
@@ -201,9 +203,7 @@ def get_entity_bill_contacts(
         contacts = [
             _xero_to_bill_contact(c, entity_id, xero_org_id) for c in xero_contacts
         ]
-        contacts = _merge_db_contacts_missing_from_live(
-            contacts, entity_id, category
-        )
+        contacts = _merge_db_contacts_missing_from_live(contacts, entity_id, category)
         logger.info(
             "Entity %s: %d from Xero API, %d total after DB merge",
             entity_id,
@@ -212,9 +212,7 @@ def get_entity_bill_contacts(
         )
 
     if contacts is None:
-        logger.info(
-            "Falling back to DB contacts for entity %s", entity_id
-        )
+        logger.info("Falling back to DB contacts for entity %s", entity_id)
         qs = XeroContactSync.objects.filter(entity_id=entity_id)
         if category:
             categories = [c.strip() for c in category.split(",") if c.strip()]
@@ -256,15 +254,11 @@ def create_entity_bill_contact_in_xero(
     if not entity:
         raise BillValidationError("Entity not found")
     if entity.status != "connected" or not entity.xero_org_id:
-        raise BillValidationError(
-            "Entity must be connected to Xero to create contacts"
-        )
+        raise BillValidationError("Entity must be connected to Xero to create contacts")
 
     access_token = resolve_xero_access_token_for_entity(entity_id, jwt_user_id)
     if not access_token:
-        raise BillValidationError(
-            "Could not resolve Xero access token for this entity"
-        )
+        raise BillValidationError("Could not resolve Xero access token for this entity")
 
     xero_org_id = str(entity.xero_org_id)
     url = f"{XERO_API_BASE_URL}/Contacts"

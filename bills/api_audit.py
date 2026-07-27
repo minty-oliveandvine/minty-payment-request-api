@@ -43,14 +43,16 @@ def get_audit_history(request, bill_id: str):
             user_name = ""
             user_email = ""
 
-        result.append({
-            "id": str(a.id),
-            "bill_id": str(a.bill_id),
-            "action": a.action,
-            "detail": a.detail,
-            "date": a.date,
-            "user_id": a.user_id,
-            "user_name": user_name,
-            "user_email": user_email,
-        })
+        result.append(
+            {
+                "id": str(a.id),
+                "bill_id": str(a.bill_id),
+                "action": a.action,
+                "detail": a.detail,
+                "date": a.date,
+                "user_id": a.user_id,
+                "user_name": user_name,
+                "user_email": user_email,
+            }
+        )
     return result

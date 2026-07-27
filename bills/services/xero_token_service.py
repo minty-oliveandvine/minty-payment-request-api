@@ -81,7 +81,9 @@ def refresh_access_token_for_user(user: User) -> dict | None:
     cid = getattr(settings, "XERO_CLIENT_ID", "") or ""
     secret = getattr(settings, "XERO_CLIENT_SECRET", "") or ""
     if not cid or not secret:
-        logger.warning("XERO_CLIENT_ID/XERO_CLIENT_SECRET not set; cannot refresh token")
+        logger.warning(
+            "XERO_CLIENT_ID/XERO_CLIENT_SECRET not set; cannot refresh token"
+        )
         return None
     try:
         client_id_secret = f"{cid}:{secret}"
@@ -142,7 +144,9 @@ def ensure_valid_token_persist(user: User) -> bool:
     return True
 
 
-def _resolve_token_user(entity_id: str, jwt_user_id: str) -> tuple[User | None, str | None]:
+def _resolve_token_user(
+    entity_id: str, jwt_user_id: str
+) -> tuple[User | None, str | None]:
     """Prefer org-linked user (Flask `get_xero_token_user_for_entity`), else JWT user.
 
     Returns (user, failure_reason). failure_reason is None when a user is found.
@@ -205,7 +209,9 @@ def _request_token_from_flask(entity_id: str) -> str | None:
     url = getattr(settings, "XERO_TOKEN_SERVICE_URL", "") or ""
     secret = getattr(settings, "SECRET_KEY", "") or ""
     if not url or not secret:
-        logger.error("XERO_TOKEN_SERVICE_URL/SECRET_KEY unset; cannot obtain Xero token")
+        logger.error(
+            "XERO_TOKEN_SERVICE_URL/SECRET_KEY unset; cannot obtain Xero token"
+        )
         return None
 
     now = datetime.now(tz=timezone.utc)
@@ -234,12 +240,16 @@ def _request_token_from_flask(entity_id: str) -> str | None:
         try:
             access_token = (resp.json() or {}).get("access_token")
         except ValueError:
-            logger.error("Xero token service returned malformed JSON for entity %s", entity_id)
+            logger.error(
+                "Xero token service returned malformed JSON for entity %s", entity_id
+            )
             return None
         if access_token:
             logger.info("Xero token service issued a token for entity %s", entity_id)
             return access_token
-        logger.error("Xero token service returned no access_token for entity %s", entity_id)
+        logger.error(
+            "Xero token service returned no access_token for entity %s", entity_id
+        )
         return None
 
     if resp.status_code == 409:
@@ -255,7 +265,9 @@ def _request_token_from_flask(entity_id: str) -> str | None:
     return None
 
 
-def resolve_xero_access_token_for_entity(entity_id: str, jwt_user_id: str) -> str | None:
+def resolve_xero_access_token_for_entity(
+    entity_id: str, jwt_user_id: str
+) -> str | None:
     """Return a currently-valid access token for the entity, or raise.
 
     Billing never refreshes. Xero rotates refresh tokens on use and invalidates the

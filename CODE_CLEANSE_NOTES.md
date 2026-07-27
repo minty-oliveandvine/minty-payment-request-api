@@ -154,8 +154,133 @@ Full detail in `.cleanse/patch_targets.md`. Summary of what is load-bearing:
     Confirmed all 6 exception handlers still register on the API after editing
     `exceptions.py`.
   - verify: 14 failed / 398 passed at every one of the 4 checkpoints — **no regressions**.
-- [ ] `docs`
-- [ ] `bills`
+- [x] `docs` (1 file, 349 LOC) — **surveyed, zero changes by explicit decision.**
+  - `ruff` passes clean; `isort --profile black` is already a no-op.
+  - `docs/generate_db_design_pdf.py` is a standalone one-off generator for
+    `docs/db_design_ko.pdf`. Nothing imports it, `build_pdf()` is only called from its own
+    `__main__`, and pytest does not collect it (`python_files = test_*.py`).
+  - It **cannot run in this repo**: `fpdf` is not in `requirements.txt`, and the fonts are
+    hardcoded to `C:/Windows/Fonts/malgun.ttf` (Windows-only; this is a macOS checkout).
+  - Its content is **stale** vs the live `Bill` model: it documents `attachment_id`,
+    `paid_date`, `xero_invoice_id` (no longer fields) and omits `currency_code`,
+    `reference`, `xero_account_code`, and the whole `payments` relation.
+  - **User decision: leave it entirely alone.** Not deleted, not reformatted. It is a
+    documentation artifact, not runtime code, and the call about a Korean-language design
+    doc belongs to the team, not to a code cleanse. Recorded here so the staleness is
+    known rather than silently inherited.
+  - Also deliberately skipped `black` on it: black wraps the Korean lines by counting CJK
+    characters as width-1 when they render double-width, so the "fix" reads worse than the
+    original and would bury nothing useful.
+- [ ] `bills` — split into stages, smallest/lowest-risk first:
+  - [x] **stage 1: `models.py` + `schemas.py`** (1,141 LOC) — **formatting only.**
+    - *dead code*: none. All 47 schemas are used. **Near-miss worth recording:** a naive
+      "grep outside the defining file" said 6 schemas were unused — `LineItemIn`,
+      `LineItemOut`, `PaymentListOut`, `XeroBillSyncLineOut`, `XeroBillSyncPayloadOut`,
+      `XeroBillResponseLineOut`. All 6 are live **nested types** referenced only *within*
+      `schemas.py` (`line_items: list[LineItemOut]`, `payload: XeroBillSyncPayloadOut | None`,
+      etc.). Deleting on that grep would have broken the API response shapes.
+    - *duplication*: exactly one structurally identical pair found by AST comparison —
+      `BillAttachmentOut` and `PaymentAttachmentOut` (same 6 fields, same types, same
+      defaults). **Deliberately NOT merged.** Both class names are published as distinct
+      components in the generated OpenAPI schema (verified: `api.get_openapi_schema()`
+      lists `AttachmentOut`, `BillAttachmentOut`, `PaymentAttachmentOut`). Aliasing one to
+      the other renames a public API type and would break any frontend generating a typed
+      client. They are also semantically distinct response types that can diverge.
+      Field-shape coincidence is not duplication.
+    - `models.py` is Django field declarations only — same reasoning as `shared_models`,
+      nothing to extract.
+    - *format*: `isort --profile black` + `black`. Both files are ~570 LOC, under the
+      1000-LOC guard, and this stage has no logic changes. Proved safe by snapshotting all
+      **582** live field definitions (Django model fields: type/max_length/default/null/
+      db_index; Ninja schema fields: annotation + default) before and after — identical
+      once `repr()` memory addresses are normalized. OpenAPI still emits 57 components
+      across 43 paths.
+    - verify: 14 failed / 398 passed — **no regressions**.
+  - [x] **stage 2: `bills/services/`** (3,366 LOC) — **2 extractions + format.**
+    - *dead code*: only one candidate, `trigger_flask_bill_chart_sync`
+      (`flask_billing_sync.py:23`, 90 LOC, zero references anywhere in the repo).
+      **NOT deleted — awaiting user decision.** It is fully implemented, POSTs to a
+      *distinct* Flask endpoint (`/billing/sync-chart-accounts`) that no other function
+      calls, and its two siblings in the same module *are* live. That reads like a wiring
+      bug (wrong function called / endpoint retired) rather than abandoned scaffolding, so
+      per the rules it is a stop-and-ask, not a silent delete.
+      **User decision: leave it in place, flagged here.** Open question for whoever owns
+      the Flask side: does `POST /api/entities/{id}/billing/sync-chart-accounts` still
+      exist in Module 1, and should something be calling it? If the endpoint is retired,
+      this function and `_BILL_CHART_SYNC_TTL` can both go. Do not delete it as part of a
+      formatting pass.
+    - *duplication — 2 real extractions in `attachment_service.py`:*
+      - `_upload_file_to_s3(file, s3_key_prefix)` — the validate → size-check → downsize →
+        S3-put block shared by `upload_attachment` and `upload_payment_attachment`.
+        **4 behavioural differences preserved, not flattened:** (1) the payment path
+        validates `attachment_role` and the bill path does not; (2) different S3 key
+        prefixes (parameter); (3) the bill path writes an audit row and the payment path
+        does not; (4) different log messages. The helper does **no DB writes** — it returns
+        kwargs so `Attachment.objects.create` stays inside each caller's `transaction.atomic()`
+        block, exactly as before. Verified by AST that the atomic block still contains both
+        creates and that S3 I/O is still outside it (a first attempt moved the S3 upload
+        inside the transaction — caught and reverted before verification).
+      - `_delete_mapping_and_orphan(mapping, attachment, remaining_relation)` — the S3-delete
+        + `atomic(mapping.delete, orphan cleanup)` block. `remaining_relation` is passed as a
+        string so each path checks its *own* reverse accessor and an Attachment still
+        referenced by the other mapping kind is never deleted. Return values, error
+        messages and the audit asymmetry all preserved.
+      - Proof: 26 upload cases (roles incl. an invalid one, bad MIME, oversize, extension
+        fallbacks) and 18 delete cases (missing row, S3 failure, orphan vs shared
+        attachment, empty `xero_attachment_id`) snapshotted before/after — capturing return
+        values, S3 keys, call ordering, audit calls and every log line. All identical, and
+        re-verified again after `black`. See `.cleanse/attach_snapshot.py`,
+        `.cleanse/delete_snapshot.py`.
+    - *deliberately NOT merged:* `trigger_chart_sync_if_changed` vs
+      `trigger_flask_contact_sync` share a skeleton but differ in return type (`bool` vs
+      `None`), **log level** (`error` vs `warning`), every log message, the JSON-branch
+      logic, and whether JSON decode errors are swallowed. Merging needs ~8 parameters and
+      obscures more than it saves. Similar shape, different behaviour.
+    - *format*: `isort --profile black` + `black` on 9 of 11 service files. **
+      `xero_publish_service.py` (1,180 LOC) deliberately excluded** — over the ~1000-LOC
+      guard, and this stage contains logic changes. Left as a separate optional commit.
+      Verified string constants byte-identical in all 8 untouched-logic files; the only
+      string delta is in `attachment_service.py` and is **additions only** (new dict keys,
+      relation names, docstrings).
+    - verify: 14 failed / 398 passed at all 3 checkpoints — **no regressions**.
+  - [x] **stage 3: `bills/` API layer** (7 files, 2,153 LOC) — **dead imports + 2 dedups + format.**
+    - *dead code*: removed 2 unused schema imports — `AttachmentOut` from `api.py`
+      (only referenced inside `schemas.py`) and `MessageOut` from `api_profile.py` (unused
+      there; still used by other api files, so only the import line went).
+    - *duplication — 2 extractions:*
+      - **`_get_bill_or_404` was byte-identical** in `api.py:152` and `api_payments.py:39`
+        (AST diff empty). Kept the copy in `api.py` as canonical and imported it into
+        `api_payments.py` (`from bills.api import _get_bill_or_404`). Verified: not patched
+        by any test, no import cycle (`bills.api` does not import `bills.api_payments`, and
+        `config.urls` still loads with 17 routers), and both names resolve to the *same
+        function object*. Its `"Bill not found"` string now lives once, in `api.py`.
+      - **`_apply_partial_update(obj, update_data)`** in `api_config.py` — the
+        `for field, value in ...: if value is not None: setattr` loop appeared **identically
+        5 times** across the entity-function / function-map / account / currency /
+        bill-currency PUT endpoints. Extracted the loop only. Proved the helper's semantics
+        match the originals across 7 dict shapes including the falsy-but-not-None cases
+        (`0`, `False`, `""`), which the `is not None` guard must still apply. The helper does
+        **not** call `.save()` — each endpoint keeps its own save + logging + side effects
+        (e.g. the accounts endpoint's `account_info.status` mirror is untouched).
+    - *deliberately NOT merged:* the 6 CRUD groups in `api_config.py` (entity functions,
+      function maps, accounts, currencies, bill currencies, contacts) share a *shape* but
+      differ in model, scoping (global vs entity-scoped), every `Http404` message, every log
+      message, and create-body logic. A generic CRUD factory would collapse distinct
+      user-facing 404 strings and scoping behind one abstraction — high risk, exactly what
+      the rules warn against. Left as separate endpoints; only the identical update-loop was
+      shared out.
+    - *format*: `isort --profile black` + `black` on all 7 files (largest `api_config.py`
+      723 LOC, under the guard). Verified per-file that string constants are unchanged: 5
+      files byte-identical, `api_config.py` adds only the helper docstring, `api_payments.py`
+      drops only `"Bill not found"` (now sourced from `api.py` via the dedup — confirmed the
+      string still exists there exactly once).
+    - **`bills.api` import style preserved** (patch-survey constraint): still
+      `from bills.services... import publish_bill_to_xero, resolve_xero_access_token_for_entity`
+      and `import requests as _requests` (module form) — the names tests patch as
+      `bills.api.*` are untouched.
+    - verify: 14 failed / 398 passed at all 3 checkpoints — **no regressions**.
+  - [ ] stage 4: `bills/tests/`
+  - [ ] `bills/migrations/` — **excluded, see below**
 
 ## Tooling decision: isort MUST use `--profile black`
 
@@ -179,6 +304,15 @@ set `[tool.isort] profile = "black"` so this is not rediscovered each session.
 - **Compare string constants against the right base.** An AST string-constant diff vs
   `HEAD` flags your own intentional refactors, not just formatter damage. To check a
   formatting step specifically, snapshot immediately *before* running the formatter.
+- **`isort` on a directory containing an empty `__init__.py` can fail** with
+  `InvalidSettingsPath`. Pass explicit files and add `--filter-files`, excluding
+  `__init__.py`, e.g.
+  `isort --profile black --filter-files $(ls bills/services/*.py | grep -v '__init__')`.
+- **Extracting a helper can silently move a transaction boundary.** The first cut of
+  `_upload_file_to_s3` pulled the S3 upload *inside* `transaction.atomic()`, which would
+  have held a DB transaction open across a network call. Caught by diffing the atomic
+  block's contents via AST before/after — not by the test suite, which stayed green.
+  Always check what is inside the `with` block after an extraction.
 - **The IDE's "not accessed" hints are not a dead-code oracle.** In `core/exceptions.py`
   the three handler functions are flagged unused but are registered via
   `@api.exception_handler(...)` decorators. Verified by asserting all 6 handlers are

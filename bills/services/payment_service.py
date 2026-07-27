@@ -84,15 +84,25 @@ def _update_bill_status(bill: Bill, user_id: str = "") -> None:
         bill.status = new_status
         bill.save(update_fields=["status", "updated_at"])
         if user_id:
-            action = Audit.Action.MARKED_PAID if new_status == Bill.Status.PAID else Audit.Action.STATUS_CHANGED
+            action = (
+                Audit.Action.MARKED_PAID
+                if new_status == Bill.Status.PAID
+                else Audit.Action.STATUS_CHANGED
+            )
             log_audit(
-                bill, action, user_id,
+                bill,
+                action,
+                user_id,
                 f"Status changed from {old_status} to {new_status} "
                 f"(paid {completed_sum}/{bill.amount})",
             )
         logger.info(
             "Bill %s status %s -> %s (paid=%s/%s)",
-            bill.id, old_status, new_status, completed_sum, bill.amount,
+            bill.id,
+            old_status,
+            new_status,
+            completed_sum,
+            bill.amount,
         )
 
 
@@ -120,7 +130,9 @@ def create_payment(bill: Bill, data, user_id: str) -> Payment:
             created_by=user_id,
         )
         log_audit(
-            bill, Audit.Action.PAYMENT_CREATED, user_id,
+            bill,
+            Audit.Action.PAYMENT_CREATED,
+            user_id,
             f"Payment of {data.amount} created ({data.payment_method or 'no method'})",
         )
         _update_bill_status(bill, user_id)
@@ -130,12 +142,22 @@ def create_payment(bill: Bill, data, user_id: str) -> Payment:
 
 def update_payment(payment: Payment, data, user_id: str) -> Payment:
     updatable_fields = (
-        "payment_date", "amount", "currency_code", "payment_method",
-        "payment_status", "reference_no", "note", "xero_payment_id",
+        "payment_date",
+        "amount",
+        "currency_code",
+        "payment_method",
+        "payment_status",
+        "reference_no",
+        "note",
+        "xero_payment_id",
     )
     with transaction.atomic():
         new_amount = data.amount if data.amount is not None else payment.amount
-        new_status = data.payment_status if data.payment_status is not None else payment.payment_status
+        new_status = (
+            data.payment_status
+            if data.payment_status is not None
+            else payment.payment_status
+        )
         if _status_counts_toward_bill_cap(new_status):
             _check_payment_within_bill_total(
                 payment.bill, new_amount, exclude_payment_id=str(payment.id)
@@ -147,7 +169,9 @@ def update_payment(payment: Payment, data, user_id: str) -> Payment:
                 setattr(payment, field, new_val)
         payment.save()
         log_audit(
-            payment.bill, Audit.Action.PAYMENT_UPDATED, user_id,
+            payment.bill,
+            Audit.Action.PAYMENT_UPDATED,
+            user_id,
             f"Payment {payment.id} updated",
         )
         _update_bill_status(payment.bill, user_id)
@@ -162,7 +186,9 @@ def delete_payment(payment: Payment, user_id: str):
     with transaction.atomic():
         payment.delete()
         log_audit(
-            bill, Audit.Action.PAYMENT_DELETED, user_id,
+            bill,
+            Audit.Action.PAYMENT_DELETED,
+            user_id,
             f"Payment of {amount} deleted",
         )
         _update_bill_status(bill, user_id)

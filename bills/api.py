@@ -12,9 +12,7 @@ from ninja import File, Query, Router
 from ninja.files import UploadedFile
 
 from bills.models import Bill, Payment
-from shared_models.models import Entity
 from bills.schemas import (
-    AttachmentOut,
     BillAttachmentOut,
     BillCreateIn,
     BillDraftIn,
@@ -56,6 +54,7 @@ from core.permissions import (
     check_publish_xero,
     check_return_bill,
 )
+from shared_models.models import Entity
 
 logger = logging.getLogger("minty-api")
 
@@ -88,7 +87,10 @@ def _backfill_lock_dates(entity_id: str, jwt_user_id: str) -> None:
         if not entity or not entity.xero_org_id:
             return
         # Re-check inside the call (guard against race on concurrent requests)
-        if entity.period_lock_date is not None and entity.end_of_year_lock_date is not None:
+        if (
+            entity.period_lock_date is not None
+            and entity.end_of_year_lock_date is not None
+        ):
             return
 
         access_token = resolve_xero_access_token_for_entity(entity_id, jwt_user_id)
@@ -218,7 +220,9 @@ def _bill_to_out(bill: Bill) -> dict:
 bills_router = Router()
 
 
-@bills_router.post("/", response={201: BillOut, 422: ErrorOut}, summary="Create a new bill")
+@bills_router.post(
+    "/", response={201: BillOut, 422: ErrorOut}, summary="Create a new bill"
+)
 def create_bill_endpoint(request, payload: BillCreateIn):
     check_not_system_superuser(request, "create bills")
     check_create_bill(request.entity_role)
@@ -282,10 +286,7 @@ def list_bills(request, filters: Query[BillFilterQuery]):
     if (
         _entity
         and _entity.xero_org_id
-        and (
-            _entity.period_lock_date is None
-            or _entity.end_of_year_lock_date is None
-        )
+        and (_entity.period_lock_date is None or _entity.end_of_year_lock_date is None)
     ):
         _backfill_lock_dates(request.entity_id, str(request.auth_user.id))
 
@@ -313,18 +314,27 @@ def list_bills(request, filters: Query[BillFilterQuery]):
     if filters.amount_max is not None:
         qs = qs.filter(amount__lte=filters.amount_max)
     ALLOWED_DATE_FIELDS = {"invoice_date", "created_at"}
-    df = filters.date_field if filters.date_field in ALLOWED_DATE_FIELDS else "created_at"
+    df = (
+        filters.date_field
+        if filters.date_field in ALLOWED_DATE_FIELDS
+        else "created_at"
+    )
     if filters.date_from:
         qs = qs.filter(**{f"{df}__gte": filters.date_from})
     if filters.date_to:
         qs = qs.filter(**{f"{df}__lte": filters.date_to})
 
     allowed_sorts = {
-        "created_at", "-created_at",
-        "amount", "-amount",
-        "due_date", "-due_date",
-        "contact", "-contact",
-        "status", "-status",
+        "created_at",
+        "-created_at",
+        "amount",
+        "-amount",
+        "due_date",
+        "-due_date",
+        "contact",
+        "-contact",
+        "status",
+        "-status",
     }
     sort = filters.sort_by if filters.sort_by in allowed_sorts else "-created_at"
     qs = qs.order_by(sort)
@@ -472,7 +482,10 @@ def return_bill(request, bill_id: str, payload: ReturnBillIn):
     bill.save(update_fields=["status", "updated_at"])
     logger.info(
         "return_bill: bill_id=%s action=%s new_status=%s user=%s",
-        bill_id, action, bill.status, request.auth_user.id,
+        bill_id,
+        action,
+        bill.status,
+        request.auth_user.id,
     )
     return _bill_to_out(bill)
 
@@ -489,7 +502,8 @@ def publish_bill_endpoint(request, bill_id: str):
     _get_bill_or_404(bill_id, request.entity_id)
 
     access_token = resolve_xero_access_token_for_entity(
-        request.entity_id, request.auth_user.id,
+        request.entity_id,
+        request.auth_user.id,
     )
     result = publish_bill_to_xero(
         bill_id=bill_id,
@@ -581,14 +595,17 @@ def delete_attachment_endpoint(request, bill_id: str, attachment_id: str):
         try:
             entity = Entity.objects.get(id=bill.entity_id)
             access_token = resolve_xero_access_token_for_entity(
-                str(request.entity_id), request.auth_user.id,
+                str(request.entity_id),
+                request.auth_user.id,
             )
             _delete_xero_file(access_token, entity.xero_org_id, xero_attachment_id)
         except Exception as exc:
             logger.warning(
                 "Xero file delete on attachment removal failed "
                 "bill=%s xero_attachment_id=%s: %s",
-                bill_id, xero_attachment_id, exc,
+                bill_id,
+                xero_attachment_id,
+                exc,
             )
 
     return {"message": "Attachment deleted"}
@@ -605,6 +622,7 @@ def download_bill_attachment(request, bill_id: str, attachment_id: str):
         ba = bill.bill_attachments.select_related("attachment").get(id=attachment_id)
     except Exception:
         from django.http import Http404
+
         raise Http404("Attachment not found")
     att = ba.attachment
     url = generate_presigned_download_url(att)
@@ -641,10 +659,17 @@ def preview_bill_attachment(request, bill_id: str, attachment_id: str):
     try:
         s3_response = s3.get_object(Bucket=settings.S3_BUCKET, Key=att.file_path)
     except ClientError as e:
-        logger.error("S3 get_object failed for preview bill=%s att=%s: %s", bill_id, attachment_id, e)
+        logger.error(
+            "S3 get_object failed for preview bill=%s att=%s: %s",
+            bill_id,
+            attachment_id,
+            e,
+        )
         raise Http404("File not found in storage")
 
-    content_type = att.mime_type or s3_response.get("ContentType", "application/octet-stream")
+    content_type = att.mime_type or s3_response.get(
+        "ContentType", "application/octet-stream"
+    )
     filename = att.original_name or att.stored_name or "file"
 
     def _stream(body):

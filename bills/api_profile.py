@@ -3,7 +3,7 @@ import logging
 from django.db import connection
 from ninja import Router
 
-from bills.schemas import MessageOut, ProfileIn, ProfileOut
+from bills.schemas import ProfileIn, ProfileOut
 from bills.services.profile_service import update_user_profile
 from core.permissions import check_not_system_superuser
 

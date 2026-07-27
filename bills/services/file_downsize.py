@@ -44,7 +44,9 @@ def downsize_bytes(data: bytes, mime_type: str) -> bytes:
     except Exception as exc:
         logger.warning(
             "downsize_bytes: best-effort failed for %s (%d bytes): %s",
-            mime_type, len(data), exc,
+            mime_type,
+            len(data),
+            exc,
         )
     return data
 
@@ -140,7 +142,9 @@ def _downsize_pdf(data: bytes) -> bytes:
     return result if len(result) < len(data) else data
 
 
-def _resample_pdf_images(pdf, target_max_dim: int = 1600, jpeg_quality: int = 65) -> None:
+def _resample_pdf_images(
+    pdf, target_max_dim: int = 1600, jpeg_quality: int = 65
+) -> None:
     """In-place: downscale + JPEG-recompress embedded images larger than target.
 
     Skips masks/transparent images and anything PIL can't decode round-trip.
@@ -160,7 +164,7 @@ def _resample_pdf_images(pdf, target_max_dim: int = 1600, jpeg_quality: int = 65
         for name in list(xobjects.keys()):
             try:
                 obj = xobjects[name]
-                key = (obj.objgen if hasattr(obj, "objgen") else id(obj))
+                key = obj.objgen if hasattr(obj, "objgen") else id(obj)
                 if key in seen:
                     continue
                 seen.add(key)
@@ -185,7 +189,11 @@ def _resample_pdf_images(pdf, target_max_dim: int = 1600, jpeg_quality: int = 65
 
                 buf = io.BytesIO()
                 pil.save(
-                    buf, format="JPEG", quality=jpeg_quality, optimize=True, progressive=True,
+                    buf,
+                    format="JPEG",
+                    quality=jpeg_quality,
+                    optimize=True,
+                    progressive=True,
                 )
                 jpeg_bytes = buf.getvalue()
 
