@@ -12,4 +12,7 @@ logs/*.log
 htmlcov/
 .coverage
 minty_billing/logs/core.log
-minty_billing/logs/api.log
+minty_billing/logs/api.log.DS_Store
+.cleanse/
+.cleanse-venv/
+.ruff_cache/
