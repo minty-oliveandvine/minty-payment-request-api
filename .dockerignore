@@ -15,4 +15,5 @@ uploads/
 logs/*.log
 .env
 .DS_Store
+docker/Dockerfile
 !.dockerignore
