@@ -1,0 +1,132 @@
+{
+ "resolve|a.HEIC|application/octet-stream": "'image/heic'",
+ "resolve|a.PDF|None": "'application/pdf'",
+ "resolve|a.csv|text/csv": "'text/csv'",
+ "resolve|a.exe|application/x-msdownload": "None",
+ "resolve|a.htm|": "'text/html'",
+ "resolve|a.jpg|": "'image/jpeg'",
+ "resolve|a.jpg|image/jpeg": "'image/jpeg'",
+ "resolve|a.xlsm|": "'application/vnd.ms-excel.sheet.macroenabled.12'",
+ "resolve|noext|application/pdf": "'application/pdf'",
+ "resolve|stub|None|None": "None",
+ "resolve|stub|None|application/pdf": "'application/pdf'",
+ "resolve|stub|x.jpg|None": "'image/jpeg'",
+ "resolve|stub||": "None",
+ "resolve|weird.svg|": "'image/svg+xml'",
+ "upload|bill|badtype": {
+  "error": "File type 'application/x-msdownload' is not allowed",
+  "logs": [],
+  "s3_key_shape": [],
+  "s3_keys": []
+ },
+ "upload|bill|role=bank_slip": {
+  "audit_calls": [
+   "call(<MagicMock id='4399803584'>, Audit.Action.ATTACHMENT_UPLOADED, 'U1', \"File 'inv.pdf' uploaded\")"
+  ],
+  "logs": [
+   "Attachment uploaded bill_id=B1 file=inv.pdf mime=application/pdf"
+  ],
+  "s3_key_shape": [
+   "attachments/E1/B1"
+  ],
+  "s3_keys": [
+   "attachments/....pdf"
+  ]
+ },
+ "upload|bill|role=bogus_role": {
+  "audit_calls": [
+   "call(<MagicMock id='4401074768'>, Audit.Action.ATTACHMENT_UPLOADED, 'U1', \"File 'inv.pdf' uploaded\")"
+  ],
+  "logs": [
+   "Attachment uploaded bill_id=B1 file=inv.pdf mime=application/pdf"
+  ],
+  "s3_key_shape": [
+   "attachments/E1/B1"
+  ],
+  "s3_keys": [
+   "attachments/....pdf"
+  ]
+ },
+ "upload|bill|role=invoice": {
+  "audit_calls": [
+   "call(<MagicMock id='4401038880'>, Audit.Action.ATTACHMENT_UPLOADED, 'U1', \"File 'inv.pdf' uploaded\")"
+  ],
+  "logs": [
+   "Attachment uploaded bill_id=B1 file=inv.pdf mime=application/pdf"
+  ],
+  "s3_key_shape": [
+   "attachments/E1/B1"
+  ],
+  "s3_keys": [
+   "attachments/....pdf"
+  ]
+ },
+ "upload|bill|role=other": {
+  "audit_calls": [
+   "call(<MagicMock id='4399629328'>, Audit.Action.ATTACHMENT_UPLOADED, 'U1', \"File 'inv.pdf' uploaded\")"
+  ],
+  "logs": [
+   "Attachment uploaded bill_id=B1 file=inv.pdf mime=application/pdf"
+  ],
+  "s3_key_shape": [
+   "attachments/E1/B1"
+  ],
+  "s3_keys": [
+   "attachments/....pdf"
+  ]
+ },
+ "upload|bill|toobig": {
+  "error": "File size exceeds 10 MB limit",
+  "logs": [],
+  "s3_key_shape": [],
+  "s3_keys": []
+ },
+ "upload|payment|badtype": {
+  "error": "File type 'application/x-msdownload' is not allowed",
+  "logs": [],
+  "s3_key_shape": [],
+  "s3_keys": []
+ },
+ "upload|payment|role=bank_slip": {
+  "audit_calls": [],
+  "logs": [
+   "Payment attachment uploaded payment_id=P1 file=inv.pdf mime=application/pdf"
+  ],
+  "s3_key_shape": [
+   "attachments/payments/B1/P1"
+  ],
+  "s3_keys": [
+   "attachments/....pdf"
+  ]
+ },
+ "upload|payment|role=bogus_role": {
+  "error": "Invalid attachment_role 'bogus_role'. Allowed: bank_slip, other, payment_receipt, remittance_proof.",
+  "logs": [],
+  "s3_key_shape": [],
+  "s3_keys": []
+ },
+ "upload|payment|role=invoice": {
+  "error": "Invalid attachment_role 'invoice'. Allowed: bank_slip, other, payment_receipt, remittance_proof.",
+  "logs": [],
+  "s3_key_shape": [],
+  "s3_keys": []
+ },
+ "upload|payment|role=other": {
+  "audit_calls": [],
+  "logs": [
+   "Payment attachment uploaded payment_id=P1 file=inv.pdf mime=application/pdf"
+  ],
+  "s3_key_shape": [
+   "attachments/payments/B1/P1"
+  ],
+  "s3_keys": [
+   "attachments/....pdf"
+  ]
+ },
+ "upload|payment|toobig": {
+  "error": "File size exceeds 10 MB limit",
+  "logs": [],
+  "s3_key_shape": [],
+  "s3_keys": []
+ }
+}

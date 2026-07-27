@@ -4,6 +4,7 @@ Verifies that a valid (non-expired) billing JWT can be exchanged for a
 fresh 8-hour token via POST /api/v1/auth/token/refresh, and that an
 already-expired token cannot.
 """
+
 from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
@@ -81,6 +82,7 @@ REFRESH_URL = "/api/v1/auth/token/refresh"
 # Refresh endpoint tests
 # ---------------------------------------------------------------------------
 
+
 def test_valid_token_can_be_refreshed(client, user, entity, membership):
     """A valid billing JWT is exchanged for a fresh 8-hour token."""
     token = _make_token(user.id, entity.id, hours_from_now=4)
@@ -103,9 +105,9 @@ def test_refreshed_token_has_8_hour_lifetime(client, user, entity, membership):
     exp = datetime.fromtimestamp(payload["exp"], tz=timezone.utc)
     remaining_hours = (exp - datetime.now(timezone.utc)).total_seconds() / 3600
 
-    assert remaining_hours >= BILLING_TOKEN_HOURS - (60 / 3600), (
-        f"Refreshed token expires in {remaining_hours:.2f}h — expected ~{BILLING_TOKEN_HOURS}h"
-    )
+    assert remaining_hours >= BILLING_TOKEN_HOURS - (
+        60 / 3600
+    ), f"Refreshed token expires in {remaining_hours:.2f}h — expected ~{BILLING_TOKEN_HOURS}h"
 
 
 def test_refreshed_token_carries_correct_claims(client, user, entity, membership):

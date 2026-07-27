@@ -2,7 +2,6 @@ import logging
 import time
 import uuid
 
-
 api_logger = logging.getLogger("minty-api.http")
 
 

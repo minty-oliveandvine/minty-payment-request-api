@@ -85,15 +85,19 @@ def token_refresh(request):
     """
     from core.auth import BearerAuth
 
-    raw_token = (request.headers.get("Authorization", "") or "").removeprefix("Bearer ").strip()
+    raw_token = (
+        (request.headers.get("Authorization", "") or "").removeprefix("Bearer ").strip()
+    )
     if not raw_token:
         from ninja.errors import HttpError
+
         raise HttpError(401, "Missing token")
 
     auth = BearerAuth()
     user = auth.authenticate(request, raw_token)
     if user is None:
         from ninja.errors import HttpError
+
         raise HttpError(401, "Invalid or expired token")
 
     expires_in = BILLING_TOKEN_HOURS * 3600
@@ -104,6 +108,7 @@ def token_refresh(request):
     # We never copy these forward from the old token because they could be
     # stale — entitlements are the kind of thing that must always be authoritative.
     from core.entitlements import get_module_claims
+
     module_claims = get_module_claims(str(request.entity_id or ""))
 
     new_token = jwt.encode(
@@ -191,6 +196,7 @@ def entitlements(request):
     would let a caller probe entitlements for entities they don't belong to.
     """
     from core.entitlements import get_module_claims
+
     claims = get_module_claims(str(request.entity_id or ""))
     return EntitlementsOut(
         petty_cash_enabled=claims["petty_cash_enabled"],
@@ -211,7 +217,12 @@ def xero_status(request):
     """
     try:
         from shared_models.models import User
-        user = User.objects.filter(id=str(request.auth_user.id)).values("refresh_token").first()
+
+        user = (
+            User.objects.filter(id=str(request.auth_user.id))
+            .values("refresh_token")
+            .first()
+        )
         connected = bool(user and user.get("refresh_token"))
     except Exception:
         connected = False

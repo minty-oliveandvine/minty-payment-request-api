@@ -4,10 +4,10 @@ from uuid import UUID
 
 from ninja import Schema
 
-
 # ---------------------------------------------------------------------------
 # Generic
 # ---------------------------------------------------------------------------
+
 
 class MessageOut(Schema):
     message: str
@@ -24,6 +24,7 @@ class SuggestedReferenceOut(Schema):
 # ---------------------------------------------------------------------------
 # Line Items
 # ---------------------------------------------------------------------------
+
 
 class LineItemIn(Schema):
     description: str = ""
@@ -55,6 +56,7 @@ class LineItemOut(Schema):
 # ---------------------------------------------------------------------------
 # Attachments
 # ---------------------------------------------------------------------------
+
 
 class AttachmentOut(Schema):
     id: str
@@ -88,6 +90,7 @@ class PaymentAttachmentOut(Schema):
 # ---------------------------------------------------------------------------
 # Bills
 # ---------------------------------------------------------------------------
+
 
 class BillCreateIn(Schema):
     contact: str = ""
@@ -192,6 +195,7 @@ class BillFilterQuery(Schema):
 # Payments
 # ---------------------------------------------------------------------------
 
+
 class PaymentCreateIn(Schema):
     payment_date: date | None = None
     amount: Decimal = Decimal("0")
@@ -264,6 +268,7 @@ class PaymentFilterQuery(Schema):
 # Entity Functions
 # ---------------------------------------------------------------------------
 
+
 class EntityFunctionCreateIn(Schema):
     function_code: str
     function_name: str
@@ -291,6 +296,7 @@ class EntityFunctionOut(Schema):
 # ---------------------------------------------------------------------------
 # Entity Function Maps
 # ---------------------------------------------------------------------------
+
 
 class EntityFunctionMapCreateIn(Schema):
     entity_function_id: str
@@ -325,6 +331,7 @@ class EntityFunctionNameOut(Schema):
 # ---------------------------------------------------------------------------
 # Entity Bill Account Xero
 # ---------------------------------------------------------------------------
+
 
 class EntityBillAccountXeroCreateIn(Schema):
     account_code: str
@@ -368,6 +375,7 @@ class EntityBillAccountXeroOut(Schema):
 # Entity Bill Contacts (from xero_contact_sync, managed by Flask)
 # ---------------------------------------------------------------------------
 
+
 class EntityBillContactOut(Schema):
     id: str
     entity_id: str
@@ -384,6 +392,7 @@ class EntityBillContactCreateIn(Schema):
 # ---------------------------------------------------------------------------
 # Currency Info
 # ---------------------------------------------------------------------------
+
 
 class CurrencyInfoCreateIn(Schema):
     currency_code: str
@@ -416,6 +425,7 @@ class CurrencyInfoOut(Schema):
 # Entity Bill Currency
 # ---------------------------------------------------------------------------
 
+
 class EntityBillCurrencyCreateIn(Schema):
     currency_info_id: str
     is_default: bool = False
@@ -444,6 +454,7 @@ class EntityBillCurrencyOut(Schema):
 # ---------------------------------------------------------------------------
 # Xero Bill Sync
 # ---------------------------------------------------------------------------
+
 
 class XeroBillSyncLineOut(Schema):
     id: str
@@ -540,6 +551,7 @@ class XeroBillSyncListOut(Schema):
 # Audit
 # ---------------------------------------------------------------------------
 
+
 class AuditOut(Schema):
     id: str
     bill_id: str
@@ -554,6 +566,7 @@ class AuditOut(Schema):
 # ---------------------------------------------------------------------------
 # Profile
 # ---------------------------------------------------------------------------
+
 
 class ProfileIn(Schema):
     email: str

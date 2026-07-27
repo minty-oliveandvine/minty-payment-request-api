@@ -7,6 +7,7 @@ are not kicked out mid-session.
 The handoff token (issued by Flask) stays at 30 minutes since it is
 one-time use only (just for the cross-module redirect).
 """
+
 from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
@@ -73,6 +74,7 @@ def _handoff_token(user_id, entity_id, *, exp_minutes=30):
 # Fix 3 tests
 # ---------------------------------------------------------------------------
 
+
 def test_billing_token_lifetime_is_at_least_8_hours(client, user, entity, membership):
     """Landing view issues a billing JWT with expiry >= 8 hours from now."""
     token = _handoff_token(user.id, entity.id)
@@ -91,9 +93,9 @@ def test_billing_token_lifetime_is_at_least_8_hours(client, user, entity, member
     remaining_hours = (exp - now).total_seconds() / 3600
 
     # Allow 60 seconds of tolerance for test execution time
-    assert remaining_hours >= BILLING_TOKEN_MIN_HOURS - (60 / 3600), (
-        f"Billing token expires in {remaining_hours:.2f}h — expected >= {BILLING_TOKEN_MIN_HOURS}h"
-    )
+    assert remaining_hours >= BILLING_TOKEN_MIN_HOURS - (
+        60 / 3600
+    ), f"Billing token expires in {remaining_hours:.2f}h — expected >= {BILLING_TOKEN_MIN_HOURS}h"
 
 
 def test_billing_token_contains_required_claims(client, user, entity, membership):
@@ -128,7 +130,9 @@ def test_expired_handoff_token_is_rejected(client, user, entity, membership):
     assert response.status_code == 401
 
 
-def test_handoff_token_without_entity_id_still_issues_billing_token(client, user, entity, membership):
+def test_handoff_token_without_entity_id_still_issues_billing_token(
+    client, user, entity, membership
+):
     """Handoff token with no entity_id falls back gracefully (entity from header)."""
     token = pyjwt.encode(
         {

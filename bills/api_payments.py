@@ -2,14 +2,15 @@ import logging
 
 from botocore.exceptions import ClientError
 from django.conf import settings
+from django.db.models import Sum
 from django.http import Http404, StreamingHttpResponse
 from ninja import File, Query, Router
 from ninja.files import UploadedFile
 
-from django.db.models import Sum
-
+# Shared with bills.api — the entity-scoped Bill lookup is identical in both, so
+# it lives in one place. Imported (not re-defined) so the two stay in lockstep.
+from bills.api import _get_bill_or_404
 from bills.models import Bill, Payment
-from shared_models.models import User
 from bills.schemas import (
     ErrorOut,
     MessageOut,
@@ -27,20 +28,22 @@ from bills.services.attachment_service import (
     serialize_attachment,
     upload_payment_attachment,
 )
-from bills.services.payment_service import create_payment, delete_payment, update_payment
+from bills.services.payment_service import (
+    create_payment,
+    delete_payment,
+    update_payment,
+)
 from bills.services.xero_publish_service import upload_bankslip_background
 from bills.services.xero_token_service import resolve_xero_access_token_for_entity
 from core.exceptions import BillValidationError, PermissionDeniedError
-from core.permissions import check_bill_mutable, check_mark_paid, check_not_system_superuser
+from core.permissions import (
+    check_bill_mutable,
+    check_mark_paid,
+    check_not_system_superuser,
+)
+from shared_models.models import User
 
 logger = logging.getLogger("minty-api")
-
-
-def _get_bill_or_404(bill_id: str, entity_id: str) -> Bill:
-    try:
-        return Bill.objects.get(id=bill_id, entity_id=entity_id)
-    except Bill.DoesNotExist:
-        raise Http404("Bill not found")
 
 
 def _get_payment_or_404(payment_id: str, bill: Bill) -> Payment:
@@ -169,9 +172,12 @@ def list_payments(request, bill_id: str, filters: Query[PaymentFilterQuery]):
         qs = qs.filter(payment_date__lte=filters.date_to)
 
     allowed_sorts = {
-        "created_at", "-created_at",
-        "amount", "-amount",
-        "payment_date", "-payment_date",
+        "created_at",
+        "-created_at",
+        "amount",
+        "-amount",
+        "payment_date",
+        "-payment_date",
     }
     sort = filters.sort_by if filters.sort_by in allowed_sorts else "-payment_date"
     secondary = "-created_at" if sort.startswith("-") else "created_at"
@@ -182,8 +188,9 @@ def list_payments(request, bill_id: str, filters: Query[PaymentFilterQuery]):
     offset = (page - 1) * page_size
 
     paid_total = (
-        Payment.objects.filter(bill=bill, payment_status="completed")
-        .aggregate(total=Sum("amount"))["total"]
+        Payment.objects.filter(bill=bill, payment_status="completed").aggregate(
+            total=Sum("amount")
+        )["total"]
     ) or 0
 
     page_qs = list(qs[offset : offset + page_size])
@@ -269,11 +276,17 @@ def upload_payment_attachment_endpoint(
 
     if bill.published == Bill.PublishStatus.PUBLISHED:
         try:
-            access_token = resolve_xero_access_token_for_entity(
-                request.entity_id, request.auth_user.id,
-            ) or ""
+            access_token = (
+                resolve_xero_access_token_for_entity(
+                    request.entity_id,
+                    request.auth_user.id,
+                )
+                or ""
+            )
         except BillValidationError as exc:
-            logger.warning("Skipping background bankslip upload — token unavailable: %s", exc)
+            logger.warning(
+                "Skipping background bankslip upload — token unavailable: %s", exc
+            )
             access_token = ""
         if access_token:
             upload_bankslip_background(
@@ -398,7 +411,9 @@ def preview_payment_attachment(
         )
         raise Http404("File not found in storage")
 
-    content_type = att.mime_type or s3_response.get("ContentType", "application/octet-stream")
+    content_type = att.mime_type or s3_response.get(
+        "ContentType", "application/octet-stream"
+    )
     filename = att.original_name or att.stored_name or "file"
 
     def _stream(body):

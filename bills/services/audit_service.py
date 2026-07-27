@@ -13,4 +13,6 @@ def log_audit(bill: Bill, action: str, user_id: str, detail: str = ""):
         user_id=user_id,
         detail=detail,
     )
-    logger.info("Audit: bill=%s action=%s user=%s detail=%s", bill.id, action, user_id, detail)
+    logger.info(
+        "Audit: bill=%s action=%s user=%s detail=%s", bill.id, action, user_id, detail
+    )

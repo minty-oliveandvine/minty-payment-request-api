@@ -9,7 +9,14 @@ from django.conf import settings
 from django.core.files.uploadedfile import UploadedFile
 from django.db import transaction
 
-from bills.models import Attachment, Audit, Bill, BillAttachment, Payment, PaymentAttachment
+from bills.models import (
+    Attachment,
+    Audit,
+    Bill,
+    BillAttachment,
+    Payment,
+    PaymentAttachment,
+)
 from bills.services.audit_service import log_audit
 from bills.services.file_downsize import downsize_bytes
 from core.exceptions import BillValidationError
@@ -106,12 +113,14 @@ def _get_s3_client():
     )
 
 
-def upload_attachment(
-    bill: Bill,
-    file: UploadedFile,
-    user_id: str,
-    attachment_role: str = "other",
-) -> BillAttachment:
+def _upload_file_to_s3(file: UploadedFile, s3_key_prefix: str) -> dict:
+    """Validate, downsize and push an uploaded file to S3.
+
+    Shared by the bill and payment upload paths, which differ only in the S3 key
+    prefix (passed in) and in what they do afterwards. Performs no DB writes —
+    returns the kwargs for ``Attachment.objects.create`` so the caller can create
+    that row inside its own transaction, exactly as before this was extracted.
+    """
     resolved_content_type = _resolve_content_type(file)
     if resolved_content_type is None:
         raise BillValidationError(
@@ -126,12 +135,15 @@ def upload_attachment(
     downsized = downsize_bytes(raw, resolved_content_type)
     if len(downsized) < len(raw):
         logger.info(
-            "Downsized %s: %d -> %d bytes", file.name, len(raw), len(downsized),
+            "Downsized %s: %d -> %d bytes",
+            file.name,
+            len(raw),
+            len(downsized),
         )
 
     ext = os.path.splitext(file.name)[1] if file.name else ""
     stored_name = f"{uuid.uuid4().hex}{ext}"
-    s3_key = f"attachments/{bill.entity_id}/{bill.id}/{stored_name}"
+    s3_key = f"{s3_key_prefix}/{stored_name}"
 
     s3 = _get_s3_client()
     try:
@@ -145,15 +157,30 @@ def upload_attachment(
         logger.error("S3 upload failed: %s", e)
         raise BillValidationError("File upload failed. Please try again.")
 
+    return {
+        "original_name": file.name or "unnamed",
+        "stored_name": stored_name,
+        "file_path": s3_key,
+        "mime_type": resolved_content_type,
+        "file_size": len(downsized),
+        "file_extension": ext.lstrip("."),
+        "storage_provider": "s3",
+    }
+
+
+def upload_attachment(
+    bill: Bill,
+    file: UploadedFile,
+    user_id: str,
+    attachment_role: str = "other",
+) -> BillAttachment:
+    attachment_fields = _upload_file_to_s3(
+        file, f"attachments/{bill.entity_id}/{bill.id}"
+    )
+
     with transaction.atomic():
         attachment = Attachment.objects.create(
-            original_name=file.name or "unnamed",
-            stored_name=stored_name,
-            file_path=s3_key,
-            mime_type=resolved_content_type,
-            file_size=len(downsized),
-            file_extension=ext.lstrip("."),
-            storage_provider="s3",
+            **attachment_fields,
             uploaded_by=user_id,
         )
 
@@ -165,14 +192,39 @@ def upload_attachment(
         )
 
     log_audit(
-        bill, Audit.Action.ATTACHMENT_UPLOADED, user_id,
+        bill,
+        Audit.Action.ATTACHMENT_UPLOADED,
+        user_id,
         f"File '{file.name}' uploaded",
     )
     logger.info(
         "Attachment uploaded bill_id=%s file=%s mime=%s",
-        bill.id, file.name, resolved_content_type,
+        bill.id,
+        file.name,
+        attachment_fields["mime_type"],
     )
     return bill_attachment
+
+
+def _delete_mapping_and_orphan(mapping, attachment, remaining_relation: str) -> None:
+    """Remove a file from S3, then drop the mapping row and any orphaned Attachment.
+
+    Shared by the bill and payment delete paths. ``remaining_relation`` names the
+    reverse accessor to test for surviving mappings ("bill_attachments" or
+    "payment_attachments"), so an Attachment still referenced by the *other* kind
+    of mapping is never deleted. S3 failures are logged and swallowed, exactly as
+    before — the DB rows go regardless.
+    """
+    s3 = _get_s3_client()
+    try:
+        s3.delete_object(Bucket=settings.S3_BUCKET, Key=attachment.file_path)
+    except ClientError as e:
+        logger.warning("S3 delete failed (proceeding): %s", e)
+
+    with transaction.atomic():
+        mapping.delete()
+        if not getattr(attachment, remaining_relation).exists():
+            attachment.delete()
 
 
 def delete_attachment(bill: Bill, bill_attachment_id: str, user_id: str) -> str:
@@ -192,24 +244,20 @@ def delete_attachment(bill: Bill, bill_attachment_id: str, user_id: str) -> str:
     # Capture before the row is deleted.
     xero_attachment_id = bill_attachment.xero_attachment_id or ""
 
-    s3 = _get_s3_client()
-    try:
-        s3.delete_object(Bucket=settings.S3_BUCKET, Key=attachment.file_path)
-    except ClientError as e:
-        logger.warning("S3 delete failed (proceeding): %s", e)
-
-    with transaction.atomic():
-        bill_attachment.delete()
-        if not attachment.bill_attachments.exists():
-            attachment.delete()
+    _delete_mapping_and_orphan(bill_attachment, attachment, "bill_attachments")
 
     log_audit(
-        bill, Audit.Action.ATTACHMENT_DELETED, user_id,
+        bill,
+        Audit.Action.ATTACHMENT_DELETED,
+        user_id,
         f"Attachment '{attachment.original_name}' removed",
     )
     logger.info(
         "Attachment deleted bill_id=%s attachment_id=%s xero_attachment_id=%s by user=%s",
-        bill.id, bill_attachment_id, xero_attachment_id or "none", user_id,
+        bill.id,
+        bill_attachment_id,
+        xero_attachment_id or "none",
+        user_id,
     )
     return xero_attachment_id
 
@@ -237,7 +285,9 @@ def serialize_attachment(attachment: Attachment) -> dict:
     }
 
 
-def generate_presigned_download_url(attachment: Attachment, expires_in: int = 900) -> str:
+def generate_presigned_download_url(
+    attachment: Attachment, expires_in: int = 900
+) -> str:
     """Generate a presigned S3 URL for downloading an attachment (default 15 min)."""
 
     s3 = _get_s3_client()
@@ -248,7 +298,8 @@ def generate_presigned_download_url(attachment: Attachment, expires_in: int = 90
                 "Bucket": settings.S3_BUCKET,
                 "Key": attachment.file_path,
                 "ResponseContentDisposition": f'inline; filename="{attachment.original_name}"',
-                "ResponseContentType": attachment.mime_type or "application/octet-stream",
+                "ResponseContentType": attachment.mime_type
+                or "application/octet-stream",
             },
             ExpiresIn=expires_in,
         )
@@ -261,6 +312,7 @@ def generate_presigned_download_url(attachment: Attachment, expires_in: int = 90
 # ═══════════════════════════════════════════════════════════════════════════
 # PAYMENT ATTACHMENTS
 # ═══════════════════════════════════════════════════════════════════════════
+
 
 def upload_payment_attachment(
     payment: Payment,
@@ -275,48 +327,13 @@ def upload_payment_attachment(
             f"Allowed: {', '.join(sorted(allowed_roles))}."
         )
 
-    resolved_content_type = _resolve_content_type(file)
-    if resolved_content_type is None:
-        raise BillValidationError(
-            f"File type '{file.content_type or 'unknown'}' is not allowed"
-        )
-
-    if file.size and file.size > MAX_FILE_SIZE:
-        raise BillValidationError("File size exceeds 10 MB limit")
-
-    file.seek(0)
-    raw = file.read()
-    downsized = downsize_bytes(raw, resolved_content_type)
-    if len(downsized) < len(raw):
-        logger.info(
-            "Downsized %s: %d -> %d bytes", file.name, len(raw), len(downsized),
-        )
-
-    ext = os.path.splitext(file.name)[1] if file.name else ""
-    stored_name = f"{uuid.uuid4().hex}{ext}"
-    s3_key = f"attachments/payments/{payment.bill_id}/{payment.id}/{stored_name}"
-
-    s3 = _get_s3_client()
-    try:
-        s3.upload_fileobj(
-            io.BytesIO(downsized),
-            settings.S3_BUCKET,
-            s3_key,
-            ExtraArgs={"ContentType": resolved_content_type},
-        )
-    except ClientError as e:
-        logger.error("S3 upload failed: %s", e)
-        raise BillValidationError("File upload failed. Please try again.")
+    attachment_fields = _upload_file_to_s3(
+        file, f"attachments/payments/{payment.bill_id}/{payment.id}"
+    )
 
     with transaction.atomic():
         attachment = Attachment.objects.create(
-            original_name=file.name or "unnamed",
-            stored_name=stored_name,
-            file_path=s3_key,
-            mime_type=resolved_content_type,
-            file_size=len(downsized),
-            file_extension=ext.lstrip("."),
-            storage_provider="s3",
+            **attachment_fields,
             uploaded_by=user_id,
         )
 
@@ -329,7 +346,9 @@ def upload_payment_attachment(
 
     logger.info(
         "Payment attachment uploaded payment_id=%s file=%s mime=%s",
-        payment.id, file.name, resolved_content_type,
+        payment.id,
+        file.name,
+        attachment_fields["mime_type"],
     )
     return payment_attachment
 
@@ -346,18 +365,11 @@ def delete_payment_attachment(
 
     attachment = pa.attachment
 
-    s3 = _get_s3_client()
-    try:
-        s3.delete_object(Bucket=settings.S3_BUCKET, Key=attachment.file_path)
-    except ClientError as e:
-        logger.warning("S3 delete failed (proceeding): %s", e)
-
-    with transaction.atomic():
-        pa.delete()
-        if not attachment.payment_attachments.exists():
-            attachment.delete()
+    _delete_mapping_and_orphan(pa, attachment, "payment_attachments")
 
     logger.info(
         "Payment attachment deleted payment_id=%s attachment_id=%s by user=%s",
-        payment.id, payment_attachment_id, user_id,
+        payment.id,
+        payment_attachment_id,
+        user_id,
     )

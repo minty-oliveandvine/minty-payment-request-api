@@ -300,7 +300,9 @@ def test_inactive_depreciatn_excluded_regardless(
     data = json.loads(resp.content)
     codes = {row["account_code"] for row in data}
 
-    assert "760" not in codes, "Active DEPRECIATN must still be excluded (type not permitted)"
+    assert (
+        "760" not in codes
+    ), "Active DEPRECIATN must still be excluded (type not permitted)"
     assert "761" not in codes
     assert "600" in codes
 

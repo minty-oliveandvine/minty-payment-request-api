@@ -64,7 +64,9 @@ def _ensure_reference_unique(
         )
 
 
-def _final_reference_for_create(entity_id: str, user_id: str, incoming: str | None) -> str:
+def _final_reference_for_create(
+    entity_id: str, user_id: str, incoming: str | None
+) -> str:
     """Use explicit reference if provided; otherwise generate MB… + timestamp (unique per entity)."""
     ref = (incoming or "").strip()
     if ref:
@@ -111,7 +113,9 @@ def _collect_line_item_changes(bill: Bill, data) -> list[str]:
             old_li = old_lines[idx]
             if (new_li.account_code or "") != (old_li.account_code or ""):
                 old_label = f"{old_li.account_code} - {old_li.account_name}".strip(" -")
-                new_label = f"{new_li.account_code} - {getattr(new_li, 'account_name', '')}".strip(" -")
+                new_label = f"{new_li.account_code} - {getattr(new_li, 'account_name', '')}".strip(
+                    " -"
+                )
                 changes.append(f"Account code: {_fmt(old_label)} → {_fmt(new_label)}")
     if len(new_lines) != len(old_lines):
         changes.append(f"Line items: {len(old_lines)} → {len(new_lines)}")
@@ -136,7 +140,9 @@ def validate_for_submission(data, bill=None):
     if amount is None or amount <= 0:
         errors.append("Amount must be greater than zero.")
 
-    invoice_date = getattr(data, "invoice_date", None) or (bill.invoice_date if bill else None)
+    invoice_date = getattr(data, "invoice_date", None) or (
+        bill.invoice_date if bill else None
+    )
     if not invoice_date:
         errors.append("Invoice date is required.")
 
@@ -160,7 +166,9 @@ def validate_for_submission(data, bill=None):
 
 
 def save_bill_draft(data, user_id: str, entity_id: str) -> Bill:
-    ref = _final_reference_for_create(entity_id, user_id, getattr(data, "reference", None))
+    ref = _final_reference_for_create(
+        entity_id, user_id, getattr(data, "reference", None)
+    )
     with transaction.atomic():
         bill = Bill.objects.create(
             entity_id=entity_id,
@@ -200,13 +208,19 @@ def update_bill_draft(bill: Bill, data, user_id: str) -> Bill:
     if bill.status == Bill.Status.VOIDED:
         raise BillValidationError("Cannot edit a voided bill.")
     draft_fields = (
-        "contact", "xero_contact_id", "description", "amount",
-        "due_date", "invoice_date", "reference", "currency_code",
+        "contact",
+        "xero_contact_id",
+        "description",
+        "amount",
+        "due_date",
+        "invoice_date",
+        "reference",
+        "currency_code",
         "xero_account_code",
     )
-    if getattr(data, "reference", None) is not None and not _reference_unchanged_for_bill(
-        bill, data.reference
-    ):
+    if getattr(
+        data, "reference", None
+    ) is not None and not _reference_unchanged_for_bill(bill, data.reference):
         _ensure_reference_unique(
             bill.entity_id, data.reference, exclude_bill_id=str(bill.pk)
         )
@@ -238,15 +252,21 @@ def update_bill_draft(bill: Bill, data, user_id: str) -> Bill:
                 )
 
         bill.save()
-        log_audit(bill, Audit.Action.EDITED, user_id,
-                  _build_change_detail(changes, "Draft updated"))
+        log_audit(
+            bill,
+            Audit.Action.EDITED,
+            user_id,
+            _build_change_detail(changes, "Draft updated"),
+        )
 
     logger.info("Draft bill updated id=%s by user=%s", bill.id, user_id)
     return bill
 
 
 def create_bill(data, user_id: str, entity_id: str) -> Bill:
-    ref = _final_reference_for_create(entity_id, user_id, getattr(data, "reference", None))
+    ref = _final_reference_for_create(
+        entity_id, user_id, getattr(data, "reference", None)
+    )
     with transaction.atomic():
         bill = Bill.objects.create(
             entity_id=entity_id,
@@ -284,7 +304,9 @@ def create_bill(data, user_id: str, entity_id: str) -> Bill:
 
 def submit_bill(data, user_id: str, entity_id: str) -> Bill:
     validate_for_submission(data)
-    ref = _final_reference_for_create(entity_id, user_id, getattr(data, "reference", None))
+    ref = _final_reference_for_create(
+        entity_id, user_id, getattr(data, "reference", None)
+    )
     with transaction.atomic():
         bill = Bill.objects.create(
             entity_id=entity_id,
@@ -324,16 +346,23 @@ def update_bill(bill: Bill, data, user_id: str) -> Bill:
     if bill.status == Bill.Status.VOIDED:
         raise BillValidationError("Cannot edit a voided bill.")
     updatable_fields = (
-        "contact", "xero_contact_id", "description", "amount",
-        "status", "due_date", "invoice_date", "reference", "currency_code",
+        "contact",
+        "xero_contact_id",
+        "description",
+        "amount",
+        "status",
+        "due_date",
+        "invoice_date",
+        "reference",
+        "currency_code",
         "xero_account_code",
     )
     if getattr(data, "status", None) == "submitted" and bill.status != "submitted":
         validate_for_submission(data, bill=bill)
 
-    if getattr(data, "reference", None) is not None and not _reference_unchanged_for_bill(
-        bill, data.reference
-    ):
+    if getattr(
+        data, "reference", None
+    ) is not None and not _reference_unchanged_for_bill(bill, data.reference):
         _ensure_reference_unique(
             bill.entity_id, data.reference, exclude_bill_id=str(bill.pk)
         )
@@ -378,8 +407,9 @@ def update_bill(bill: Bill, data, user_id: str) -> Bill:
                 "cancelled": Audit.Action.CANCELLED,
             }
             action = _STATUS_ACTION_MAP.get(new_status, Audit.Action.STATUS_CHANGED)
-            detail = _build_change_detail(changes,
-                                          f"Status changed from {old_status} to {new_status}")
+            detail = _build_change_detail(
+                changes, f"Status changed from {old_status} to {new_status}"
+            )
             log_audit(bill, action, user_id, detail)
         else:
             detail = _build_change_detail(changes, "Bill updated")

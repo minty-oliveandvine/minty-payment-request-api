@@ -109,6 +109,7 @@ def _make_completed_payment(bill, user, amount="100.00"):
 # 0. ROLE STRING NORMALIZATION
 # ═══════════════════════════════════════════════════════════════════════════
 
+
 @pytest.mark.django_db
 class TestRoleNormalization:
     """Spaces and hyphens in DB role strings map to the same matrix keys."""
@@ -133,6 +134,7 @@ class TestRoleNormalization:
 # 1. CREATE BILL
 # ═══════════════════════════════════════════════════════════════════════════
 
+
 @pytest.mark.django_db
 class TestCreateBillPermissions:
     """Create Bill: cashier, shop_manager, accountant, admin, super_admin → 201
@@ -147,7 +149,9 @@ class TestCreateBillPermissions:
             content_type="application/json",
             **_auth(user, entity),
         )
-        assert resp.status_code == 201, f"Role '{role}' should be allowed to create bills"
+        assert (
+            resp.status_code == 201
+        ), f"Role '{role}' should be allowed to create bills"
 
     def test_denied_role_cannot_create(self, api, user, entity):
         _set_role(user, entity, DENIED_ROLE)
@@ -163,6 +167,7 @@ class TestCreateBillPermissions:
 # ═══════════════════════════════════════════════════════════════════════════
 # 2. EDIT BILL (Draft / Submitted)
 # ═══════════════════════════════════════════════════════════════════════════
+
 
 @pytest.mark.django_db
 class TestEditDraftSubmittedBillPermissions:
@@ -199,6 +204,7 @@ class TestEditDraftSubmittedBillPermissions:
 # 3. EDIT BILL (Paid / Partially paid)
 # ═══════════════════════════════════════════════════════════════════════════
 
+
 @pytest.mark.django_db
 class TestEditPaidBillPermissions:
     """Edit Bill (paid / partially_paid): elevated → 200; cashier / shop_manager → 403."""
@@ -206,7 +212,12 @@ class TestEditPaidBillPermissions:
     @pytest.mark.parametrize("status", ["paid", "partially_paid"])
     @pytest.mark.parametrize("role", ELEVATED_ROLES)
     def test_elevated_roles_can_edit_paid_like_bill(
-        self, api, user, entity, role, status,
+        self,
+        api,
+        user,
+        entity,
+        role,
+        status,
     ):
         _set_role(user, entity, role)
         bill = _make_bill(entity, user, status=status)
@@ -221,7 +232,12 @@ class TestEditPaidBillPermissions:
     @pytest.mark.parametrize("status", ["paid", "partially_paid"])
     @pytest.mark.parametrize("role", BASIC_ROLES)
     def test_basic_roles_cannot_edit_paid_like_bill(
-        self, api, user, entity, role, status,
+        self,
+        api,
+        user,
+        entity,
+        role,
+        status,
     ):
         _set_role(user, entity, role)
         bill = _make_bill(entity, user, status=status)
@@ -237,6 +253,7 @@ class TestEditPaidBillPermissions:
 # ═══════════════════════════════════════════════════════════════════════════
 # 4. CHANGE PAID STATUS
 # ═══════════════════════════════════════════════════════════════════════════
+
 
 @pytest.mark.django_db
 class TestChangePaidStatusPermissions:
@@ -273,6 +290,7 @@ class TestChangePaidStatusPermissions:
 # 5. DELETE BILL (Draft / Submitted)
 # ═══════════════════════════════════════════════════════════════════════════
 
+
 @pytest.mark.django_db
 class TestDeleteDraftSubmittedBillPermissions:
     """Delete Bill (draft/submitted): all bill roles → 200
@@ -298,6 +316,7 @@ class TestDeleteDraftSubmittedBillPermissions:
 # 6. DELETE BILL (Paid / Partially paid)
 # ═══════════════════════════════════════════════════════════════════════════
 
+
 @pytest.mark.django_db
 class TestDeletePaidBillPermissions:
     """Delete Bill (paid / partially_paid): elevated → voids bill; basic roles → 403."""
@@ -305,7 +324,12 @@ class TestDeletePaidBillPermissions:
     @pytest.mark.parametrize("status", ["paid", "partially_paid"])
     @pytest.mark.parametrize("role", ELEVATED_ROLES)
     def test_elevated_roles_can_void_paid_like_bill(
-        self, api, user, entity, role, status,
+        self,
+        api,
+        user,
+        entity,
+        role,
+        status,
     ):
         _set_role(user, entity, role)
         bill = _make_bill(entity, user, status=status)
@@ -317,7 +341,12 @@ class TestDeletePaidBillPermissions:
     @pytest.mark.parametrize("status", ["paid", "partially_paid"])
     @pytest.mark.parametrize("role", BASIC_ROLES)
     def test_basic_roles_cannot_delete_paid_like_bill(
-        self, api, user, entity, role, status,
+        self,
+        api,
+        user,
+        entity,
+        role,
+        status,
     ):
         _set_role(user, entity, role)
         bill = _make_bill(entity, user, status=status)
@@ -329,6 +358,7 @@ class TestDeletePaidBillPermissions:
 # 7. PUBLISH / REPUBLISH TO XERO (permission check only)
 # ═══════════════════════════════════════════════════════════════════════════
 
+
 @pytest.mark.django_db
 class TestPublishXeroPermissions:
     """Publish to Xero: accountant, admin, super_admin → allowed
@@ -337,19 +367,26 @@ class TestPublishXeroPermissions:
     @pytest.mark.parametrize("role", ELEVATED_ROLES)
     def test_elevated_roles_allowed(self, role):
         from core.permissions import check_publish_xero
+
         check_publish_xero(role)  # should not raise
 
     @pytest.mark.parametrize("role", BASIC_ROLES)
     def test_basic_roles_denied(self, role):
         from core.exceptions import PermissionDeniedError
         from core.permissions import check_publish_xero
+
         with pytest.raises(PermissionDeniedError):
             check_publish_xero(role)
 
     @patch("bills.api.publish_bill_to_xero")
     @patch("bills.api.resolve_xero_access_token_for_entity")
     def test_http_publish_denied_for_cashier(
-        self, mock_token, mock_publish, api, user, entity,
+        self,
+        mock_token,
+        mock_publish,
+        api,
+        user,
+        entity,
     ):
         _set_role(user, entity, "cashier")
         bill = _make_bill(entity, user, status="submitted")
@@ -364,7 +401,12 @@ class TestPublishXeroPermissions:
     @patch("bills.api.publish_bill_to_xero")
     @patch("bills.api.resolve_xero_access_token_for_entity")
     def test_http_publish_allowed_for_accountant(
-        self, mock_token, mock_publish, api, user, entity,
+        self,
+        mock_token,
+        mock_publish,
+        api,
+        user,
+        entity,
     ):
         _set_role(user, entity, "accountant")
         bill = _make_bill(entity, user, status="submitted")
@@ -383,6 +425,7 @@ class TestPublishXeroPermissions:
 # 8. DELETE PAYMENT (no bill-status gate; elevated only)
 # ═══════════════════════════════════════════════════════════════════════════
 
+
 @pytest.mark.django_db
 class TestDeletePaymentPermissions:
     """Delete payment: elevated roles may delete even when bill is paid."""
@@ -393,7 +436,12 @@ class TestDeletePaymentPermissions:
     )
     @pytest.mark.parametrize("role", ELEVATED_ROLES)
     def test_elevated_can_delete_payment(
-        self, api, user, entity, role, bill_status,
+        self,
+        api,
+        user,
+        entity,
+        role,
+        bill_status,
     ):
         _set_role(user, entity, role)
         bill = _make_bill(entity, user, status=bill_status)
@@ -402,12 +450,15 @@ class TestDeletePaymentPermissions:
             f"/api/v1/bills/{bill.id}/payments/{pay.id}",
             **_auth(user, entity),
         )
-        assert resp.status_code == 200, (
-            f"Role {role} should delete payment on {bill_status} bill"
-        )
+        assert (
+            resp.status_code == 200
+        ), f"Role {role} should delete payment on {bill_status} bill"
 
     def test_cashier_cannot_delete_payment_even_on_draft(
-        self, api, user, entity,
+        self,
+        api,
+        user,
+        entity,
     ):
         _set_role(user, entity, "cashier")
         bill = _make_bill(entity, user, status="draft")

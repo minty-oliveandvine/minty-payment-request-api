@@ -2,10 +2,10 @@ import uuid
 
 from django.db import models
 
-
 # ═══════════════════════════════════════════════════════════════════════════
 # BILL
 # ═══════════════════════════════════════════════════════════════════════════
+
 
 class Bill(models.Model):
     class Status(models.TextChoices):
@@ -29,7 +29,9 @@ class Bill(models.Model):
     contact = models.CharField(max_length=100, blank=True, default="")
     xero_contact_id = models.CharField(max_length=36, blank=True, default="")
     status = models.CharField(
-        max_length=30, choices=Status.choices, default=Status.DRAFT,
+        max_length=30,
+        choices=Status.choices,
+        default=Status.DRAFT,
     )
     amount = models.DecimalField(max_digits=14, decimal_places=2, default=0)
     description = models.TextField(blank=True, default="")
@@ -59,10 +61,13 @@ class Bill(models.Model):
 # BILL LINE ITEM
 # ═══════════════════════════════════════════════════════════════════════════
 
+
 class BillLineItem(models.Model):
     id = models.CharField(max_length=36, primary_key=True, default=uuid.uuid4)
     bill = models.ForeignKey(
-        Bill, related_name="line_items", on_delete=models.CASCADE,
+        Bill,
+        related_name="line_items",
+        on_delete=models.CASCADE,
     )
     description = models.TextField(blank=True, default="")
     quantity = models.DecimalField(max_digits=12, decimal_places=4, default=1)
@@ -88,6 +93,7 @@ class BillLineItem(models.Model):
 # AUDIT
 # ═══════════════════════════════════════════════════════════════════════════
 
+
 class Audit(models.Model):
     class Action(models.TextChoices):
         CREATED = "created", "Created"
@@ -106,7 +112,9 @@ class Audit(models.Model):
 
     id = models.CharField(max_length=36, primary_key=True, default=uuid.uuid4)
     bill = models.ForeignKey(
-        Bill, related_name="audits", on_delete=models.CASCADE,
+        Bill,
+        related_name="audits",
+        on_delete=models.CASCADE,
     )
     action = models.CharField(max_length=100, choices=Action.choices)
     detail = models.TextField(blank=True, default="")
@@ -129,6 +137,7 @@ class Audit(models.Model):
 # PAYMENT
 # ═══════════════════════════════════════════════════════════════════════════
 
+
 class Payment(models.Model):
     class PaymentStatus(models.TextChoices):
         PENDING = "pending", "Pending"
@@ -139,7 +148,9 @@ class Payment(models.Model):
 
     id = models.CharField(max_length=36, primary_key=True, default=uuid.uuid4)
     bill = models.ForeignKey(
-        Bill, related_name="payments", on_delete=models.CASCADE,
+        Bill,
+        related_name="payments",
+        on_delete=models.CASCADE,
     )
     payment_date = models.DateField(null=True, blank=True)
     amount = models.DecimalField(max_digits=12, decimal_places=2, default=0)
@@ -169,6 +180,7 @@ class Payment(models.Model):
 # ATTACHMENT
 # ═══════════════════════════════════════════════════════════════════════════
 
+
 class Attachment(models.Model):
     id = models.CharField(max_length=36, primary_key=True, default=uuid.uuid4)
     original_name = models.CharField(max_length=255)
@@ -196,6 +208,7 @@ class Attachment(models.Model):
 # BILL ATTACHMENT (mapping)
 # ═══════════════════════════════════════════════════════════════════════════
 
+
 class BillAttachment(models.Model):
     class AttachmentRole(models.TextChoices):
         INVOICE = "invoice", "Invoice"
@@ -206,10 +219,14 @@ class BillAttachment(models.Model):
 
     id = models.CharField(max_length=36, primary_key=True, default=uuid.uuid4)
     bill = models.ForeignKey(
-        Bill, related_name="bill_attachments", on_delete=models.CASCADE,
+        Bill,
+        related_name="bill_attachments",
+        on_delete=models.CASCADE,
     )
     attachment = models.ForeignKey(
-        Attachment, related_name="bill_attachments", on_delete=models.CASCADE,
+        Attachment,
+        related_name="bill_attachments",
+        on_delete=models.CASCADE,
     )
     attachment_role = models.CharField(
         max_length=50,
@@ -245,6 +262,7 @@ class BillAttachment(models.Model):
 # PAYMENT ATTACHMENT (mapping)
 # ═══════════════════════════════════════════════════════════════════════════
 
+
 class PaymentAttachment(models.Model):
     class AttachmentRole(models.TextChoices):
         BANK_SLIP = "bank_slip", "Bank Slip"
@@ -254,10 +272,14 @@ class PaymentAttachment(models.Model):
 
     id = models.CharField(max_length=36, primary_key=True, default=uuid.uuid4)
     payment = models.ForeignKey(
-        Payment, related_name="payment_attachments", on_delete=models.CASCADE,
+        Payment,
+        related_name="payment_attachments",
+        on_delete=models.CASCADE,
     )
     attachment = models.ForeignKey(
-        Attachment, related_name="payment_attachments", on_delete=models.CASCADE,
+        Attachment,
+        related_name="payment_attachments",
+        on_delete=models.CASCADE,
     )
     attachment_role = models.CharField(
         max_length=50,
@@ -287,6 +309,7 @@ class PaymentAttachment(models.Model):
 # ENTITY FUNCTION
 # ═══════════════════════════════════════════════════════════════════════════
 
+
 class EntityFunction(models.Model):
     id = models.CharField(max_length=36, primary_key=True, default=uuid.uuid4)
     function_code = models.CharField(max_length=100, unique=True)
@@ -306,6 +329,7 @@ class EntityFunction(models.Model):
 # ═══════════════════════════════════════════════════════════════════════════
 # ENTITY FUNCTION MAP
 # ═══════════════════════════════════════════════════════════════════════════
+
 
 class EntityFunctionMap(models.Model):
     id = models.CharField(max_length=36, primary_key=True, default=uuid.uuid4)
@@ -334,6 +358,7 @@ class EntityFunctionMap(models.Model):
 # ENTITY BILL ACCOUNT XERO
 # ═══════════════════════════════════════════════════════════════════════════
 
+
 class EntityBillAccountXero(models.Model):
     id = models.CharField(max_length=36, primary_key=True, default=uuid.uuid4)
     entity_id = models.CharField(max_length=36, db_index=True)
@@ -360,6 +385,7 @@ class EntityBillAccountXero(models.Model):
 # CURRENCY INFO
 # ═══════════════════════════════════════════════════════════════════════════
 
+
 class CurrencyInfo(models.Model):
     # The pettycashv2.currency_info PK is a real uuid column (Alembic
     # c8e0a2b4d6f8) — UUIDField so the ORM round-trips it cleanly.
@@ -383,6 +409,7 @@ class CurrencyInfo(models.Model):
 # ═══════════════════════════════════════════════════════════════════════════
 # ENTITY BILL CURRENCY
 # ═══════════════════════════════════════════════════════════════════════════
+
 
 class EntityBillCurrency(models.Model):
     id = models.CharField(max_length=36, primary_key=True, default=uuid.uuid4)
@@ -410,6 +437,7 @@ class EntityBillCurrency(models.Model):
 # XERO BILL SYNC
 # ═══════════════════════════════════════════════════════════════════════════
 
+
 class XeroBillSync(models.Model):
     class SyncDirection(models.TextChoices):
         OUTBOUND = "outbound", "Outbound"
@@ -429,14 +457,19 @@ class XeroBillSync(models.Model):
 
     id = models.CharField(max_length=36, primary_key=True, default=uuid.uuid4)
     bill = models.ForeignKey(
-        Bill, related_name="xero_syncs", on_delete=models.CASCADE,
+        Bill,
+        related_name="xero_syncs",
+        on_delete=models.CASCADE,
     )
     sync_direction = models.CharField(
-        max_length=20, choices=SyncDirection.choices,
+        max_length=20,
+        choices=SyncDirection.choices,
     )
     sync_type = models.CharField(max_length=30, choices=SyncType.choices)
     sync_status = models.CharField(
-        max_length=30, choices=SyncStatus.choices, default=SyncStatus.PENDING,
+        max_length=30,
+        choices=SyncStatus.choices,
+        default=SyncStatus.PENDING,
     )
     request_type = models.CharField(max_length=20, blank=True, default="")
     request_status = models.CharField(max_length=30, blank=True, default="")
@@ -449,13 +482,22 @@ class XeroBillSync(models.Model):
     response_invoice_number = models.CharField(max_length=100, blank=True, default="")
     response_status = models.CharField(max_length=30, blank=True, default="")
     response_amount_due = models.DecimalField(
-        max_digits=12, decimal_places=2, null=True, blank=True,
+        max_digits=12,
+        decimal_places=2,
+        null=True,
+        blank=True,
     )
     response_amount_paid = models.DecimalField(
-        max_digits=12, decimal_places=2, null=True, blank=True,
+        max_digits=12,
+        decimal_places=2,
+        null=True,
+        blank=True,
     )
     response_total = models.DecimalField(
-        max_digits=12, decimal_places=2, null=True, blank=True,
+        max_digits=12,
+        decimal_places=2,
+        null=True,
+        blank=True,
     )
     response_currency_code = models.CharField(max_length=10, blank=True, default="")
     xero_response_id = models.CharField(max_length=36, blank=True, default="")
@@ -485,10 +527,13 @@ class XeroBillSync(models.Model):
 # XERO BILL SYNC LINE
 # ═══════════════════════════════════════════════════════════════════════════
 
+
 class XeroBillSyncLine(models.Model):
     id = models.CharField(max_length=36, primary_key=True, default=uuid.uuid4)
     xero_bill_sync = models.ForeignKey(
-        XeroBillSync, related_name="sync_lines", on_delete=models.CASCADE,
+        XeroBillSync,
+        related_name="sync_lines",
+        on_delete=models.CASCADE,
     )
     bill_line_item = models.ForeignKey(
         BillLineItem,
@@ -507,7 +552,10 @@ class XeroBillSyncLine(models.Model):
     response_line_item_id = models.CharField(max_length=36, blank=True, default="")
     response_account_id = models.CharField(max_length=36, blank=True, default="")
     response_tax_amount = models.DecimalField(
-        max_digits=12, decimal_places=2, null=True, blank=True,
+        max_digits=12,
+        decimal_places=2,
+        null=True,
+        blank=True,
     )
     created_at = models.DateTimeField(auto_now_add=True)
 
@@ -523,10 +571,13 @@ class XeroBillSyncLine(models.Model):
 # XERO BILL SYNC PAYLOAD (1:1 with xero_bill_sync)
 # ═══════════════════════════════════════════════════════════════════════════
 
+
 class XeroBillSyncPayload(models.Model):
     id = models.CharField(max_length=36, primary_key=True, default=uuid.uuid4)
     xero_bill_sync = models.OneToOneField(
-        XeroBillSync, related_name="payload", on_delete=models.CASCADE,
+        XeroBillSync,
+        related_name="payload",
+        on_delete=models.CASCADE,
     )
     request_json = models.JSONField(null=True, blank=True)
     response_json = models.JSONField(null=True, blank=True)
@@ -546,10 +597,13 @@ class XeroBillSyncPayload(models.Model):
 # XERO BILL RESPONSE LINE
 # ═══════════════════════════════════════════════════════════════════════════
 
+
 class XeroBillResponseLine(models.Model):
     id = models.CharField(max_length=36, primary_key=True, default=uuid.uuid4)
     xero_bill_sync = models.ForeignKey(
-        XeroBillSync, related_name="response_lines", on_delete=models.CASCADE,
+        XeroBillSync,
+        related_name="response_lines",
+        on_delete=models.CASCADE,
     )
     xero_line_item_id = models.CharField(max_length=36, blank=True, default="")
     description = models.TextField(blank=True, default="")

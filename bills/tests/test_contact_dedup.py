@@ -31,7 +31,6 @@ from unittest.mock import MagicMock, patch
 
 from bills.services.contact_service import _merge_db_contacts_missing_from_live
 
-
 # ── helpers ────────────────────────────────────────────────────────────────
 
 
@@ -163,9 +162,9 @@ def test_different_uuids_both_appear():
     with patch(_PATCH, _patch_qs([db_row])):
         result = _merge_db_contacts_missing_from_live(live, "entity-test", None)
 
-    assert len(result) == 2, (
-        f"Two distinct contacts should both appear. Got {len(result)}: {_ids(result)}"
-    )
+    assert (
+        len(result) == 2
+    ), f"Two distinct contacts should both appear. Got {len(result)}: {_ids(result)}"
     assert "ABC-123" in _ids(result)
     assert "DEF-456" in _ids(result)
     _assert_no_dupes(result, "different-uuids")
@@ -245,19 +244,19 @@ def test_multiple_overlapping_contacts_various_case():
         _make_live("CCC-003", "Charlie"),
     ]
     db_rows = [
-        _make_db_row("aaa-001", "Acme"),        # matches live AAA-001 (lowercase)
-        _make_db_row("Bbb-002", "Bravo"),       # matches live BBB-002 (mixed)
-        _make_db_row("CCC-003", "Charlie"),     # matches live CCC-003 (exact)
-        _make_db_row("DDD-004", "Delta"),       # NEW — not in live
-        _make_db_row("EEE-005", "Echo"),        # NEW — not in live
+        _make_db_row("aaa-001", "Acme"),  # matches live AAA-001 (lowercase)
+        _make_db_row("Bbb-002", "Bravo"),  # matches live BBB-002 (mixed)
+        _make_db_row("CCC-003", "Charlie"),  # matches live CCC-003 (exact)
+        _make_db_row("DDD-004", "Delta"),  # NEW — not in live
+        _make_db_row("EEE-005", "Echo"),  # NEW — not in live
     ]
 
     with patch(_PATCH, _patch_qs(db_rows)):
         result = _merge_db_contacts_missing_from_live(live, "entity-test", None)
 
-    assert len(result) == 5, (
-        f"Expected 5 (3 live + 2 new), got {len(result)}: {_ids(result)}"
-    )
+    assert (
+        len(result) == 5
+    ), f"Expected 5 (3 live + 2 new), got {len(result)}: {_ids(result)}"
     _assert_no_dupes(result, "multiple-overlaps-various-case")
     # The two new DB contacts must be present.
     assert "DDD-004" in _ids(result)
@@ -277,9 +276,9 @@ def test_whitespace_in_live_uuid_stripped():
     with patch(_PATCH, _patch_qs([db_row])):
         result = _merge_db_contacts_missing_from_live(live, "entity-test", None)
 
-    assert len(result) == 1, (
-        f"Whitespace in live UUID should be stripped. Got {len(result)}: {_ids(result)}"
-    )
+    assert (
+        len(result) == 1
+    ), f"Whitespace in live UUID should be stripped. Got {len(result)}: {_ids(result)}"
     _assert_no_dupes(result, "whitespace-live")
 
 
@@ -296,9 +295,9 @@ def test_whitespace_in_db_uuid_stripped():
     with patch(_PATCH, _patch_qs([db_row])):
         result = _merge_db_contacts_missing_from_live(live, "entity-test", None)
 
-    assert len(result) == 1, (
-        f"Whitespace + case in DB UUID should be handled. Got {len(result)}: {_ids(result)}"
-    )
+    assert (
+        len(result) == 1
+    ), f"Whitespace + case in DB UUID should be handled. Got {len(result)}: {_ids(result)}"
     _assert_no_dupes(result, "whitespace-db")
 
 
@@ -375,13 +374,13 @@ def test_large_dataset_no_duplicates():
         result = _merge_db_contacts_missing_from_live(live, "entity-test", None)
 
     expected_count = 75  # 50 live + 25 new DB rows
-    assert len(result) == expected_count, (
-        f"Large dataset: expected {expected_count}, got {len(result)}"
-    )
+    assert (
+        len(result) == expected_count
+    ), f"Large dataset: expected {expected_count}, got {len(result)}"
     _assert_no_dupes(result, "large-dataset")
     # Spot-check: the 25 new DB-only contacts are present.
     result_ids_upper = {xid.upper() for xid in _ids(result) if xid}
     for i in range(50, 75):
-        assert f"UUID-{i:04d}-UPPER" in result_ids_upper, (
-            f"DB-only contact UUID-{i:04d}-UPPER missing from result"
-        )
+        assert (
+            f"UUID-{i:04d}-UPPER" in result_ids_upper
+        ), f"DB-only contact UUID-{i:04d}-UPPER missing from result"

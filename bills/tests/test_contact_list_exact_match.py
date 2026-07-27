@@ -9,12 +9,12 @@ Simulates both modules under every scenario:
 For each scenario we compare the NAME SET produced by each module.
 """
 
+from unittest.mock import MagicMock, patch
+
 import pytest
-from unittest.mock import patch, MagicMock
 
-from shared_models.models import Entity, XeroContactSync
 from bills.services.contact_service import get_entity_bill_contacts
-
+from shared_models.models import XeroContactSync
 
 # ── Helpers that replicate Module 1 logic exactly ────────────────────────
 
@@ -33,7 +33,8 @@ def _module1_db_fallback(entity_id: str) -> set[str]:
 def _module2_result_names(entity_id, jwt_user_id) -> set[str]:
     """Module 2 via the new contact service."""
     contacts = get_entity_bill_contacts(
-        entity_id=entity_id, jwt_user_id=jwt_user_id,
+        entity_id=entity_id,
+        jwt_user_id=jwt_user_id,
     )
     return {c["name"] for c in contacts}
 
@@ -67,13 +68,16 @@ def user_with_token(db, test_user):
 @pytest.fixture
 def _seed_db_contacts(db, test_entity):
     """DB contacts with mixed xero_org_id states (realistic production data)."""
-    for i, (name, org_id, cat) in enumerate([
-        ("Alpha Supplies", "org-abc", "SUPPLIER"),
-        ("Beta Corp", "org-abc", None),
-        ("Gamma Ltd", None, "expense_contact"),
-        ("Delta Inc", "", "director_contact"),
-        ("Epsilon Trading", "org-abc", "cashsale_contact"),
-    ], start=1):
+    for i, (name, org_id, cat) in enumerate(
+        [
+            ("Alpha Supplies", "org-abc", "SUPPLIER"),
+            ("Beta Corp", "org-abc", None),
+            ("Gamma Ltd", None, "expense_contact"),
+            ("Delta Inc", "", "director_contact"),
+            ("Epsilon Trading", "org-abc", "cashsale_contact"),
+        ],
+        start=1,
+    ):
         XeroContactSync.objects.create(
             id=f"c{i}",
             entity_id=test_entity.id,
@@ -121,7 +125,8 @@ class TestExactMatchConnectedXeroOk:
             return_value=_mock_xero_ok(),
         ):
             m2_names = _module2_result_names(
-                connected_entity.id, user_with_token.id,
+                connected_entity.id,
+                user_with_token.id,
             )
 
         assert m1_names == m2_names, (
@@ -136,7 +141,11 @@ class TestExactMatchConnectedXeroFails:
     """Scenario B: Entity connected but Xero fails — both fall back to DB."""
 
     def test_same_names(
-        self, connected_entity, user_with_token, test_user_entity, _seed_db_contacts,
+        self,
+        connected_entity,
+        user_with_token,
+        test_user_entity,
+        _seed_db_contacts,
     ):
         m1_names = _module1_db_fallback(connected_entity.id)
 
@@ -145,7 +154,8 @@ class TestExactMatchConnectedXeroFails:
             return_value=_mock_xero_fail(),
         ):
             m2_names = _module2_result_names(
-                connected_entity.id, user_with_token.id,
+                connected_entity.id,
+                user_with_token.id,
             )
 
         assert m1_names == m2_names, (
@@ -155,14 +165,19 @@ class TestExactMatchConnectedXeroFails:
         )
 
     def test_includes_contacts_without_xero_org_id(
-        self, connected_entity, user_with_token, test_user_entity, _seed_db_contacts,
+        self,
+        connected_entity,
+        user_with_token,
+        test_user_entity,
+        _seed_db_contacts,
     ):
         with patch(
             "bills.services.contact_service.requests.get",
             return_value=_mock_xero_fail(),
         ):
             m2_names = _module2_result_names(
-                connected_entity.id, user_with_token.id,
+                connected_entity.id,
+                user_with_token.id,
             )
 
         assert "Gamma Ltd" in m2_names
@@ -174,7 +189,11 @@ class TestExactMatchDisconnected:
     """Scenario C: Entity disconnected — both modules use DB only."""
 
     def test_same_names(
-        self, disconnected_entity, test_user, test_user_entity, _seed_db_contacts,
+        self,
+        disconnected_entity,
+        test_user,
+        test_user_entity,
+        _seed_db_contacts,
     ):
         m1_names = _module1_db_fallback(disconnected_entity.id)
         m2_names = _module2_result_names(disconnected_entity.id, test_user.id)
@@ -186,29 +205,47 @@ class TestExactMatchDisconnected:
         )
 
     def test_all_five_present(
-        self, disconnected_entity, test_user, test_user_entity, _seed_db_contacts,
+        self,
+        disconnected_entity,
+        test_user,
+        test_user_entity,
+        _seed_db_contacts,
     ):
         m1_names = _module1_db_fallback(disconnected_entity.id)
         m2_names = _module2_result_names(disconnected_entity.id, test_user.id)
 
-        expected = {"Alpha Supplies", "Beta Corp", "Gamma Ltd", "Delta Inc", "Epsilon Trading"}
+        expected = {
+            "Alpha Supplies",
+            "Beta Corp",
+            "Gamma Ltd",
+            "Delta Inc",
+            "Epsilon Trading",
+        }
         assert m1_names == expected
         assert m2_names == expected
 
     def test_contacts_with_null_org_id_included(
-        self, disconnected_entity, test_user, test_user_entity, _seed_db_contacts,
+        self,
+        disconnected_entity,
+        test_user,
+        test_user_entity,
+        _seed_db_contacts,
     ):
         m2_names = _module2_result_names(disconnected_entity.id, test_user.id)
         assert "Gamma Ltd" in m2_names
         assert "Delta Inc" in m2_names
 
     def test_contacts_with_every_category_included(
-        self, disconnected_entity, test_user, test_user_entity, _seed_db_contacts,
+        self,
+        disconnected_entity,
+        test_user,
+        test_user_entity,
+        _seed_db_contacts,
     ):
         m2_names = _module2_result_names(disconnected_entity.id, test_user.id)
         assert "Epsilon Trading" in m2_names  # cashsale_contact
-        assert "Delta Inc" in m2_names        # director_contact
-        assert "Gamma Ltd" in m2_names        # expense_contact
+        assert "Delta Inc" in m2_names  # director_contact
+        assert "Gamma Ltd" in m2_names  # expense_contact
 
 
 @pytest.mark.django_db

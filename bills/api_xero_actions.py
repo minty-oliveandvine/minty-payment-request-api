@@ -50,9 +50,13 @@ def upload_bankslip_endpoint(request, payload: BankslipUploadIn):
     except Payment.DoesNotExist:
         raise Http404("Payment not found")
 
-    access_token = resolve_xero_access_token_for_entity(
-        request.entity_id, request.auth_user.id,
-    ) or ""
+    access_token = (
+        resolve_xero_access_token_for_entity(
+            request.entity_id,
+            request.auth_user.id,
+        )
+        or ""
+    )
     result = upload_bankslip_to_xero(
         bill_id=payload.bill_id,
         payment_id=payload.payment_id,

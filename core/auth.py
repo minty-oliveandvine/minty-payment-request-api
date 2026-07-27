@@ -10,6 +10,17 @@ from shared_models.models import User
 logger = logging.getLogger("minty-api")
 
 
+def get_entity_role(user_id: str, entity_id: str) -> str | None:
+    """Return the user's role for the entity, or None if no access."""
+    with connection.cursor() as cursor:
+        cursor.execute(
+            "SELECT role FROM user_entity WHERE user_id = %s AND entity_id = %s LIMIT 1",
+            [user_id, entity_id],
+        )
+        row = cursor.fetchone()
+        return row[0] if row else None
+
+
 class BearerAuth(HttpBearer):
     """
     Validates the JWT issued by the Flask app (Module 1) during the
@@ -21,11 +32,14 @@ class BearerAuth(HttpBearer):
     def authenticate(self, request, token):
         try:
             import hashlib
+
             key = settings.SECRET_KEY
             key_hash = hashlib.sha256(key.encode()).hexdigest()[:16]
             logger.info(
                 "Auth attempt: key_len=%d key_hash=%s token_len=%d",
-                len(key), key_hash, len(token),
+                len(key),
+                key_hash,
+                len(token),
             )
             payload = jwt.decode(token, key, algorithms=["HS256"])
             user = User.objects.get(id=payload["user_id"])
@@ -40,10 +54,16 @@ class BearerAuth(HttpBearer):
             # stored value has unexpected casing or whitespace.
             jwt_system_role = (payload.get("system_role") or "").strip().lower()
 
-            if header_entity_id and token_entity_id and header_entity_id != token_entity_id:
+            if (
+                header_entity_id
+                and token_entity_id
+                and header_entity_id != token_entity_id
+            ):
                 logger.warning(
                     "Entity ID mismatch: header=%s, token=%s, user=%s",
-                    header_entity_id, token_entity_id, user_id,
+                    header_entity_id,
+                    token_entity_id,
+                    user_id,
                 )
 
             if not entity_id:
@@ -58,7 +78,9 @@ class BearerAuth(HttpBearer):
                             "SELECT 1 FROM user_entity WHERE user_id = %s AND role = 'super_admin' LIMIT 1",
                             [str(user.id)],
                         )
-                        is_super_admin = cursor.fetchone() is not None or system_superuser
+                        is_super_admin = (
+                            cursor.fetchone() is not None or system_superuser
+                        )
                     request.auth_user = user
                     request.entity_id = ""
                     request.entity_role = ""
@@ -98,12 +120,14 @@ class BearerAuth(HttpBearer):
                     logger.info(
                         "Auth: superuser granted virtual super_admin role "
                         "for user_id=%s entity_id=%s",
-                        user.id, entity_id,
+                        user.id,
+                        entity_id,
                     )
                 else:
                     logger.warning(
                         "Auth rejected: no role for user_id=%s entity_id=%s",
-                        user.id, entity_id,
+                        user.id,
+                        entity_id,
                     )
                     return None
 
@@ -137,16 +161,9 @@ class BearerAuth(HttpBearer):
             logger.warning("Auth rejected: user not found in DB")
             return None
 
-    @staticmethod
-    def _get_entity_role(user_id: str, entity_id: str) -> str | None:
-        """Return the user's role for the entity, or None if no access."""
-        with connection.cursor() as cursor:
-            cursor.execute(
-                "SELECT role FROM user_entity WHERE user_id = %s AND entity_id = %s LIMIT 1",
-                [user_id, entity_id],
-            )
-            row = cursor.fetchone()
-            return row[0] if row else None
+    # Kept as a staticmethod so `self._get_entity_role(...)` call sites and any
+    # subclass override keep working; the implementation lives at module level.
+    _get_entity_role = staticmethod(get_entity_role)
 
     @staticmethod
     def _is_system_superuser(user_id: str) -> bool:

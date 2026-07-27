@@ -112,7 +112,9 @@ def trigger_flask_bill_chart_sync(
         return False
 
 
-def trigger_chart_sync_if_changed(request, entity_id: str, *, force: bool = False) -> bool:
+def trigger_chart_sync_if_changed(
+    request, entity_id: str, *, force: bool = False
+) -> bool:
     """Compare Xero live vs DB and sync both modules if changes detected.
 
     Returns True if the sync request was sent, False if skipped or failed.
@@ -147,7 +149,9 @@ def trigger_chart_sync_if_changed(request, entity_id: str, *, force: bool = Fals
             logger.error(
                 "Chart change sync HTTP %s entity=%s body=%s — "
                 "accounts list may be empty or stale",
-                resp.status_code, entity_id, (resp.text or "")[:500],
+                resp.status_code,
+                entity_id,
+                (resp.text or "")[:500],
             )
         else:
             try:
@@ -155,12 +159,15 @@ def trigger_chart_sync_if_changed(request, entity_id: str, *, force: bool = Fals
                 if body.get("changed"):
                     logger.info(
                         "Chart change sync: changes detected and synced entity=%s m1=%s m2=%s",
-                        entity_id, body.get("module1_synced"), body.get("module2_synced"),
+                        entity_id,
+                        body.get("module1_synced"),
+                        body.get("module2_synced"),
                     )
                 elif body.get("skipped"):
                     logger.info(
                         "Chart change sync skipped entity=%s reason=%s",
-                        entity_id, body.get("reason"),
+                        entity_id,
+                        body.get("reason"),
                     )
                 else:
                     logger.info("Chart change sync: no changes entity=%s", entity_id)
@@ -171,14 +178,13 @@ def trigger_chart_sync_if_changed(request, entity_id: str, *, force: bool = Fals
         logger.error(
             "Chart change sync request failed entity=%s: %s — "
             "accounts list may be empty or stale",
-            entity_id, exc,
+            entity_id,
+            exc,
         )
         return False
 
 
-def trigger_flask_contact_sync(
-    request, entity_id: str, *, force: bool = False
-) -> None:
+def trigger_flask_contact_sync(request, entity_id: str, *, force: bool = False) -> None:
     """POST to Flask contact sync endpoint; failures are logged only.
 
     Debounced per entity via Django cache (_CONTACT_SYNC_TTL). Use force=True

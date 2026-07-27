@@ -23,19 +23,12 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from bills.models import (
-    Attachment,
-    Bill,
-    Payment,
-    PaymentAttachment,
-    XeroBillSync,
-)
+from bills.models import Attachment, Bill, Payment, PaymentAttachment, XeroBillSync
 from bills.services.xero_publish_service import (
     _is_bankslip_filename,
     upload_bankslip_to_xero,
 )
 from shared_models.models import Entity, User, UserEntity
-
 
 # ── Constants & helpers ─────────────────────────────────────────────────────
 
@@ -117,13 +110,17 @@ def published_bill(db, entity, user) -> Bill:
         response_invoice_number=FAKE_INVOICE_NUMBER,
         idempotency_key="prior-key-bs",
         requested_by=FAKE_USER_ID,
-        requested_at=datetime.datetime(2026, 4, 1, 10, 0, 0, tzinfo=datetime.timezone.utc),
+        requested_at=datetime.datetime(
+            2026, 4, 1, 10, 0, 0, tzinfo=datetime.timezone.utc
+        ),
     )
     return bill
 
 
 @pytest.fixture
-def payment_with_bankslip(db, published_bill, user) -> tuple[Payment, PaymentAttachment]:
+def payment_with_bankslip(
+    db, published_bill, user
+) -> tuple[Payment, PaymentAttachment]:
     payment = Payment.objects.create(
         bill=published_bill,
         amount=Decimal("100.00"),
@@ -297,8 +294,14 @@ class TestBankslipUploadIdempotent:
         payment, pa = payment_with_bankslip
 
         files_on_invoice = [
-            {"FileId": "bill-att-file-id", "Name": f"{FAKE_INVOICE_NUMBER}_PAYMENTREQUEST.pdf"},
-            {"FileId": "stale-bs-file-id", "Name": f"{FAKE_INVOICE_NUMBER}_BANKSLIP.pdf"},
+            {
+                "FileId": "bill-att-file-id",
+                "Name": f"{FAKE_INVOICE_NUMBER}_PAYMENTREQUEST.pdf",
+            },
+            {
+                "FileId": "stale-bs-file-id",
+                "Name": f"{FAKE_INVOICE_NUMBER}_BANKSLIP.pdf",
+            },
         ]
 
         with (
@@ -317,7 +320,9 @@ class TestBankslipUploadIdempotent:
             )
 
         deleted_ids = {c.args[2] for c in mock_delete.call_args_list}
-        assert "bill-att-file-id" not in deleted_ids, "bill attachment must be preserved"
+        assert (
+            "bill-att-file-id" not in deleted_ids
+        ), "bill attachment must be preserved"
         assert "stale-bs-file-id" in deleted_ids, "orphaned bank slip must be deleted"
 
     def test_orphan_bankslip_without_local_tracking_is_cleaned(

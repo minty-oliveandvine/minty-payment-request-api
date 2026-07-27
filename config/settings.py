@@ -33,9 +33,7 @@ FRONTEND_APP_URL = os.environ.get("FRONTEND_APP_URL", "http://localhost:3000")
 
 CORS_ALLOWED_ORIGINS = [
     origin.strip()
-    for origin in os.environ.get(
-        "CORS_ALLOWED_ORIGINS", FRONTEND_APP_URL
-    ).split(",")
+    for origin in os.environ.get("CORS_ALLOWED_ORIGINS", FRONTEND_APP_URL).split(",")
     if origin.strip()
 ]
 CORS_ALLOW_HEADERS = [
@@ -113,18 +111,18 @@ S3_ENDPOINT_URL = os.environ.get("S3_ENDPOINT_URL", "")
 XERO_CLIENT_ID = os.environ.get("XERO_CLIENT_ID", "")
 XERO_CLIENT_SECRET = os.environ.get("XERO_CLIENT_SECRET", "")
 
-# Flask app's internal token endpoint. Authenticated with the shared SECRET_KEY.
-XERO_TOKEN_SERVICE_URL = os.environ.get(
-    "XERO_TOKEN_SERVICE_URL",
-    f"{os.environ.get('FLASK_APP_URL', 'http://localhost:5001')}/api/internal/xero/token",
-)
-XERO_TOKEN_SERVICE_TIMEOUT = int(os.environ.get("XERO_TOKEN_SERVICE_TIMEOUT", "15"))
-
 # ---------------------------------------------------------------------------
 # Cross-module
 # ---------------------------------------------------------------------------
 FLASK_APP_URL = os.environ.get("FLASK_APP_URL", "http://localhost:5001")
 # FRONTEND_APP_URL is defined above (CORS section)
+
+# Flask app's internal token endpoint. Authenticated with the shared SECRET_KEY.
+XERO_TOKEN_SERVICE_URL = os.environ.get(
+    "XERO_TOKEN_SERVICE_URL",
+    f"{FLASK_APP_URL}/api/internal/xero/token",
+)
+XERO_TOKEN_SERVICE_TIMEOUT = int(os.environ.get("XERO_TOKEN_SERVICE_TIMEOUT", "15"))
 
 # ---------------------------------------------------------------------------
 # Logging — core + API formatters

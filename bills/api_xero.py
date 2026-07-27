@@ -4,11 +4,7 @@ from django.http import Http404
 from ninja import Router
 
 from bills.models import Bill, XeroBillSync, XeroBillSyncPayload
-from bills.schemas import (
-    ErrorOut,
-    XeroBillSyncListOut,
-    XeroBillSyncOut,
-)
+from bills.schemas import ErrorOut, XeroBillSyncListOut, XeroBillSyncOut
 
 logger = logging.getLogger("minty-api")
 
@@ -24,7 +20,9 @@ def _sync_to_out(sync: XeroBillSync) -> dict:
     sync_lines = [
         {
             "id": str(sl.id),
-            "bill_line_item_id": str(sl.bill_line_item_id) if sl.bill_line_item_id else None,
+            "bill_line_item_id": (
+                str(sl.bill_line_item_id) if sl.bill_line_item_id else None
+            ),
             "description": sl.description,
             "quantity": sl.quantity,
             "unit_amount": sl.unit_amount,
@@ -138,9 +136,11 @@ def list_xero_syncs(request, bill_id: str):
 def get_xero_sync(request, bill_id: str, sync_id: str):
     bill = _get_bill_or_404(bill_id, request.entity_id)
     try:
-        sync = XeroBillSync.objects.prefetch_related(
-            "sync_lines", "response_lines"
-        ).select_related("payload").get(id=sync_id, bill=bill)
+        sync = (
+            XeroBillSync.objects.prefetch_related("sync_lines", "response_lines")
+            .select_related("payload")
+            .get(id=sync_id, bill=bill)
+        )
     except XeroBillSync.DoesNotExist:
         raise Http404("Xero sync not found")
     return _sync_to_out(sync)

@@ -5,7 +5,7 @@ from django.conf import settings
 from django.test import Client
 from django.utils import timezone as django_tz
 
-from bills.models import Attachment, Bill, BillAttachment, BillLineItem
+from bills.models import Attachment, Bill, BillAttachment
 from shared_models.models import Entity, User, UserEntity
 
 
@@ -21,6 +21,7 @@ def _block_real_token_service_calls(monkeypatch):
     Tests that exercise the token service patch `requests.post` themselves; those
     patches are applied inside the test and take precedence over this one.
     """
+
     def _blocked(*args, **kwargs):
         raise requests.ConnectionError("real HTTP blocked in tests")
 

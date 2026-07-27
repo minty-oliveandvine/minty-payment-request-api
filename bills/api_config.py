@@ -5,8 +5,6 @@ from django.db import connection
 from django.http import Http404
 from ninja import Query, Router, Schema
 
-from shared_models.models import Entity, User
-
 from bills.models import (
     CurrencyInfo,
     EntityBillAccountXero,
@@ -43,8 +41,24 @@ from core.permissions import (
     check_not_system_superuser,
     normalize_role,
 )
+from shared_models.models import Entity, User
 
 logger = logging.getLogger("minty-api")
+
+
+def _apply_partial_update(obj, update_data: dict) -> None:
+    """Assign each non-None value from a partial-update dict onto ``obj``.
+
+    Shared by the config PUT endpoints. ``update_data`` is the caller's
+    ``payload.dict(exclude_unset=True)`` — a field explicitly set to a falsy
+    value (0, False, "") is still applied; only ``None`` is skipped, matching
+    the original per-endpoint loops exactly. Does not call ``.save()``; the
+    caller does that so any surrounding side effects stay put.
+    """
+    for field, value in update_data.items():
+        if value is not None:
+            setattr(obj, field, value)
+
 
 # Xero Account.Type values permitted in the bill settings chart of accounts
 # list.
@@ -60,13 +74,15 @@ logger = logging.getLogger("minty-api")
 #   Liability            → LIABILITY
 #   Overhead             → OVERHEADS
 #   Prepayment           → PREPAYMENT
-BILL_SETTINGS_ACCOUNT_TYPES = frozenset({
-    "DIRECTCOSTS",
-    "EXPENSE",
-    "FIXED",
-    "OVERHEADS",
-    "PREPAYMENT",
-})
+BILL_SETTINGS_ACCOUNT_TYPES = frozenset(
+    {
+        "DIRECTCOSTS",
+        "EXPENSE",
+        "FIXED",
+        "OVERHEADS",
+        "PREPAYMENT",
+    }
+)
 
 
 # ═══════════════════════════════════════════════════════════════════════════
@@ -115,9 +131,7 @@ def get_entity_function(request, function_id: str):
     response={200: EntityFunctionOut, 404: ErrorOut},
     summary="Update an entity function",
 )
-def update_entity_function(
-    request, function_id: str, payload: EntityFunctionUpdateIn
-):
+def update_entity_function(request, function_id: str, payload: EntityFunctionUpdateIn):
     check_not_system_superuser(request, "modify configuration")
     check_edit_bill_settings(request.entity_role)
     try:
@@ -125,9 +139,7 @@ def update_entity_function(
     except EntityFunction.DoesNotExist:
         raise Http404("Entity function not found")
 
-    for field, value in payload.dict(exclude_unset=True).items():
-        if value is not None:
-            setattr(ef, field, value)
+    _apply_partial_update(ef, payload.dict(exclude_unset=True))
     ef.save()
     logger.info("EntityFunction updated id=%s", ef.id)
     return ef
@@ -184,8 +196,9 @@ def create_entity_function_map(request, payload: EntityFunctionMapCreateIn):
 )
 def list_entity_function_maps(request):
     return list(
-        EntityFunctionMap.objects.filter(entity_id=request.entity_id)
-        .order_by("-created_at")
+        EntityFunctionMap.objects.filter(entity_id=request.entity_id).order_by(
+            "-created_at"
+        )
     )
 
 
@@ -196,8 +209,7 @@ def list_entity_function_maps(request):
 )
 def list_entity_function_names(request):
     rows = (
-        EntityFunctionMap.objects
-        .filter(entity_id=request.entity_id, is_enabled=True)
+        EntityFunctionMap.objects.filter(entity_id=request.entity_id, is_enabled=True)
         .select_related("entity_function")
         .order_by("entity_function__function_name")
     )
@@ -231,9 +243,7 @@ def update_entity_function_map(
     except EntityFunctionMap.DoesNotExist:
         raise Http404("Entity function map not found")
 
-    for field, value in payload.dict(exclude_unset=True).items():
-        if value is not None:
-            setattr(efm, field, value)
+    _apply_partial_update(efm, payload.dict(exclude_unset=True))
     efm.save()
     logger.info("EntityFunctionMap updated id=%s", efm.id)
     return efm
@@ -279,7 +289,8 @@ def create_entity_bill_account(request, payload: EntityBillAccountXeroCreateIn):
     )
     logger.info(
         "EntityBillAccountXero created id=%s entity=%s",
-        account.id, request.entity_id,
+        account.id,
+        request.entity_id,
     )
     return 201, account
 
@@ -365,9 +376,7 @@ def update_entity_bill_account(
         raise Http404("Entity bill account not found")
 
     update_data = payload.dict(exclude_unset=True)
-    for field, value in update_data.items():
-        if value is not None:
-            setattr(account, field, value)
+    _apply_partial_update(account, update_data)
     account.save()
     logger.info("EntityBillAccountXero updated id=%s", account.id)
 
@@ -486,7 +495,9 @@ def create_currency(request, payload: CurrencyInfoCreateIn):
     check_not_system_superuser(request, "modify configuration")
     check_edit_bill_settings(request.entity_role)
     currency = CurrencyInfo.objects.create(**payload.dict())
-    logger.info("CurrencyInfo created id=%s code=%s", currency.id, currency.currency_code)
+    logger.info(
+        "CurrencyInfo created id=%s code=%s", currency.id, currency.currency_code
+    )
     return 201, currency
 
 
@@ -526,9 +537,7 @@ def update_currency(request, currency_id: str, payload: CurrencyInfoUpdateIn):
     except (CurrencyInfo.DoesNotExist, ValidationError, ValueError):
         raise Http404("Currency not found")
 
-    for field, value in payload.dict(exclude_unset=True).items():
-        if value is not None:
-            setattr(currency, field, value)
+    _apply_partial_update(currency, payload.dict(exclude_unset=True))
     currency.save()
     logger.info("CurrencyInfo updated id=%s", currency.id)
     return currency
@@ -577,7 +586,8 @@ def create_entity_bill_currency(request, payload: EntityBillCurrencyCreateIn):
     )
     logger.info(
         "EntityBillCurrency created id=%s entity=%s",
-        ebc.id, request.entity_id,
+        ebc.id,
+        request.entity_id,
     )
     return 201, ebc
 
@@ -589,8 +599,9 @@ def create_entity_bill_currency(request, payload: EntityBillCurrencyCreateIn):
 )
 def list_entity_bill_currencies(request):
     return list(
-        EntityBillCurrency.objects.filter(entity_id=request.entity_id)
-        .order_by("sort_order")
+        EntityBillCurrency.objects.filter(entity_id=request.entity_id).order_by(
+            "sort_order"
+        )
     )
 
 
@@ -625,9 +636,7 @@ def update_entity_bill_currency(
     except EntityBillCurrency.DoesNotExist:
         raise Http404("Entity bill currency not found")
 
-    for field, value in payload.dict(exclude_unset=True).items():
-        if value is not None:
-            setattr(ebc, field, value)
+    _apply_partial_update(ebc, payload.dict(exclude_unset=True))
     ebc.save()
     logger.info("EntityBillCurrency updated id=%s", ebc.id)
     return ebc
