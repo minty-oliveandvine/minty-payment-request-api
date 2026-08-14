@@ -39,12 +39,20 @@ class BearerAuth(HttpBearer):
     #: PERSON rather than the company. See that class for why.
     require_entity_role = True
 
-    def _attach_unscoped(self, request, user, jwt_system_role: str):
-        """Authenticate as a person with no company in play, and return the user.
+    def _attach_unscoped(self, request, user, jwt_system_role: str, entity_id: str = ""):
+        """Authenticate as a person with NO ROLE, and return the user.
 
-        Endpoints that need an entity still refuse — they read ``entity_role`` /
-        ``is_entity_member``, both empty here — so this widens who gets through the door,
-        never what they can do once inside.
+        What is emptied is the caller's standing — ``entity_role`` and
+        ``is_entity_member`` — never the subject. Endpoints that need a role still refuse,
+        because those two are what they read, so this widens who gets through the door and
+        not what they can do once inside.
+
+        ``entity_id`` is the company the caller ASKED about, and it is deliberately kept.
+        Which modules a company has is a fact about the company, not about the asker, and
+        blanking it here made ``/auth/entitlements`` answer for no company at all: Petty
+        Cash vanished from the nav of a company that owns it. The token already names that
+        entity and already carries those very claims — Minty put them there — so keeping
+        it reveals nothing new.
 
         ``is_super_admin`` is still resolved, because "can this person see every entity"
         is a fact about the person and the entity list depends on it.
@@ -60,7 +68,7 @@ class BearerAuth(HttpBearer):
             is_super_admin = cursor.fetchone() is not None or system_superuser
 
         request.auth_user = user
-        request.entity_id = ""
+        request.entity_id = entity_id
         request.entity_role = ""
         request.is_super_admin = is_super_admin
         request.is_system_superuser = system_superuser
@@ -158,11 +166,13 @@ class BearerAuth(HttpBearer):
                     # a screen that never needed the company in the first place.
                     logger.info(
                         "Auth: user_id=%s has no role on entity_id=%s — continuing "
-                        "without company context (person-level endpoint)",
+                        "without a role (person-level endpoint)",
                         user.id,
                         entity_id,
                     )
-                    return self._attach_unscoped(request, user, jwt_system_role)
+                    return self._attach_unscoped(
+                        request, user, jwt_system_role, entity_id
+                    )
                 else:
                     logger.warning(
                         "Auth rejected: no role for user_id=%s entity_id=%s",
