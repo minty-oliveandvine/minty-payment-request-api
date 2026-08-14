@@ -29,6 +29,44 @@ class BearerAuth(HttpBearer):
     entity-level role onto the request for permission checks.
     """
 
+    #: Whether a caller must hold a role on the resolved entity to get through the door.
+    #:
+    #: True for every business endpoint: a bill belongs to a company, so somebody with no
+    #: role on that company has no business reaching it, and refusing up front is the
+    #: simplest way to guarantee that.
+    #:
+    #: ``SelfBearerAuth`` sets it False for the few ``/auth/*`` endpoints that describe the
+    #: PERSON rather than the company. See that class for why.
+    require_entity_role = True
+
+    def _attach_unscoped(self, request, user, jwt_system_role: str):
+        """Authenticate as a person with no company in play, and return the user.
+
+        Endpoints that need an entity still refuse — they read ``entity_role`` /
+        ``is_entity_member``, both empty here — so this widens who gets through the door,
+        never what they can do once inside.
+
+        ``is_super_admin`` is still resolved, because "can this person see every entity"
+        is a fact about the person and the entity list depends on it.
+        """
+        system_superuser = (
+            jwt_system_role == "superuser" or self._is_system_superuser(str(user.id))
+        )
+        with connection.cursor() as cursor:
+            cursor.execute(
+                "SELECT 1 FROM user_entity WHERE user_id = %s AND role = 'super_admin' LIMIT 1",
+                [str(user.id)],
+            )
+            is_super_admin = cursor.fetchone() is not None or system_superuser
+
+        request.auth_user = user
+        request.entity_id = ""
+        request.entity_role = ""
+        request.is_super_admin = is_super_admin
+        request.is_system_superuser = system_superuser
+        request.is_entity_member = False
+        return user
+
     def authenticate(self, request, token):
         try:
             import hashlib
@@ -69,29 +107,11 @@ class BearerAuth(HttpBearer):
             if not entity_id:
                 # Unscoped: Flask handoff with empty entity (e.g. profile from Select Company).
                 if not token_entity_id and not header_entity_id:
-                    system_superuser = (
-                        jwt_system_role == "superuser"
-                        or self._is_system_superuser(str(user.id))
-                    )
-                    with connection.cursor() as cursor:
-                        cursor.execute(
-                            "SELECT 1 FROM user_entity WHERE user_id = %s AND role = 'super_admin' LIMIT 1",
-                            [str(user.id)],
-                        )
-                        is_super_admin = (
-                            cursor.fetchone() is not None or system_superuser
-                        )
-                    request.auth_user = user
-                    request.entity_id = ""
-                    request.entity_role = ""
-                    request.is_super_admin = is_super_admin
-                    request.is_system_superuser = system_superuser
-                    request.is_entity_member = False
                     logger.info(
                         "Auth: unscoped billing session user_id=%s (no entity context)",
                         user_id,
                     )
-                    return user
+                    return self._attach_unscoped(request, user, jwt_system_role)
                 logger.warning("Auth rejected: no entity_id in header or token")
                 return None
 
@@ -123,6 +143,26 @@ class BearerAuth(HttpBearer):
                         user.id,
                         entity_id,
                     )
+                elif not self.require_entity_role:
+                    # A PERSON-level endpoint reached with a company the caller has no
+                    # role on. Their identity is not in doubt — the token is signed by
+                    # Module 1, unexpired, and names a real user — so the honest answer is
+                    # "authenticated, no company context", not 401.
+                    #
+                    # This is what the profile page needs. It is reached two ways: from the
+                    # entity list, which hands over a deliberately unscoped token, and from
+                    # INSIDE a company, which scopes the token to that company. On the
+                    # second path a caller with no `user_entity` row was rejected outright,
+                    # and the frontend reported it as "our session timed out" and bounced
+                    # them to a login that re-minted the same token — an endless loop over
+                    # a screen that never needed the company in the first place.
+                    logger.info(
+                        "Auth: user_id=%s has no role on entity_id=%s — continuing "
+                        "without company context (person-level endpoint)",
+                        user.id,
+                        entity_id,
+                    )
+                    return self._attach_unscoped(request, user, jwt_system_role)
                 else:
                     logger.warning(
                         "Auth rejected: no role for user_id=%s entity_id=%s",
@@ -175,3 +215,31 @@ class BearerAuth(HttpBearer):
         return User.objects.filter(
             id=str(user_id), system_role__iexact="superuser"
         ).exists()
+
+
+class SelfBearerAuth(BearerAuth):
+    """Auth for the ``/auth/*`` endpoints that describe the PERSON, not the company.
+
+    Identical to ``BearerAuth`` in everything that matters — same signature check, same
+    user lookup, same entity resolution, and the same populated role when the caller DOES
+    hold one on the entity in play. The single difference is what happens when they do
+    not: instead of 401, the request continues with no company context.
+
+    WHY THAT IS SAFE HERE, endpoint by endpoint:
+
+    * ``/auth/me`` and ``/auth/xero-status`` read ``request.auth_user`` only. Neither has
+      ever consulted the entity — they are a person's name and a person's Xero token.
+    * ``/auth/entitlements`` reads ``get_module_claims(request.entity_id or "")``. It was
+      already written to tolerate an empty entity and answers "no modules enabled", which
+      is the truthful answer for somebody with no role on the company they asked about.
+    * ``/auth/token/refresh`` re-mints from ``request.entity_id or ""`` and
+      ``request.entity_role or ""``, so an unscoped context produces an unscoped token —
+      narrower than the one presented, never wider.
+
+    WHAT IT MUST NOT BE USED FOR: anything that reads or writes a company's data. Bills,
+    payments and attachments belong to an entity, and their gate is that you hold a role on
+    it. ``BearerAuth`` stays the default for the whole API (``config/urls.py``); this is
+    opted into per endpoint, and the list above is the argument for each one.
+    """
+
+    require_entity_role = False

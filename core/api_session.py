@@ -8,6 +8,8 @@ import jwt
 from django.conf import settings
 from ninja import Router, Schema
 
+from core.auth import SelfBearerAuth
+
 logger = logging.getLogger("minty-api")
 
 session_router = Router(tags=["Session"])
@@ -74,7 +76,7 @@ def billing_session(request):
 @session_router.post(
     "/token/refresh",
     response={200: TokenRefreshOut},
-    auth=None,  # auth handled explicitly — we re-use BearerAuth via the outer API
+    auth=None,  # auth handled explicitly below, so a missing token is our own 401
     summary="Refresh the billing JWT before it expires",
 )
 def token_refresh(request):
@@ -82,9 +84,14 @@ def token_refresh(request):
 
     The caller must supply their current token in the Authorization header.
     Expired tokens are rejected — re-entry from Module 1 is required in that case.
-    """
-    from core.auth import BearerAuth
 
+    Uses ``SelfBearerAuth`` for the same reason the person-level reads do: the frontend
+    refreshes pre-emptively before ANY call, so refusing a caller who holds no role on the
+    entity in their token made every screen — including the ones that need no entity at
+    all — report a timed-out session. The refreshed token is re-minted from
+    ``request.entity_id``/``entity_role``, so an unscoped context yields an unscoped
+    token: narrower than the one presented, never wider.
+    """
     raw_token = (
         (request.headers.get("Authorization", "") or "").removeprefix("Bearer ").strip()
     )
@@ -93,7 +100,7 @@ def token_refresh(request):
 
         raise HttpError(401, "Missing token")
 
-    auth = BearerAuth()
+    auth = SelfBearerAuth()
     user = auth.authenticate(request, raw_token)
     if user is None:
         from ninja.errors import HttpError
@@ -165,6 +172,7 @@ def entity_currency(request):
 
 @session_router.get(
     "/me",
+    auth=SelfBearerAuth(),
     response={200: CurrentUserOut},
     summary="Get current authenticated user data",
 )
@@ -183,6 +191,7 @@ def current_user(request):
 
 @session_router.get(
     "/entitlements",
+    auth=SelfBearerAuth(),
     response={200: EntitlementsOut},
     summary="Live module entitlements for the current entity (DB-fresh, not JWT)",
 )
@@ -206,6 +215,7 @@ def entitlements(request):
 
 @session_router.get(
     "/xero-status",
+    auth=SelfBearerAuth(),
     response={200: XeroStatusOut},
     summary="Check whether the current user's Xero credentials are still valid",
 )
