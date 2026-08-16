@@ -19,6 +19,12 @@ class User(models.Model):
     token_created_at = models.DateTimeField(null=True, blank=True)
     created_at = models.DateTimeField(null=True, blank=True)
     xero_entity_id = models.CharField(max_length=36, null=True, blank=True)
+    # Sign-in presence behind Minty's Settings > Users list. Owned by the Flask
+    # app (services/user_presence.py, migration p1a01_user_presence) — billing
+    # only ever clears signed_in_at, on logout, so signing out of the billing
+    # profile takes you off that list the same way signing out of Minty does.
+    signed_in_at = models.DateTimeField(null=True, blank=True)
+    last_seen_at = models.DateTimeField(null=True, blank=True)
 
     class Meta:
         managed = False
@@ -73,6 +79,31 @@ class UserEntity(models.Model):
         managed = False
         db_table = "user_entity"
         unique_together = ("user", "entity")
+
+
+class EntityModuleSubscription(models.Model):
+    """Read-only mirror of pettycashv2.entity_module_subscription, owned by Flask.
+
+    Mirrored here for one field: ``payer_user_id``, the person whose card this
+    company's billing sits on. Signing yourself out of a company has to refuse
+    while you are that person, and this is the only place that fact is recorded.
+
+    One row per module, and one payer per entity across them all (Flask enforces
+    that on write), so any row answers "who pays for this company".
+    """
+
+    id = models.CharField(max_length=36, primary_key=True)
+    entity_id = models.CharField(max_length=36, db_index=True)
+    function_code = models.CharField(max_length=100)
+    payer_user_id = models.CharField(max_length=36, db_index=True)
+    phase = models.CharField(max_length=30)
+
+    class Meta:
+        managed = False
+        db_table = "entity_module_subscription"
+
+    def __str__(self):
+        return f"{self.entity_id}/{self.function_code} paid by {self.payer_user_id}"
 
 
 class AccountInfo(models.Model):

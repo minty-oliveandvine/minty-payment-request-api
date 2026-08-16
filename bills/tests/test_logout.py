@@ -6,6 +6,7 @@ import jwt as pyjwt
 import pytest
 from django.conf import settings
 from django.test import Client
+from django.utils import timezone
 
 from shared_models.models import Entity, User, UserEntity
 
@@ -79,3 +80,57 @@ def test_logout_twice_is_idempotent(client, user, entity, membership):
     client.post(LOGOUT_URL, **headers)
     response = client.post(LOGOUT_URL, **headers)
     assert response.status_code == 200
+
+
+def test_logout_clears_sign_in_presence(client, user, entity, membership):
+    """Signing out of billing takes the user off Minty's Settings > Users list.
+
+    That list is driven by `signed_in_at`, so clearing it here is the whole
+    mechanism — without this write the person stays listed as present until the
+    presence window expires.
+    """
+    stamp = timezone.now()
+    User.objects.filter(id=user.id).update(signed_in_at=stamp, last_seen_at=stamp)
+
+    response = client.post(LOGOUT_URL, **_auth(user.id, entity.id))
+    assert response.status_code == 200
+
+    user.refresh_from_db()
+    assert user.signed_in_at is None
+    # last_seen_at is a record of when they were last around, not an intent to be
+    # listed, so logout leaves it alone.
+    assert user.last_seen_at is not None
+
+
+def test_logout_stamps_last_seen_even_when_it_was_never_set(client, user, entity, membership):
+    """The invariant Minty depends on: a cleared signed_in_at must never sit beside
+    a blank last_seen_at, or Minty reads the pair as "never stamped" and adopts the
+    user straight back onto its signed-in list on their next page."""
+    assert user.signed_in_at is None and user.last_seen_at is None
+
+    response = client.post(LOGOUT_URL, **_auth(user.id, entity.id))
+    assert response.status_code == 200
+
+    user.refresh_from_db()
+    assert user.signed_in_at is None
+    assert user.last_seen_at is not None
+
+
+def test_logout_leaves_other_users_presence_alone(client, user, entity, membership):
+    stamp = timezone.now()
+    other = User.objects.create(
+        id="logout-test-bystander",
+        email="bystander@minty.com",
+        password="hashed_pw",
+        first_name="By",
+        last_name="Stander",
+        username="bystander",
+        system_role="user",
+        signed_in_at=stamp,
+        last_seen_at=stamp,
+    )
+
+    client.post(LOGOUT_URL, **_auth(user.id, entity.id))
+
+    other.refresh_from_db()
+    assert other.signed_in_at is not None

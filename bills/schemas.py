@@ -582,3 +582,7 @@ class ProfileOut(Schema):
     username: str
     is_view_only: bool = False
     member_entity_ids: list[str] = []
+
+
+class DeactivateAccountOut(Schema):
+    detail: str

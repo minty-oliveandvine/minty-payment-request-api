@@ -245,12 +245,46 @@ def xero_status(request):
     summary="Invalidate the current billing session",
 )
 def logout(request):
-    """Acknowledge a logout request.
+    """Acknowledge a logout request and drop the user's sign-in presence.
 
     Billing auth cookies are set client-side (not HttpOnly) and are cleared
     by the frontend via clearAuth() in lib/auth.ts. This endpoint exists so
     the frontend has a uniform logout call and can confirm the server received
     the intent. Calling it twice is safe.
+
+    Clearing ``signed_in_at`` is what takes the user off Minty's Settings > Users
+    list — that list shows who is signed in, and the billing profile's Log out is
+    one of the ways to stop being.
+
+    ``last_seen_at`` is stamped rather than left alone, and that is load-bearing
+    rather than cosmetic. Minty's Flask session survives this call on purpose (Log
+    out returns the browser to the entity list, not the login page), so the user
+    keeps making authenticated requests afterwards. Minty reads a cleared
+    ``signed_in_at`` beside a SET ``last_seen_at`` as "signed out, leave them off",
+    but beside a BLANK one as "never stamped, adopt them" — so writing both columns
+    is what stops the very next Minty page from undoing this logout. See
+    ``refresh_presence`` in Minty's services/user_presence.py.
     """
-    logger.info("Logout requested user_id=%s", getattr(request.auth_user, "id", None))
+    user_id = getattr(request.auth_user, "id", None)
+    logger.info("Logout requested user_id=%s", user_id)
+    if user_id:
+        try:
+            from datetime import datetime
+            from zoneinfo import ZoneInfo
+
+            from shared_models.models import User
+
+            # Naive Hong Kong local, NOT django.utils.timezone.now(). These columns
+            # are TIMESTAMP WITHOUT TIME ZONE and Minty writes HK local into them
+            # (models/db.py `tz`), while this project runs USE_TZ=True on UTC —
+            # so timezone.now() would land eight hours behind everything Minty
+            # wrote, in the same column. Mirrors user_presence.now() exactly.
+            stamp = datetime.now(ZoneInfo("Asia/Hong_Kong")).replace(tzinfo=None)
+            User.objects.filter(id=str(user_id)).update(
+                signed_in_at=None, last_seen_at=stamp
+            )
+        except Exception:
+            # Presence is decoration on a user list. A logout that reached us is
+            # a logout, whether or not we managed to record it.
+            logger.exception("Failed to clear sign-in presence user_id=%s", user_id)
     return LogoutOut(detail="logged out")

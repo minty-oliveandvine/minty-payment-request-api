@@ -15,6 +15,7 @@ class SharedModelsConfig(AppConfig):
                 models.User,
                 models.Entity,
                 models.UserEntity,
+                models.EntityModuleSubscription,
                 models.AccountInfo,
                 models.XeroContactSync,
             ):
