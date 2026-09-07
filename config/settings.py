@@ -11,9 +11,15 @@ SECRET_KEY = os.environ.get("SECRET_KEY", "change-me-in-production")
 DEBUG = os.environ.get("DEBUG", "True").lower() in ("true", "1", "yes")
 ALLOWED_HOSTS = os.environ.get("ALLOWED_HOSTS", "*").split(",")
 
+# Deliberately no django.contrib.contenttypes / django.contrib.auth.
+#
+# Nothing here uses them: authentication is our own bearer scheme (core.auth)
+# and authorisation our own role checks (core.permissions). There is no admin,
+# no sessions, no ContentType lookups. Installing them only made `migrate`
+# want to CREATE TABLE django_content_type / auth_* inside pettycashv2 — a
+# schema Flask owns — which fails on any database where those tables already
+# exist. Keep them out; they buy nothing and only fight Alembic for the schema.
 INSTALLED_APPS = [
-    "django.contrib.contenttypes",
-    "django.contrib.auth",
     "corsheaders",
     "core",
     "shared_models",
