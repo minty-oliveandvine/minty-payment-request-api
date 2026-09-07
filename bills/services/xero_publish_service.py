@@ -706,15 +706,19 @@ def _upload_bill_attachments_to_xero(bill, sync, entity_id, user_id, xero_org_id
 def _get_xero_files_for_invoice(
     access_token: str, xero_org_id: str, invoice_id: str,
 ) -> list[dict]:
-    """GET /files.xro/1.0/Files/Associations/{InvoiceId}.
+    """GET /files.xro/1.0/Associations/{InvoiceId}.
 
     Returns a list of {FileId, Name} dicts for all files associated with the invoice.
+
+    NOT /Files/Associations/{InvoiceId}, which this used to call: that route
+    does not exist, so the request failed and the caller fell back to its
+    locally-tracked ids alone -- exactly the case this query is meant to cover.
     """
 
     if not access_token:
         return []
 
-    url = f"{XERO_FILES_API_BASE}/Files/Associations/{invoice_id}"
+    url = f"{XERO_FILES_API_BASE}/Associations/{invoice_id}"
     headers = {
         "Authorization": f"Bearer {access_token}",
         "Xero-Tenant-Id": xero_org_id,
