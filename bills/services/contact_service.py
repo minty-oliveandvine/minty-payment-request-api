@@ -6,7 +6,10 @@ Mirrors Module 1 (Petty Cash) behaviour:
      not in the live response (Xero list can lag right after POST create). Dedupe by
      ``xero_contact_id``; category filter matches the DB path when applied.
   2. If Xero fails or entity is disconnected → fall back to xero_contact_sync DB only.
-  3. DB fallback returns ALL contacts for the entity (no xero_org_id filter).
+  3. DB reads are scoped to the entity's CURRENT Xero org, plus legacy rows
+     written before xero_org_id was populated. An entity that is reconnected
+     to a different Xero organisation keeps its old contact rows, and those
+     contact ids do not exist in the new org.
   4. Xero token: `xero_token_service.resolve_xero_access_token_for_entity` (owner/JWT +
      refresh-if-expired, same as Module 1).
   5. Before returning, contacts are deduped by Xero ContactID, then by normalized
@@ -18,6 +21,7 @@ import os
 import uuid
 
 import requests
+from django.db.models import Q
 
 from bills.services.xero_token_service import resolve_xero_access_token_for_entity
 from core.exceptions import BillValidationError
@@ -134,10 +138,33 @@ def _dedupe_bill_contacts_by_normalized_name(contacts: list[dict]) -> list[dict]
     return out
 
 
+def xero_org_scope(xero_org_id) -> Q:
+    """Match xero_contact_sync rows belonging to ``xero_org_id``.
+
+    Rows with no org recorded are included: the column was added after some
+    rows were written, and both writers stamp it now, so an empty value means
+    "legacy" rather than "another org". Excluding them would hide contacts
+    that are almost certainly still valid.
+
+    When the entity itself has no org (never connected, or disconnected) there
+    is nothing to scope against, so everything matches. Scoping to "" there
+    would empty the DB fallback, which exists precisely for when Xero cannot
+    be reached.
+    """
+    if not xero_org_id:
+        return Q()
+    return (
+        Q(xero_org_id=str(xero_org_id))
+        | Q(xero_org_id="")
+        | Q(xero_org_id__isnull=True)
+    )
+
+
 def _merge_db_contacts_missing_from_live(
     live_contacts: list[dict],
     entity_id: str,
     category: str | None,
+    xero_org_id: str | None = None,
 ) -> list[dict]:
     """Append ``xero_contact_sync`` rows not returned by live Xero GET.
 
@@ -150,6 +177,10 @@ def _merge_db_contacts_missing_from_live(
         if (c.get("xero_contact_id") or "").strip()
     }
     qs = XeroContactSync.objects.filter(entity_id=entity_id)
+    if xero_org_id is not None:
+        # None means "caller did not scope this" and keeps the unfiltered
+        # behaviour; the production caller always passes the entity org.
+        qs = qs.filter(xero_org_scope(xero_org_id))
     if category:
         categories = [c.strip() for c in category.split(",") if c.strip()]
         qs = qs.filter(category__in=categories)
@@ -203,7 +234,9 @@ def get_entity_bill_contacts(
         contacts = [
             _xero_to_bill_contact(c, entity_id, xero_org_id) for c in xero_contacts
         ]
-        contacts = _merge_db_contacts_missing_from_live(contacts, entity_id, category)
+        contacts = _merge_db_contacts_missing_from_live(
+            contacts, entity_id, category, xero_org_id
+        )
         logger.info(
             "Entity %s: %d from Xero API, %d total after DB merge",
             entity_id,
@@ -213,7 +246,9 @@ def get_entity_bill_contacts(
 
     if contacts is None:
         logger.info("Falling back to DB contacts for entity %s", entity_id)
-        qs = XeroContactSync.objects.filter(entity_id=entity_id)
+        qs = XeroContactSync.objects.filter(entity_id=entity_id).filter(
+            xero_org_scope(xero_org_id)
+        )
         if category:
             categories = [c.strip() for c in category.split(",") if c.strip()]
             qs = qs.filter(category__in=categories)

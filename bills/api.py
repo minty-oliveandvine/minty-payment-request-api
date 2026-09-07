@@ -11,7 +11,7 @@ from django.http import Http404, StreamingHttpResponse
 from ninja import File, Query, Router
 from ninja.files import UploadedFile
 
-from bills.models import Bill, Payment
+from bills.models import Bill, Payment, XeroBillSync
 from bills.schemas import (
     BillAttachmentOut,
     BillCreateIn,
@@ -44,6 +44,7 @@ from bills.services.bill_service import (
 from bills.services.payment_service import get_amount_due
 from bills.services.xero_publish_service import _delete_xero_file, publish_bill_to_xero
 from bills.services.xero_token_service import resolve_xero_access_token_for_entity
+from core.exceptions import BillValidationError
 from core.permissions import (
     check_bill_mutable,
     check_create_bill,
@@ -511,6 +512,19 @@ def publish_bill_endpoint(request, bill_id: str):
         user_id=str(request.auth_user.id),
         access_token=access_token or "",
     )
+
+    # Do not take the service's word for it. Every failure path in
+    # publish_bill_to_xero raises today, but the endpoint returning 200 is
+    # decided here, so confirm against the sync row that was actually written.
+    sync_id = result.get("sync_id")
+    if sync_id:
+        sync = XeroBillSync.objects.filter(id=sync_id).first()
+        if sync and sync.sync_status != XeroBillSync.SyncStatus.SUCCESS:
+            raise BillValidationError(
+                sync.error_message
+                or "Xero did not confirm this publish. Please try again."
+            )
+
     return _bill_to_out(result["bill"])
 
 

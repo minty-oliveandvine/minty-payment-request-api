@@ -16,6 +16,7 @@ from django.db import connection, transaction
 from bills.models import (
     Audit,
     Bill,
+    EntityBillAccountXero,
     Payment,
     PaymentAttachment,
     XeroBillResponseLine,
@@ -25,6 +26,7 @@ from bills.models import (
 )
 from bills.services.attachment_service import _get_s3_client
 from bills.services.audit_service import log_audit
+from bills.services.contact_service import xero_org_scope
 from bills.services.xero_token_service import resolve_xero_access_token_for_entity
 from core.exceptions import BillValidationError
 from shared_models.models import Entity, XeroContactSync
@@ -110,10 +112,22 @@ def publish_bill_to_xero(bill_id: str, entity_id: str, user_id: str, access_toke
     if not access_token:
         raise BillValidationError("No Xero access token available. Please reconnect to Xero.")
 
+    # Was this bill previously published, and was that to THIS Xero org?
+    #
+    # This runs before the contact heal below on purpose: when the entity has
+    # been reconnected to a different organisation, the cached contact id
+    # belongs to the old one and must be dropped first so the heal re-resolves
+    # it against the current org.
+    prior_sync, foreign_org_sync = _select_successful_sync(str(bill.id), xero_org_id)
+
+    if foreign_org_sync is not None and prior_sync is None:
+        _reset_for_new_org(bill, foreign_org_sync, xero_org_id)
+
     # Heal missing xero_contact_id before building any payload
     if not bill.xero_contact_id:
         sync_row = (
             XeroContactSync.objects.filter(entity_id=bill.entity_id)
+            .filter(xero_org_scope(xero_org_id))
             .filter(name__iexact=bill.contact)
             .first()
         )
@@ -125,9 +139,6 @@ def publish_bill_to_xero(bill_id: str, entity_id: str, user_id: str, access_toke
                 f"Contact '{bill.contact}' could not be matched to a Xero contact. "
                 "Please re-select the contact from the dropdown and save before publishing."
             )
-
-    # Check if this bill was previously published to Xero
-    prior_sync = _get_latest_successful_sync(str(bill.id))
 
     if prior_sync and prior_sync.response_invoice_id:
         # Republish — update the existing Xero invoice via POST /Invoices/{InvoiceID}
@@ -898,14 +909,114 @@ def _download_from_s3(s3, attachment) -> bytes | None:
 # ─── Bank-slip upload to Xero ─────────────────────────────────────────────
 
 
-def _get_latest_successful_sync(bill_id: str) -> XeroBillSync | None:
-    """Return the most recent successful sync for a bill, or None."""
-    return (
+def _sync_org(sync: XeroBillSync) -> str:
+    """Xero org a sync was published to, or "" when unrecorded.
+
+    There is no column for this. Every publish that reaches Xero stores its
+    request headers on the sync's payload row (_update_sync_with_response,
+    _handle_request_exception) and _sanitise_headers strips only
+    Authorization, so Xero-Tenant-Id survives there. The payload is therefore
+    the record of which organisation a sync targeted.
+    """
+    payload = getattr(sync, "payload", None)  # reverse OneToOne; may not exist
+    headers = (payload.request_headers or {}) if payload else {}
+    return headers.get("Xero-Tenant-Id") or ""
+
+
+def _select_successful_sync(bill_id: str, xero_org_id):
+    """Pick the sync to republish against.
+
+    Returns ``(sync_for_this_org, sync_for_another_org)``.
+
+    An entity can be reconnected to a different Xero organisation. An invoice
+    id from a sync made under the old org does not exist in the new one, so
+    reusing it sends a valid tenant header with a foreign invoice id: Xero
+    rejects it and the bill can never be published again. Skipping the
+    mismatched sync makes the caller fall through to the create path and
+    publish the bill fresh into the current org.
+
+    A sync with no recorded org ("") is treated as belonging to this one,
+    preserving existing behaviour for rows written before the payload carried
+    headers. Treating unknown as a mismatch would create a duplicate invoice
+    in the SAME org, which is worse than the stuck state this guards against.
+    """
+    candidates = (
         XeroBillSync.objects
         .filter(bill_id=bill_id, sync_status=XeroBillSync.SyncStatus.SUCCESS)
+        .select_related("payload")
         .order_by("-requested_at", "-created_at")
-        .first()
     )
+
+    foreign = None
+    for sync in candidates:
+        sync_org = _sync_org(sync)
+        if not sync_org or sync_org == str(xero_org_id):
+            return sync, None
+        if foreign is None:
+            foreign = sync
+    return None, foreign
+
+
+def _get_latest_successful_sync(bill_id: str, xero_org_id) -> XeroBillSync | None:
+    """Most recent successful sync for a bill in the given Xero org, or None."""
+    sync, _foreign = _select_successful_sync(bill_id, xero_org_id)
+    return sync
+
+
+def _reset_for_new_org(bill: Bill, foreign_sync: XeroBillSync, xero_org_id) -> None:
+    """Prepare a bill whose last publish went to a different Xero org.
+
+    The bill is about to be created fresh in the current org, so anything on
+    it naming an object in the old one has to go, or be checked first.
+    """
+    logger.info(
+        "Bill %s was last published to Xero org %s but entity is now on %s; "
+        "publishing fresh into the current org",
+        bill.id, _sync_org(foreign_sync) or "unknown", xero_org_id,
+    )
+
+    if bill.xero_contact_id:
+        bill.xero_contact_id = ""
+        bill.save(update_fields=["xero_contact_id"])
+
+    _assert_account_codes_exist(bill)
+
+
+def _assert_account_codes_exist(bill: Bill) -> None:
+    """Fail early when a bill names an account code the new org does not have.
+
+    Account codes are copied onto the bill at save time (bill_service) and
+    read straight back out by _build_xero_invoice_payload; nothing resolves
+    them live. After an org switch they can name accounts that do not exist,
+    and Xero's own rejection does not tell the user what to fix.
+
+    Deliberately does NOT remap. Codes are user-defined strings that collide
+    across organisations, so a same-numbered account in the new org may be
+    something entirely different. A wrong ledger entry is worse than a
+    blocked publish; the user re-selects the account.
+    """
+    codes = {
+        (li.account_code or bill.xero_account_code or "").strip()
+        for li in bill.line_items.all()
+    }
+    if not codes:
+        codes = {(bill.xero_account_code or "").strip()}
+    codes = {c for c in codes if c}
+    if not codes:
+        return
+
+    valid = set(
+        EntityBillAccountXero.objects
+        .filter(entity_id=bill.entity_id, is_active=True, is_deleted=False)
+        .values_list("account_code", flat=True)
+    )
+    missing = sorted(codes - valid)
+    if missing:
+        raise BillValidationError(
+            "Account code {} does not exist in the Xero organisation this "
+            "entity is now connected to. Re-select the account on this bill, "
+            "then publish again.".format(", ".join(missing))
+        )
 
 
 def upload_bankslip_to_xero(
@@ -946,7 +1057,7 @@ def upload_bankslip_to_xero(
     if not access_token:
         raise BillValidationError("No Xero access token available. Please reconnect to Xero.")
 
-    sync = _get_latest_successful_sync(bill_id)
+    sync = _get_latest_successful_sync(bill_id, xero_org_id)
     if not sync or not sync.response_invoice_id:
         raise BillValidationError("No successful Xero sync found for this bill.")
 
