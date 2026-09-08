@@ -108,9 +108,9 @@ def publish_bill_to_xero(bill_id: str, entity_id: str, user_id: str, access_toke
     entity = _load_entity(entity_id)
     xero_org_id = entity.xero_org_id
     if not xero_org_id:
-        raise BillValidationError("Entity has no Xero organization linked")
+        raise BillValidationError("This company isn't connected to Xero yet.")
     if not access_token:
-        raise BillValidationError("No Xero access token available. Please reconnect to Xero.")
+        raise BillValidationError("The Xero connection needs reconnecting before I can publish.")
 
     # Was this bill previously published, and was that to THIS Xero org?
     #
@@ -165,7 +165,10 @@ def publish_bill_to_xero(bill_id: str, entity_id: str, user_id: str, access_toke
         )
     except requests.RequestException as exc:
         _handle_request_exception(sync, bill, user_id, payload, request_headers, exc)
-        raise BillValidationError(f"Xero API call failed: {exc}")
+        # Detail stays in the log: str(exc) on a RequestException carries the
+        # full URL and connection detail, and this reaches a user as a 422.
+        logger.warning("Xero API call failed: %s", exc)
+        raise BillValidationError("I couldn't reach Xero just now. Mind trying again?")
 
     sync = _update_sync_with_response(sync, response, payload, request_headers)
 
@@ -239,7 +242,10 @@ def _update_bill_to_xero(
                 timeout=30,
             )
         except requests.RequestException as exc:
-            raise BillValidationError(f"Xero VOID request failed: {exc}")
+            # Detail stays in the log: str(exc) on a RequestException carries the
+            # full URL and connection detail, and this reaches a user as a 422.
+            logger.warning("Xero VOID request failed: %s", exc)
+            raise BillValidationError("I couldn't reach Xero just now. Mind trying again?")
 
         if void_response.status_code not in (200, 201):
             error_msg = _extract_xero_error(
@@ -266,7 +272,10 @@ def _update_bill_to_xero(
             )
         except requests.RequestException as exc:
             _handle_request_exception(sync, bill, user_id, payload, request_headers, exc)
-            raise BillValidationError(f"Xero API call failed: {exc}")
+            # Detail stays in the log: str(exc) on a RequestException carries the
+            # full URL and connection detail, and this reaches a user as a 422.
+            logger.warning("Xero API call failed: %s", exc)
+            raise BillValidationError("I couldn't reach Xero just now. Mind trying again?")
 
         sync = _update_sync_with_response(sync, response, payload, request_headers)
 
@@ -304,7 +313,10 @@ def _update_bill_to_xero(
         )
     except requests.RequestException as exc:
         _handle_request_exception(sync, bill, user_id, payload, request_headers, exc)
-        raise BillValidationError(f"Xero API call failed: {exc}")
+        # Detail stays in the log: str(exc) on a RequestException carries the
+        # full URL and connection detail, and this reaches a user as a 422.
+        logger.warning("Xero API call failed: %s", exc)
+        raise BillValidationError("I couldn't reach Xero just now. Mind trying again?")
 
     sync = _update_sync_with_response(sync, response, payload, request_headers)
 
@@ -339,14 +351,14 @@ def _load_bill(bill_id: str, entity_id: str) -> Bill:
             "line_items", "bill_attachments__attachment",
         ).get(id=bill_id, entity_id=entity_id)
     except Bill.DoesNotExist:
-        raise BillValidationError("Bill not found")
+        raise BillValidationError("I couldn't find that bill.")
 
 
 def _load_entity(entity_id: str) -> Entity:
     try:
         return Entity.objects.get(id=entity_id)
     except Entity.DoesNotExist:
-        raise BillValidationError("Entity not found")
+        raise BillValidationError("I couldn't find that company.")
 
 
 def _build_xero_invoice_payload(bill: Bill, entity: Entity) -> dict:
@@ -1052,14 +1064,14 @@ def upload_bankslip_to_xero(
 
     bill = _load_bill(bill_id, entity_id)
     if bill.published != Bill.PublishStatus.PUBLISHED:
-        raise BillValidationError("Bill is not published to Xero yet.")
+        raise BillValidationError("That bill hasn't been published to Xero yet.")
 
     entity = _load_entity(entity_id)
     xero_org_id = entity.xero_org_id
     if not xero_org_id:
-        raise BillValidationError("Entity has no Xero organization linked")
+        raise BillValidationError("This company isn't connected to Xero yet.")
     if not access_token:
-        raise BillValidationError("No Xero access token available. Please reconnect to Xero.")
+        raise BillValidationError("The Xero connection needs reconnecting before I can publish.")
 
     sync = _get_latest_successful_sync(bill_id, xero_org_id)
     if not sync or not sync.response_invoice_id:

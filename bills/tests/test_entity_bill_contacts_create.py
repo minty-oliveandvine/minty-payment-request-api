@@ -35,7 +35,7 @@ class TestEntityBillContactsCreate:
             **auth_headers,
         )
         assert resp.status_code == 422
-        assert "required" in resp.json()["detail"].lower()
+        assert "contact name" in resp.json()["detail"].lower()
 
     def test_requires_xero_connected_entity(
         self,

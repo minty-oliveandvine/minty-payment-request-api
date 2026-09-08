@@ -736,7 +736,7 @@ class TestRepublishFailures:
                     FAKE_USER_ID, FAKE_ACCESS_TOKEN,
                 )
 
-        assert "API call failed" in str(exc_info.value)
+        assert "couldn't reach Xero" in str(exc_info.value)
         authorised_bill.refresh_from_db()
         assert authorised_bill.published == Bill.PublishStatus.FAILED
 
@@ -827,7 +827,7 @@ class TestFirstPublishFailures:
                     FAKE_USER_ID, FAKE_ACCESS_TOKEN,
                 )
 
-        assert "API call failed" in str(exc_info.value)
+        assert "couldn't reach Xero" in str(exc_info.value)
         authorised_bill.refresh_from_db()
         assert authorised_bill.published == Bill.PublishStatus.FAILED
 
@@ -952,7 +952,7 @@ class TestGuardRails:
                     FAKE_USER_ID, FAKE_ACCESS_TOKEN,
                 )
 
-        assert "no xero organization" in str(exc_info.value).lower()
+        assert "isn't connected to xero" in str(exc_info.value).lower()
         mock_put.assert_not_called()
         mock_post.assert_not_called()
 
@@ -971,7 +971,7 @@ class TestGuardRails:
                     "",  # empty token
                 )
 
-        assert "reconnect to xero" in str(exc_info.value).lower()
+        assert "needs reconnecting" in str(exc_info.value).lower()
         mock_put.assert_not_called()
         mock_post.assert_not_called()
 
@@ -983,7 +983,7 @@ class TestGuardRails:
                 FAKE_USER_ID, FAKE_ACCESS_TOKEN,
             )
 
-        assert "bill not found" in str(exc_info.value).lower()
+        assert "couldn't find that bill" in str(exc_info.value).lower()
 
 
 # ═══════════════════════════════════════════════════════════════════════════

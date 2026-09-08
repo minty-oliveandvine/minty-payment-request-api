@@ -281,19 +281,19 @@ def create_entity_bill_contact_in_xero(
     """
     cleaned = (name or "").strip()
     if not cleaned:
-        raise BillValidationError("Contact name is required")
+        raise BillValidationError("I'll need a contact name here.")
     if len(cleaned) > 150:
-        raise BillValidationError("Contact name must be at most 150 characters")
+        raise BillValidationError("Contact names need to be 150 characters or fewer.")
 
     entity = Entity.objects.filter(id=entity_id).first()
     if not entity:
-        raise BillValidationError("Entity not found")
+        raise BillValidationError("I couldn't find that company.")
     if entity.status != "connected" or not entity.xero_org_id:
-        raise BillValidationError("Entity must be connected to Xero to create contacts")
+        raise BillValidationError("This company needs to be connected to Xero before I can add contacts.")
 
     access_token = resolve_xero_access_token_for_entity(entity_id, jwt_user_id)
     if not access_token:
-        raise BillValidationError("Could not resolve Xero access token for this entity")
+        raise BillValidationError("The Xero connection needs reconnecting before I can do that.")
 
     xero_org_id = str(entity.xero_org_id)
     url = f"{XERO_API_BASE_URL}/Contacts"
@@ -345,16 +345,16 @@ def create_entity_bill_contact_in_xero(
     try:
         payload = resp.json()
     except ValueError:
-        raise BillValidationError("Invalid response from Xero after creating contact")
+        raise BillValidationError("Xero replied in a shape I didn't expect. Mind trying again?")
 
     xero_contacts = payload.get("Contacts") or []
     if not xero_contacts:
-        raise BillValidationError("Xero did not return the new contact")
+        raise BillValidationError("Xero didn't confirm that contact. Mind trying again?")
     xc = xero_contacts[0]
     contact_id = (xc.get("ContactID") or "").strip()
     contact_name = (xc.get("Name") or cleaned).strip()[:150]
     if not contact_id:
-        raise BillValidationError("Xero did not return a contact id")
+        raise BillValidationError("Xero didn't confirm that contact. Mind trying again?")
 
     row = XeroContactSync.objects.filter(
         entity_id=entity_id,

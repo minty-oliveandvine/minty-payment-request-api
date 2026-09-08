@@ -98,14 +98,14 @@ def token_refresh(request):
     if not raw_token:
         from ninja.errors import HttpError
 
-        raise HttpError(401, "Missing token")
+        raise HttpError(401, "Your session has expired. Sign in again to keep going.")
 
     auth = SelfBearerAuth()
     user = auth.authenticate(request, raw_token)
     if user is None:
         from ninja.errors import HttpError
 
-        raise HttpError(401, "Invalid or expired token")
+        raise HttpError(401, "Your session has expired. Sign in again to keep going.")
 
     expires_in = BILLING_TOKEN_HOURS * 3600
     now = datetime.now(timezone.utc)

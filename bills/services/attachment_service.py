@@ -128,7 +128,7 @@ def _upload_file_to_s3(file: UploadedFile, s3_key_prefix: str) -> dict:
         )
 
     if file.size and file.size > MAX_FILE_SIZE:
-        raise BillValidationError("File size exceeds 10 MB limit")
+        raise BillValidationError("Files need to be under 10MB.")
 
     file.seek(0)
     raw = file.read()
@@ -155,7 +155,7 @@ def _upload_file_to_s3(file: UploadedFile, s3_key_prefix: str) -> dict:
         )
     except ClientError as e:
         logger.error("S3 upload failed: %s", e)
-        raise BillValidationError("File upload failed. Please try again.")
+        raise BillValidationError("I couldn't upload that file. Mind trying again?")
 
     return {
         "original_name": file.name or "unnamed",
@@ -238,7 +238,7 @@ def delete_attachment(bill: Bill, bill_attachment_id: str, user_id: str) -> str:
             id=bill_attachment_id,
         )
     except BillAttachment.DoesNotExist:
-        raise BillValidationError("Attachment not found on this bill")
+        raise BillValidationError("I couldn't find that attachment on this bill.")
 
     attachment = bill_attachment.attachment
     # Capture before the row is deleted.
@@ -306,7 +306,7 @@ def generate_presigned_download_url(
         return url
     except ClientError as e:
         logger.error("Presigned URL generation failed: %s", e)
-        raise BillValidationError("Could not generate download link.")
+        raise BillValidationError("I couldn't prepare that download. Mind trying again?")
 
 
 # ═══════════════════════════════════════════════════════════════════════════
@@ -361,7 +361,7 @@ def delete_payment_attachment(
             id=payment_attachment_id,
         )
     except PaymentAttachment.DoesNotExist:
-        raise BillValidationError("Attachment not found on this payment")
+        raise BillValidationError("I couldn't find that attachment on this payment.")
 
     attachment = pa.attachment
 

@@ -206,7 +206,7 @@ def save_bill_draft(data, user_id: str, entity_id: str) -> Bill:
 
 def update_bill_draft(bill: Bill, data, user_id: str) -> Bill:
     if bill.status == Bill.Status.VOIDED:
-        raise BillValidationError("Cannot edit a voided bill.")
+        raise BillValidationError("You can't edit a voided bill.")
     draft_fields = (
         "contact",
         "xero_contact_id",
@@ -344,7 +344,7 @@ def submit_bill(data, user_id: str, entity_id: str) -> Bill:
 
 def update_bill(bill: Bill, data, user_id: str) -> Bill:
     if bill.status == Bill.Status.VOIDED:
-        raise BillValidationError("Cannot edit a voided bill.")
+        raise BillValidationError("You can't edit a voided bill.")
     updatable_fields = (
         "contact",
         "xero_contact_id",
