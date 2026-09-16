@@ -11,11 +11,12 @@ True (legacy entities that predate the gating table).
 from __future__ import annotations
 
 from bills.models import EntityFunction, EntityFunctionMap
+from shared_models.enums import ModuleCode
 
 # Canonical codes — keep in sync with Flask's blueprints/entity/services/modules.py
 # and the catalog seeded by migration b8f3a2c1d4e5.
 MODULE_PETTY_CASH = "PETTY_CASH"
-MODULE_BILL = "BILL"
+MODULE_BILL = ModuleCode.PAYMENT_REQUEST  # was "BILL"; schema item 20
 
 
 def is_module_enabled(entity_id: str, function_code: str) -> bool:

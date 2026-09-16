@@ -8,7 +8,8 @@ from django.test import Client
 from django.utils import timezone as django_tz
 
 from bills.models import Attachment, Bill, BillAttachment
-from shared_models.models import Entity, User, UserEntity, UserToken
+from bills.models import CurrencyInfo
+from shared_models.models import CountryInfo, Entity, User, UserEntity, UserToken
 
 
 @pytest.fixture(autouse=True)
@@ -28,6 +29,30 @@ def _block_real_token_service_calls(monkeypatch):
         raise requests.ConnectionError("real HTTP blocked in tests")
 
     monkeypatch.setattr("bills.services.xero_token_service.requests.post", _blocked)
+
+
+@pytest.fixture(autouse=True)
+def _registry_rows(request):
+    """The country / currency rows the entity fixtures point at.
+
+    ``entities.country_code`` and ``entities.currency_id`` are real FKs on Postgres; SQLite
+    (tables from the models) never enforced them, which is how fixtures got away with
+    ``country_code="HK"`` and a made-up currency id for so long. Runs only for tests that
+    touch the database.
+    """
+    if "db" not in request.fixturenames and not request.node.get_closest_marker("django_db"):
+        return
+    request.getfixturevalue("db")
+    hkd, _ = CurrencyInfo.objects.get_or_create(
+        id="11111111-1111-1111-1111-111111111111",
+        defaults={"currency_code": "HKD", "currency_name": "Hong Kong Dollar", "symbol": "HK$",
+                  "decimal_places": 2, "is_active": True},
+    )
+    CountryInfo.objects.get_or_create(
+        country_code="HK",
+        defaults={"alpha3_code": "HKG", "country_name_en": "Hong Kong", "currency_id": hkd.id,
+                  "is_active": True, "display_order": 1},
+    )
 
 
 @pytest.fixture
@@ -70,11 +95,11 @@ def give_xero_token(user, access_token="access-token", *, expires_in=1800, obtai
 @pytest.fixture
 def test_entity(db):
     return Entity.objects.create(
-        id="test-entity-001",
+        id="9df620d9-a0f3-5f42-a200-04f17c73b009",
         name="Test Entity",
         country_code="HK",
         currency_id="11111111-1111-1111-1111-111111111111",
-        status="active",
+        status="disconnected",
     )
 
 

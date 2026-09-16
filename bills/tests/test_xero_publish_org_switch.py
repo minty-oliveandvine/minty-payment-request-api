@@ -97,7 +97,7 @@ def _xero_200(invoice_id=NEW_INVOICE_ID) -> MagicMock:
 def entity_on_org_b(db) -> Entity:
     """Entity whose CURRENT Xero org is B (it used to be on A)."""
     return Entity.objects.create(
-        id="switch-entity-001",
+        id="8f95766b-e159-576c-a5b2-3d155b76fa6e",
         name="Switched Entity",
         country_code="HK",
         currency_id="11111111-1111-1111-1111-111111111111",

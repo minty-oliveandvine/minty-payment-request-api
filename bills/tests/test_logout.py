@@ -34,11 +34,11 @@ def user(db):
 @pytest.fixture
 def entity(db):
     return Entity.objects.create(
-        id="logout-test-entity",
+        id="13fed7de-9993-58b1-b0f7-5e23f6f56e18",
         name="Logout Test Entity",
         country_code="HK",
         currency_id="11111111-1111-1111-1111-111111111111",
-        status="active",
+        status="disconnected",
     )
 
 

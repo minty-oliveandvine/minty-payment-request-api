@@ -46,7 +46,7 @@ class TestEntityBillContactsCreate:
         test_entity,
         test_user_entity,
     ):
-        test_entity.status = "active"
+        test_entity.status = "disconnected"
         test_entity.xero_org_id = None
         test_entity.save()
         resp = api_client.post(

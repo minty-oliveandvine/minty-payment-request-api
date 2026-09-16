@@ -113,7 +113,7 @@ def _xero_422_with_validation_errors() -> MagicMock:
 @pytest.fixture
 def xero_entity(db) -> Entity:
     return Entity.objects.create(
-        id="pub-entity-001",
+        id="6e90bfe3-64eb-55ed-ac54-eeb9dbdd13b6",
         name="Publish Entity",
         country_code="HK",
         currency_id="11111111-1111-1111-1111-111111111111",

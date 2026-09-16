@@ -1,9 +1,6 @@
 import logging
 import re
-from datetime import datetime, timezone
-from zoneinfo import ZoneInfo
 
-import requests as _requests
 from botocore.exceptions import ClientError
 from django.conf import settings
 from django.db.models import OuterRef, Q, Subquery
@@ -58,100 +55,6 @@ from core.permissions import (
 from shared_models.models import Entity
 
 logger = logging.getLogger("minty-api")
-
-_HK_TZ = ZoneInfo("Asia/Hong_Kong")
-_MS_DATE_RE = re.compile(r"/Date\((-?\d+)[+-]\d+\)/")
-
-
-def _parse_xero_ms_date(raw):
-    """Parse a Xero /Date(ms+offset)/ string to a date in Asia/Hong_Kong."""
-    if not raw:
-        return None
-    m = _MS_DATE_RE.search(str(raw))
-    if not m:
-        return None
-    ms = int(m.group(1))
-    dt_utc = datetime.fromtimestamp(ms / 1000, tz=timezone.utc)
-    return dt_utc.astimezone(_HK_TZ).date()
-
-
-def _backfill_lock_dates(entity_id: str, jwt_user_id: str) -> None:
-    """Fetch Xero lock dates synchronously and persist to the Entity row if missing.
-
-    Uses resolve_xero_access_token_for_entity (the same public function used by
-    publish_bill_endpoint) so token resolution and refresh are handled consistently.
-    Errors are logged at ERROR level and swallowed — the bills list response is
-    unaffected regardless of outcome.
-    """
-    try:
-        entity = Entity.objects.filter(id=entity_id).first()
-        if not entity or not entity.xero_org_id:
-            return
-        # Re-check inside the call (guard against race on concurrent requests)
-        if (
-            entity.period_lock_date is not None
-            and entity.end_of_year_lock_date is not None
-        ):
-            return
-
-        access_token = resolve_xero_access_token_for_entity(entity_id, jwt_user_id)
-        if not access_token:
-            logger.error(
-                "lock date backfill: no access token resolved entity=%s user=%s",
-                entity_id,
-                jwt_user_id,
-            )
-            return
-
-        xero_org_id = str(entity.xero_org_id)
-        url = "https://api.xero.com/api.xro/2.0/Organisation"
-        headers = {
-            "Authorization": f"Bearer {access_token}",
-            "Xero-Tenant-Id": xero_org_id,
-            "Accept": "application/json",
-        }
-        resp = _requests.get(url, headers=headers, timeout=15)
-        if resp.status_code != 200:
-            logger.error(
-                "lock date backfill: Xero API returned %s for entity=%s body=%s",
-                resp.status_code,
-                entity_id,
-                (resp.text or "")[:500],
-            )
-            return
-
-        orgs = resp.json().get("Organisations", [])
-        org = next(
-            (o for o in orgs if o.get("OrganisationID") == xero_org_id),
-            orgs[0] if orgs else None,
-        )
-        if not org:
-            logger.error(
-                "lock date backfill: no org in Xero response entity=%s", entity_id
-            )
-            return
-
-        period_lock_date = _parse_xero_ms_date(org.get("PeriodLockDate"))
-        end_of_year_lock_date = _parse_xero_ms_date(org.get("EndOfYearLockDate"))
-
-        Entity.objects.filter(id=entity_id).update(
-            period_lock_date=period_lock_date,
-            end_of_year_lock_date=end_of_year_lock_date,
-        )
-        logger.info(
-            "lock date backfill: saved entity=%s period=%s eoy=%s",
-            entity_id,
-            period_lock_date,
-            end_of_year_lock_date,
-        )
-    except Exception as exc:
-        logger.error(
-            "lock date backfill: failed entity=%s %s: %s",
-            entity_id,
-            type(exc).__name__,
-            exc,
-        )
-
 
 def _get_bill_or_404(bill_id: str, entity_id: str) -> Bill:
     try:
@@ -282,14 +185,6 @@ def list_bills(request, filters: Query[BillFilterQuery]):
 
     trigger_chart_sync_if_changed(request, request.entity_id)
     trigger_flask_contact_sync(request, request.entity_id)
-
-    _entity = Entity.objects.filter(id=request.entity_id).first()
-    if (
-        _entity
-        and _entity.xero_org_id
-        and (_entity.period_lock_date is None or _entity.end_of_year_lock_date is None)
-    ):
-        _backfill_lock_dates(request.entity_id, str(request.auth_user.id))
 
     completed_payment_date = Subquery(
         Payment.objects.filter(

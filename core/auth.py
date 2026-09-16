@@ -1,6 +1,7 @@
 import logging
 
 import jwt
+from django.core.exceptions import ValidationError
 from django.conf import settings
 from ninja.security import HttpBearer
 
@@ -11,12 +12,21 @@ logger = logging.getLogger("minty-api")
 
 
 def get_entity_role(user_id: str, entity_id: str) -> str | None:
-    """Return the user's role for the entity, or None if no access."""
-    return (
-        UserEntity.objects.filter(user_id=user_id, entity_id=entity_id)
-        .values_list("role", flat=True)
-        .first()
-    )
+    """Return the user's role for the entity, or None if no access.
+
+    ``entity_id`` is a uuid column now: an empty or malformed id (a handoff token with no
+    entity, a hand-typed header) is "no access", not a query error.
+    """
+    if not user_id or not entity_id:
+        return None
+    try:
+        return (
+            UserEntity.objects.filter(user_id=user_id, entity_id=entity_id)
+            .values_list("role", flat=True)
+            .first()
+        )
+    except (ValidationError, ValueError):
+        return None
 
 
 def _holds_super_admin_anywhere(user_id) -> bool:

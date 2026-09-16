@@ -183,9 +183,11 @@ def create_entity_function_map(request, payload: EntityFunctionMapCreateIn):
         entity_function_id=payload.entity_function_id,
         is_enabled=payload.is_enabled,
         settings_json=payload.settings_json,
-        created_by=str(request.auth_user.id),
+        created_by=request.auth_user.id,
     )
-    logger.info("EntityFunctionMap created id=%s entity=%s", efm.id, request.entity_id)
+    logger.info(
+        "EntityFunctionMap created entity=%s function=%s", request.entity_id, efm.entity_function_id
+    )
     return 201, efm
 
 
@@ -216,50 +218,58 @@ def list_entity_function_names(request):
     return [{"function_name": r.entity_function.function_name} for r in rows]
 
 
+# A map row has no id of its own: it is THE row for (this entity, that function), so the
+# detail routes are addressed by the function id (the entity comes from the header).
 @entity_function_maps_router.get(
-    "/{map_id}",
+    "/{function_id}",
     response={200: EntityFunctionMapOut, 404: ErrorOut},
     summary="Get entity function map detail",
 )
-def get_entity_function_map(request, map_id: str):
+def get_entity_function_map(request, function_id: str):
     try:
-        return EntityFunctionMap.objects.get(id=map_id, entity_id=request.entity_id)
-    except EntityFunctionMap.DoesNotExist:
+        return EntityFunctionMap.objects.get(
+            entity_function_id=function_id, entity_id=request.entity_id
+        )
+    except (EntityFunctionMap.DoesNotExist, ValidationError):
         raise Http404("Entity function map not found")
 
 
 @entity_function_maps_router.put(
-    "/{map_id}",
+    "/{function_id}",
     response={200: EntityFunctionMapOut, 404: ErrorOut},
     summary="Update an entity function map",
 )
 def update_entity_function_map(
-    request, map_id: str, payload: EntityFunctionMapUpdateIn
+    request, function_id: str, payload: EntityFunctionMapUpdateIn
 ):
     check_not_system_superuser(request, "modify configuration")
     check_edit_bill_settings(request.entity_role)
     try:
-        efm = EntityFunctionMap.objects.get(id=map_id, entity_id=request.entity_id)
-    except EntityFunctionMap.DoesNotExist:
+        efm = EntityFunctionMap.objects.get(
+            entity_function_id=function_id, entity_id=request.entity_id
+        )
+    except (EntityFunctionMap.DoesNotExist, ValidationError):
         raise Http404("Entity function map not found")
 
     _apply_partial_update(efm, payload.dict(exclude_unset=True))
     efm.save()
-    logger.info("EntityFunctionMap updated id=%s", efm.id)
+    logger.info("EntityFunctionMap updated entity=%s function=%s", request.entity_id, function_id)
     return efm
 
 
 @entity_function_maps_router.delete(
-    "/{map_id}",
+    "/{function_id}",
     response={200: MessageOut, 404: ErrorOut},
     summary="Delete an entity function map",
 )
-def delete_entity_function_map(request, map_id: str):
+def delete_entity_function_map(request, function_id: str):
     check_not_system_superuser(request, "modify configuration")
     check_edit_bill_settings(request.entity_role)
     try:
-        efm = EntityFunctionMap.objects.get(id=map_id, entity_id=request.entity_id)
-    except EntityFunctionMap.DoesNotExist:
+        efm = EntityFunctionMap.objects.get(
+            entity_function_id=function_id, entity_id=request.entity_id
+        )
+    except (EntityFunctionMap.DoesNotExist, ValidationError):
         raise Http404("Entity function map not found")
 
     efm.delete()

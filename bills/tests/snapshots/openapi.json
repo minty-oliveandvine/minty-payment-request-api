@@ -1619,8 +1619,16 @@
             "type": "string"
           },
           "created_by": {
-            "title": "Created By",
-            "type": "string"
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Created By"
           },
           "disabled_at": {
             "anyOf": [
@@ -1647,15 +1655,13 @@
             "title": "Enabled At"
           },
           "entity_function_id": {
+            "format": "uuid",
             "title": "Entity Function Id",
             "type": "string"
           },
           "entity_id": {
+            "format": "uuid",
             "title": "Entity Id",
-            "type": "string"
-          },
-          "id": {
-            "title": "Id",
             "type": "string"
           },
           "is_enabled": {
@@ -1681,7 +1687,6 @@
           }
         },
         "required": [
-          "id",
           "entity_id",
           "entity_function_id",
           "is_enabled",
@@ -1781,6 +1786,7 @@
             "type": "string"
           },
           "id": {
+            "format": "uuid",
             "title": "Id",
             "type": "string"
           },
@@ -6182,16 +6188,16 @@
         ]
       }
     },
-    "/api/v1/entity-function-maps/{map_id}": {
+    "/api/v1/entity-function-maps/{function_id}": {
       "delete": {
         "operationId": "bills_api_config_delete_entity_function_map",
         "parameters": [
           {
             "in": "path",
-            "name": "map_id",
+            "name": "function_id",
             "required": true,
             "schema": {
-              "title": "Map Id",
+              "title": "Function Id",
               "type": "string"
             }
           }
@@ -6233,10 +6239,10 @@
         "parameters": [
           {
             "in": "path",
-            "name": "map_id",
+            "name": "function_id",
             "required": true,
             "schema": {
-              "title": "Map Id",
+              "title": "Function Id",
               "type": "string"
             }
           }
@@ -6278,10 +6284,10 @@
         "parameters": [
           {
             "in": "path",
-            "name": "map_id",
+            "name": "function_id",
             "required": true,
             "schema": {
-              "title": "Map Id",
+              "title": "Function Id",
               "type": "string"
             }
           }

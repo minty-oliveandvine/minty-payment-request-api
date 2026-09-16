@@ -1,8 +1,8 @@
 from django.db import models
 from django.db.models.functions import Now
 
-from shared_models.enums import EntityRole, SystemRole
-from shared_models.fields import PgEnumField
+from shared_models.enums import EntityRole, EntityStatus, SystemRole
+from shared_models.fields import CharNField, PgEnumField
 
 
 class User(models.Model):
@@ -58,8 +58,8 @@ class UserToken(models.Model):
     refresh_token = models.TextField(null=True, blank=True)
     id_token = models.TextField(null=True, blank=True)
     refresh_token_last_used_at = models.DateTimeField(null=True, blank=True)
-    created_at = models.DateTimeField(null=True, blank=True)
-    updated_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(db_default=Now())
+    updated_at = models.DateTimeField(db_default=Now())
 
     class Meta:
         managed = False
@@ -67,25 +67,27 @@ class UserToken(models.Model):
 
 
 class Entity(models.Model):
-    """Read-only mirror of pettycashv2.entities managed by the Flask app."""
+    """Read-only mirror of pettycashv2.entities managed by the Flask app.
 
-    id = models.CharField(max_length=36, primary_key=True)
+    No ``xero_short_code`` and no Xero lock dates any more: the schema dropped them and
+    billing asks Xero's Organisation for the lock dates at publish time
+    (``bills.services.xero_publish_service.fetch_lock_dates``).
+    """
+
+    id = models.UUIDField(primary_key=True)
     name = models.CharField(max_length=100)
     # The member who connected this company to Xero; their user_token row is the one a
     # publish uses. Replaces the old user.xero_entity_id (C1).
     connected_by_user_id = models.UUIDField(null=True, blank=True)
     # FKs into the registries: country_code is the ISO alpha-2
-    # country_info PK; currency_id is a uuid into currency_info(id)
-    # (Alembic c8e0a2b4d6f8 / d0f2b4c6e8a0 reshaped both).
-    country_code = models.CharField(max_length=2, null=True, blank=True)
+    # country_info PK; currency_id is a uuid into currency_info(id).
+    country_code = CharNField(max_length=2, null=True, blank=True)
     currency_id = models.UUIDField(null=True, blank=True)
     xero_org_id = models.CharField(max_length=36, null=True, blank=True)
-    xero_short_code = models.CharField(max_length=50, null=True, blank=True)
-    status = models.CharField(max_length=20, default="active")
+    status = PgEnumField("entity_status", choices=EntityStatus.choices, default=EntityStatus.ONBOARDING)
     timezone = models.CharField(max_length=30, null=True, blank=True)
-    created_at = models.DateTimeField(null=True, blank=True)
-    period_lock_date = models.DateField(null=True, blank=True)
-    end_of_year_lock_date = models.DateField(null=True, blank=True)
+    created_at = models.DateTimeField(db_default=Now())
+    updated_at = models.DateTimeField(db_default=Now())
 
     class Meta:
         managed = False
@@ -177,3 +179,26 @@ class XeroContactSync(models.Model):
     class Meta:
         managed = False
         db_table = "xero_contact_sync"
+
+
+class CountryInfo(models.Model):
+    """Read-only mirror of pettycashv2.country_info (ISO alpha-2 primary key).
+
+    Billing never writes it; it is here so the ``entities.country_code`` FK can be
+    satisfied in tests and so a country can be named from a code.
+    """
+
+    country_code = CharNField(max_length=2, primary_key=True)
+    alpha3_code = CharNField(max_length=3, null=True, blank=True)
+    country_name_en = models.CharField(max_length=100)
+    currency_id = models.UUIDField(null=True, blank=True)
+    phone_code = models.CharField(max_length=10, null=True, blank=True)
+    is_active = models.BooleanField(default=True)
+    display_order = models.IntegerField(default=999)
+
+    class Meta:
+        managed = False
+        db_table = "country_info"
+
+    def __str__(self):
+        return self.country_code

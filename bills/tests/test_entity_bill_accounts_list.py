@@ -32,11 +32,11 @@ def user(db):
 @pytest.fixture
 def entity(db):
     return Entity.objects.create(
-        id="acct-list-entity",
+        id="a66d1e23-a0a3-585b-a656-f6437e173550",
         name="Acct Entity",
         country_code="HK",
         currency_id="11111111-1111-1111-1111-111111111111",
-        status="active",
+        status="disconnected",
     )
 
 

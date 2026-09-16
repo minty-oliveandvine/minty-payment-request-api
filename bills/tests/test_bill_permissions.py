@@ -58,11 +58,11 @@ def user(db):
 @pytest.fixture
 def entity(db):
     return Entity.objects.create(
-        id="perm-entity-001",
+        id="a13dcc34-7315-5ca9-9bc7-c014a0f5bfe2",
         name="Perm Entity",
         country_code="HK",
         currency_id="11111111-1111-1111-1111-111111111111",
-        status="active",
+        status="disconnected",
     )
 
 

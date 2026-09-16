@@ -284,7 +284,7 @@ class EntityFunctionUpdateIn(Schema):
 
 
 class EntityFunctionOut(Schema):
-    id: str
+    id: UUID
     function_code: str
     function_name: str
     description: str
@@ -312,14 +312,13 @@ class EntityFunctionMapUpdateIn(Schema):
 
 
 class EntityFunctionMapOut(Schema):
-    id: str
-    entity_id: str
-    entity_function_id: str
+    entity_id: UUID
+    entity_function_id: UUID
     is_enabled: bool
     enabled_at: datetime | None
     disabled_at: datetime | None
     settings_json: dict | None
-    created_by: str
+    created_by: UUID | None
     created_at: datetime
     updated_at: datetime
 

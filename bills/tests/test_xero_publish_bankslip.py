@@ -52,7 +52,7 @@ _S3_DOWNLOAD_PATH = "bills.services.xero_publish_service._download_from_s3"
 @pytest.fixture
 def entity(db) -> Entity:
     return Entity.objects.create(
-        id="bs-entity-001",
+        id="2ddde02d-2fcf-575f-91a6-a24afc64c30d",
         name="Bankslip Entity",
         country_code="HK",
         currency_id="11111111-1111-1111-1111-111111111111",

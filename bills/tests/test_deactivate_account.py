@@ -36,11 +36,11 @@ def client():
 
 def _entity(db, suffix: str, name: str | None = None) -> Entity:
     return Entity.objects.create(
-        id=f"deact-entity-{suffix}",
+        id=str(uuid.uuid5(uuid.NAMESPACE_URL, f"deact-entity-{suffix}")),
         name=name or f"Company {suffix.title()}",
         country_code="HK",
         currency_id="11111111-1111-1111-1111-111111111111",
-        status="active",
+        status="disconnected",
     )
 
 

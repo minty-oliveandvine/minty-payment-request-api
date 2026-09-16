@@ -54,7 +54,7 @@ def connected_entity(db, test_entity):
 
 @pytest.fixture
 def disconnected_entity(db, test_entity):
-    test_entity.status = "active"
+    test_entity.status = "disconnected"
     test_entity.xero_org_id = "org-abc"
     test_entity.save()
     return test_entity
@@ -252,7 +252,7 @@ class TestExactMatchDisconnected:
 @pytest.mark.django_db
 def test_duplicate_display_names_collapsed_to_one_row(db, test_entity, test_user):
     """Picker dedupes by normalized name; first row after sort wins (smaller xero_contact_id)."""
-    test_entity.status = "active"
+    test_entity.status = "disconnected"
     test_entity.save()
     eid = test_entity.id
     uid = test_user.id

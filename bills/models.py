@@ -2,6 +2,9 @@ import uuid
 
 from django.db import models
 
+from shared_models.enums import ModuleCode
+from shared_models.fields import CharNField, PgEnumField
+
 # ═══════════════════════════════════════════════════════════════════════════
 # BILL
 # ═══════════════════════════════════════════════════════════════════════════
@@ -311,11 +314,14 @@ class PaymentAttachment(models.Model):
 
 
 class EntityFunction(models.Model):
-    id = models.CharField(max_length=36, primary_key=True, default=uuid.uuid4)
-    function_code = models.CharField(max_length=100, unique=True)
+    """The module catalogue (Minty seeds it). ``function_code`` is the ``module_code`` enum."""
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4)
+    function_code = PgEnumField("module_code", choices=ModuleCode.choices, unique=True)
     function_name = models.CharField(max_length=150)
     description = models.TextField(blank=True, default="")
     is_active = models.BooleanField(default=True)
+    display_order = models.IntegerField(default=999)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -332,8 +338,11 @@ class EntityFunction(models.Model):
 
 
 class EntityFunctionMap(models.Model):
-    id = models.CharField(max_length=36, primary_key=True, default=uuid.uuid4)
-    entity_id = models.CharField(max_length=36, db_index=True)
+    """Which modules a company has on. Keyed by (entity_id, entity_function_id) - no
+    surrogate id (schema). ``created_by`` is the person who first wrote the row, or NULL."""
+
+    pk = models.CompositePrimaryKey("entity_id", "entity_function_id")
+    entity_id = models.UUIDField(db_index=True)
     entity_function = models.ForeignKey(
         EntityFunction,
         related_name="entity_mappings",
@@ -343,7 +352,7 @@ class EntityFunctionMap(models.Model):
     enabled_at = models.DateTimeField(null=True, blank=True)
     disabled_at = models.DateTimeField(null=True, blank=True)
     settings_json = models.JSONField(null=True, blank=True)
-    created_by = models.CharField(max_length=36, blank=True, default="")
+    created_by = models.UUIDField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -390,10 +399,10 @@ class CurrencyInfo(models.Model):
     # The pettycashv2.currency_info PK is a real uuid column (Alembic
     # c8e0a2b4d6f8) — UUIDField so the ORM round-trips it cleanly.
     id = models.UUIDField(primary_key=True, default=uuid.uuid4)
-    currency_code = models.CharField(max_length=10, unique=True)
+    currency_code = CharNField(max_length=3, unique=True)
     currency_name = models.CharField(max_length=100)
     symbol = models.CharField(max_length=10, blank=True, default="")
-    decimal_places = models.IntegerField(default=2)
+    decimal_places = models.SmallIntegerField(default=2)
     is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

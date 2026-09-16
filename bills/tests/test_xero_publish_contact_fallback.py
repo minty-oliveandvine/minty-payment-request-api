@@ -97,7 +97,7 @@ def _xero_200(
 @pytest.fixture
 def fall_entity(db) -> Entity:
     return Entity.objects.create(
-        id="fall-entity-001",
+        id="13bd2fba-943a-598f-89b0-76e824cd30dd",
         name="Fallback Entity",
         country_code="HK",
         currency_id="11111111-1111-1111-1111-111111111111",
@@ -478,7 +478,7 @@ class TestContactFallbackPersistsToDatabase:
     ):
         """A sync row for a different entity must not heal a bill belonging to fall_entity."""
         other_entity = Entity.objects.create(
-            id="other-entity-999",
+            id="76c7eb0e-e711-54bd-acaf-e22bda56239b",
             name="Other Entity",
             country_code="HK",
             currency_id="11111111-1111-1111-1111-111111111111",

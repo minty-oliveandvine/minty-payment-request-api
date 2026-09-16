@@ -59,7 +59,7 @@ def _assert_no_duplicate_contact_ids(contacts: list[dict], label: str = "") -> N
 
 @pytest.fixture
 def disconnected_entity(db, test_entity):
-    test_entity.status = "active"
+    test_entity.status = "disconnected"
     test_entity.xero_org_id = None
     test_entity.save()
     return test_entity
@@ -707,11 +707,11 @@ class TestMultiEntityIsolation:
         from shared_models.models import Entity
 
         entity_b = Entity.objects.create(
-            id="entity-b-001",
+            id="abe3747e-3703-5d05-bc45-940b169693e2",
             name="Entity B",
             country_code="HK",
             currency_id="11111111-1111-1111-1111-111111111111",
-            status="active",
+            status="disconnected",
         )
 
         # Contacts for entity A.
