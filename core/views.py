@@ -7,6 +7,7 @@ from django.conf import settings
 from django.http import HttpResponse, HttpResponseRedirect
 
 from core.auth import get_entity_role as _get_entity_role
+from shared_models.enums import is_superadmin
 from shared_models.models import Entity, User
 
 logger = logging.getLogger("minty-api.auth")
@@ -31,7 +32,7 @@ def landing(request):
         entity_role = _get_entity_role(user_id, entity_id) or ""
 
         # Check if user is a system superuser without entity membership (view-only mode)
-        is_system_superuser = user.system_role == "superuser"
+        is_system_superuser = is_superadmin(user.system_role)
         is_view_only = is_system_superuser and not entity_role
         if is_view_only:
             entity_role = "super_admin"

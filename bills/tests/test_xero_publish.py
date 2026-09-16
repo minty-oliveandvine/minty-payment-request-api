@@ -48,7 +48,7 @@ FAKE_INVOICE_ID = "xero-invoice-uuid-0001"
 FAKE_INVOICE_NUMBER = "INV-0042"
 FAKE_ORG_ID = "xero-org-001"
 FAKE_ACCESS_TOKEN = "fake-bearer-token"
-FAKE_USER_ID = "pub-user-001"
+FAKE_USER_ID = "e0fa5eb6-c6a0-5e01-8f5d-87b88db95553"  # was "pub-user-001"; user.id is a uuid now
 
 
 def _xero_200(invoice_id=FAKE_INVOICE_ID, invoice_number=FAKE_INVOICE_NUMBER) -> MagicMock:
@@ -131,7 +131,7 @@ def xero_user(db) -> User:
         first_name="Pub",
         last_name="Lisher",
         username="publisher",
-        system_role="user",
+        system_role="normal",
     )
 
 

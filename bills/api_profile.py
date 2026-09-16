@@ -1,12 +1,12 @@
 import logging
 
-from django.db import connection
 from ninja import Router
 
 from bills.schemas import DeactivateAccountOut, ProfileIn, ProfileOut
 from bills.services.profile_service import update_user_profile
 from core.exceptions import BillValidationError
 from core.permissions import check_not_system_superuser
+from shared_models.models import Entity, EntityModuleSubscription, User, UserEntity, UserToken
 
 logger = logging.getLogger("minty-api")
 
@@ -15,12 +15,10 @@ profile_router = Router()
 
 def _get_member_entity_ids(user_id: str) -> list[str]:
     """Return the list of entity IDs the user has an explicit UserEntity row for."""
-    with connection.cursor() as cursor:
-        cursor.execute(
-            "SELECT entity_id FROM user_entity WHERE user_id = %s",
-            [user_id],
-        )
-        return [str(row[0]) for row in cursor.fetchall()]
+    return [
+        str(eid)
+        for eid in UserEntity.objects.filter(user_id=user_id).values_list("entity_id", flat=True)
+    ]
 
 
 @profile_router.get("/me", response=ProfileOut)
@@ -37,7 +35,7 @@ def get_profile_endpoint(request):
     member_entity_ids = _get_member_entity_ids(str(user.id))
 
     return {
-        "id": user.id,
+        "id": str(user.id),  # user.id is a uuid.UUID (C1); the wire keeps the string
         "email": user.email,
         "first_name": user.first_name,
         "last_name": user.last_name,
@@ -57,16 +55,18 @@ def _entities_paid_for_by(user_id: str) -> list[tuple[str, str]]:
     companies who pays for three gets those three back; someone who pays for none gets an
     empty list and is free to go.
     """
-    with connection.cursor() as cursor:
-        cursor.execute(
-            "SELECT DISTINCT s.entity_id, e.name "
-            "FROM entity_module_subscription s "
-            "JOIN entities e ON e.id = s.entity_id "
-            "WHERE s.payer_user_id = %s "
-            "ORDER BY e.name",
-            [user_id],
-        )
-        return [(str(row[0]), row[1] or "") for row in cursor.fetchall()]
+    paid_entity_ids = {
+        str(eid)
+        for eid in EntityModuleSubscription.objects.filter(payer_user_id=str(user_id))
+        .values_list("entity_id", flat=True)
+        .distinct()
+    }
+    return [
+        (str(row[0]), row[1] or "")
+        for row in Entity.objects.filter(id__in=paid_entity_ids)
+        .order_by("name")
+        .values_list("id", "name")
+    ]
 
 
 @profile_router.delete("/me", response=DeactivateAccountOut)
@@ -102,16 +102,17 @@ def deactivate_account_endpoint(request):
             "leave those companies being charged with nobody able to stop it."
         )
 
-    with connection.cursor() as cursor:
-        # approved=False is what actually closes the door: sign-in checks it. The tokens
-        # go with it so nothing keeps acting as them in the background, and the sign-in
-        # stamp is cleared so they drop off every company's signed-in list at once.
-        cursor.execute(
-            'UPDATE "user" SET approved = %s, access_token = NULL, refresh_token = NULL, '
-            "id_token = NULL, expires_in = NULL, signed_in_at = NULL "
-            "WHERE id = %s",
-            [False, user_id],
-        )
+    # approved=False is what actually closes the door: sign-in checks it. The Xero
+    # bundle (user_token) goes with it so nothing keeps acting as them in the background,
+    # and the sign-in stamp is cleared so they drop off every company's signed-in list.
+    User.objects.filter(id=user_id).update(approved=False, signed_in_at=None)
+    UserToken.objects.filter(user_id=user_id).update(
+        access_token=None,
+        access_token_obtained_at=None,
+        access_token_expires_in=None,
+        refresh_token=None,
+        id_token=None,
+    )
 
     logger.info("Account deactivated by its owner user_id=%s", user_id)
     return DeactivateAccountOut(detail="account deactivated")
@@ -123,7 +124,7 @@ def update_profile_endpoint(request, payload: ProfileIn):
     Update current user's profile (email, first_name, last_name).
     """
     check_not_system_superuser(request, "update profile")
-    user_id = request.auth_user.id
+    user_id = str(request.auth_user.id)
 
     logger.info("Profile update requested user_id=%s", user_id)
 
@@ -136,7 +137,7 @@ def update_profile_endpoint(request, payload: ProfileIn):
     member_entity_ids = _get_member_entity_ids(str(user.id))
 
     return {
-        "id": user.id,
+        "id": str(user.id),  # user.id is a uuid.UUID (C1); the wire keeps the string
         "email": user.email,
         "first_name": user.first_name,
         "last_name": user.last_name,

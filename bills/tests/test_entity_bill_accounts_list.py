@@ -19,13 +19,13 @@ def api():
 @pytest.fixture
 def user(db):
     return User.objects.create(
-        id="acct-list-user",
+        id="cca61efb-248a-55cd-976d-e42732f398a0",
         email="acct@minty.com",
         password="hashed",
         first_name="Acct",
         last_name="List",
         username="acctlist",
-        system_role="user",
+        system_role="normal",
     )
 
 

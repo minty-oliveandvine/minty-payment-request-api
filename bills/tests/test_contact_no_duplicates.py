@@ -30,6 +30,8 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
+from bills.tests.conftest import give_xero_token
+
 from bills.services.contact_service import (
     _merge_db_contacts_missing_from_live,
     get_entity_bill_contacts,
@@ -73,8 +75,7 @@ def connected_entity(db, test_entity):
 
 @pytest.fixture
 def user_with_token(db, test_user):
-    test_user.access_token = "fake-xero-token"
-    test_user.save()
+    give_xero_token(test_user, "fake-xero-token")
     return test_user
 
 
@@ -566,8 +567,7 @@ class TestApiEndpointNoDuplicates:
         test_entity.status = "connected"
         test_entity.xero_org_id = "org-abc"
         test_entity.save()
-        test_user.access_token = "fake-xero-token"
-        test_user.save()
+        give_xero_token(test_user, "fake-xero-token")
 
         xero_resp = _make_xero_resp(
             [
@@ -627,8 +627,7 @@ class TestApiEndpointNoDuplicates:
         test_entity.status = "connected"
         test_entity.xero_org_id = "org-abc"
         test_entity.save()
-        test_user.access_token = "fake-xero-token"
-        test_user.save()
+        give_xero_token(test_user, "fake-xero-token")
 
         # Seed DB so some contacts overlap with the Xero response.
         _seed_standard_contacts(test_entity.id)

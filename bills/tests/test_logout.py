@@ -21,13 +21,13 @@ def client():
 @pytest.fixture
 def user(db):
     return User.objects.create(
-        id="logout-test-user",
+        id="019a4781-94dd-51ec-aea9-b32510435baf",
         email="logout@minty.com",
         password="hashed_pw",
         first_name="Logout",
         last_name="Test",
         username="logouttest",
-        system_role="user",
+        system_role="normal",
     )
 
 
@@ -119,13 +119,13 @@ def test_logout_stamps_last_seen_even_when_it_was_never_set(client, user, entity
 def test_logout_leaves_other_users_presence_alone(client, user, entity, membership):
     stamp = timezone.now()
     other = User.objects.create(
-        id="logout-test-bystander",
+        id="0aeb0f18-8031-5e9e-b3e4-110a17d7058d",
         email="bystander@minty.com",
         password="hashed_pw",
         first_name="By",
         last_name="Stander",
         username="bystander",
-        system_role="user",
+        system_role="normal",
         signed_in_at=stamp,
         last_seen_at=stamp,
     )

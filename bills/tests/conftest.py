@@ -1,3 +1,5 @@
+import uuid
+
 import jwt as pyjwt
 import pytest
 import requests
@@ -6,7 +8,7 @@ from django.test import Client
 from django.utils import timezone as django_tz
 
 from bills.models import Attachment, Bill, BillAttachment
-from shared_models.models import Entity, User, UserEntity
+from shared_models.models import Entity, User, UserEntity, UserToken
 
 
 @pytest.fixture(autouse=True)
@@ -35,21 +37,34 @@ def api_client():
 
 @pytest.fixture
 def test_user(db):
-    # The Flask app always writes access_token, refresh_token, expires_in and
-    # token_created_at together, so a token with unknown expiry never occurs in
-    # practice. Tests that set access_token must inherit valid expiry metadata,
-    # otherwise `_token_expired` treats the token as expired and callers refuse it.
     return User.objects.create(
-        id="test-user-001",
+        id="96dc83ad-f6b8-5b7d-aa0a-26f5f76f8197",
         email="test@minty.com",
         password="hashed_pw",
         first_name="Test",
         last_name="User",
         username="testuser",
-        system_role="user",
-        expires_in=1800,
-        token_created_at=django_tz.now(),
+        system_role="normal",
     )
+
+
+def give_xero_token(user, access_token="access-token", *, expires_in=1800, obtained_at=None,
+                    refresh_token="refresh-token", id_token=None):
+    """Store a Xero bundle for ``user`` the way Minty does: one ``user_token`` row.
+
+    Minty always writes the access token together with its expiry pair, so a token with
+    unknown expiry never occurs in practice; ``_token_expired`` treats one as expired.
+    """
+    row, _ = UserToken.objects.get_or_create(
+        user=user, defaults={"id": uuid.uuid4()}
+    )
+    row.access_token = access_token
+    row.access_token_expires_in = expires_in
+    row.access_token_obtained_at = obtained_at or django_tz.now()
+    row.refresh_token = refresh_token
+    row.id_token = id_token
+    row.save()
+    return row
 
 
 @pytest.fixture

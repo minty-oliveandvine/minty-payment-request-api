@@ -13,6 +13,7 @@ class SharedModelsConfig(AppConfig):
 
             for model in (
                 models.User,
+                models.UserToken,
                 models.Entity,
                 models.UserEntity,
                 models.EntityModuleSubscription,

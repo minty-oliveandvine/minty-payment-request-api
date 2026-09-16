@@ -145,7 +145,7 @@ def create_payment_endpoint(request, bill_id: str, payload: PaymentCreateIn):
     bill = _get_bill_or_404(bill_id, request.entity_id)
     check_bill_mutable(bill.status)
     check_mark_paid(request.entity_role)
-    payment = create_payment(bill, payload, request.auth_user.id)
+    payment = create_payment(bill, payload, str(request.auth_user.id))
     return 201, _payment_to_out(payment)
 
 
@@ -227,7 +227,7 @@ def update_payment_endpoint(
     check_bill_mutable(bill.status)
     check_mark_paid(request.entity_role)
     payment = _get_payment_or_404(payment_id, bill)
-    payment = update_payment(payment, payload, request.auth_user.id)
+    payment = update_payment(payment, payload, str(request.auth_user.id))
     return _payment_to_out(payment)
 
 
@@ -241,7 +241,7 @@ def delete_payment_endpoint(request, bill_id: str, payment_id: str):
     bill = _get_bill_or_404(bill_id, request.entity_id)
     check_mark_paid(request.entity_role)
     payment = _get_payment_or_404(payment_id, bill)
-    delete_payment(payment, request.auth_user.id)
+    delete_payment(payment, str(request.auth_user.id))
     return {"message": "Payment deleted"}
 
 
@@ -271,7 +271,7 @@ def upload_payment_attachment_endpoint(
     check_mark_paid(request.entity_role)
     payment = _get_payment_or_404(payment_id, bill)
     pa = upload_payment_attachment(
-        payment, file, request.auth_user.id, attachment_role=attachment_role
+        payment, file, str(request.auth_user.id), attachment_role=attachment_role
     )
 
     if bill.published == Bill.PublishStatus.PUBLISHED:
@@ -279,7 +279,7 @@ def upload_payment_attachment_endpoint(
             access_token = (
                 resolve_xero_access_token_for_entity(
                     request.entity_id,
-                    request.auth_user.id,
+                    str(request.auth_user.id),
                 )
                 or ""
             )
@@ -342,7 +342,7 @@ def delete_payment_attachment_endpoint(
         raise PermissionDeniedError("Cannot modify payments on a voided bill.")
     check_mark_paid(request.entity_role)
     payment = _get_payment_or_404(payment_id, bill)
-    delete_payment_attachment(payment, attachment_id, request.auth_user.id)
+    delete_payment_attachment(payment, attachment_id, str(request.auth_user.id))
     return {"message": "Payment attachment deleted"}
 
 

@@ -30,13 +30,13 @@ def client():
 @pytest.fixture
 def user(db):
     return User.objects.create(
-        id="token-test-user",
+        id="1c08b8a6-bfd8-5549-9fb4-357b8a73a267",
         email="tokentest@minty.com",
         password="hashed_pw",
         first_name="Token",
         last_name="Test",
         username="tokentest",
-        system_role="user",
+        system_role="normal",
     )
 
 

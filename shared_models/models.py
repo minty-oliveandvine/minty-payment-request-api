@@ -1,28 +1,34 @@
 from django.db import models
+from django.db.models.functions import Now
+
+from shared_models.enums import EntityRole, SystemRole
+from shared_models.fields import PgEnumField
 
 
 class User(models.Model):
-    """Read-only mirror of pettycashv2.user managed by the Flask app."""
+    """Read-only mirror of pettycashv2.user (Minty owns the row).
 
-    id = models.CharField(max_length=36, primary_key=True)
-    email = models.CharField(max_length=100, unique=True)
-    password = models.CharField(max_length=150)
-    first_name = models.CharField(max_length=150)
-    last_name = models.CharField(max_length=150)
+    No Xero token columns: the bundle lives in ``user_token`` and only Minty may read
+    or refresh it (Xero rotates the refresh token on use). ``xero_entity_id`` is gone too -
+    which company a person connected is ``entities.connected_by_user_id``.
+    """
+
+    id = models.UUIDField(primary_key=True)
+    email = models.CharField(max_length=254, unique=True, null=True, blank=True)
+    password = models.CharField(max_length=255)
+    first_name = models.CharField(max_length=150, default="")
+    last_name = models.CharField(max_length=150, default="")
     username = models.CharField(max_length=150, unique=True)
-    system_role = models.CharField(max_length=20, default="normal")
+    system_role = PgEnumField("system_role", choices=SystemRole.choices, default=SystemRole.NORMAL)
+    is_active = models.BooleanField(default=True)
     approved = models.BooleanField(default=False)
-    access_token = models.CharField(max_length=2048, null=True, blank=True)
-    refresh_token = models.CharField(max_length=255, null=True, blank=True)
-    id_token = models.CharField(max_length=2048, null=True, blank=True)
-    expires_in = models.IntegerField(null=True, blank=True)
-    token_created_at = models.DateTimeField(null=True, blank=True)
-    created_at = models.DateTimeField(null=True, blank=True)
-    xero_entity_id = models.CharField(max_length=36, null=True, blank=True)
+    # NOT NULL DEFAULT now() in the schema; db_default lets an insert leave them to Postgres.
+    created_at = models.DateTimeField(db_default=Now())
+    updated_at = models.DateTimeField(db_default=Now())
     # Sign-in presence behind Minty's Settings > Users list. Owned by the Flask
-    # app (services/user_presence.py, migration p1a01_user_presence) — billing
-    # only ever clears signed_in_at, on logout, so signing out of the billing
-    # profile takes you off that list the same way signing out of Minty does.
+    # app (services/user_presence.py) — billing only ever clears signed_in_at, on
+    # logout, so signing out of the billing profile takes you off that list the
+    # same way signing out of Minty does.
     signed_in_at = models.DateTimeField(null=True, blank=True)
     last_seen_at = models.DateTimeField(null=True, blank=True)
 
@@ -34,11 +40,40 @@ class User(models.Model):
         return f"{self.first_name} {self.last_name} ({self.email})"
 
 
+class UserToken(models.Model):
+    """Read-only mirror of pettycashv2.user_token - a person's Xero OAuth bundle.
+
+    One row per user. Billing only ever READS ``access_token`` and its expiry pair; the
+    refresh belongs to Minty (``/api/internal/xero/token``), see
+    bills/services/xero_token_service.py.
+    """
+
+    id = models.UUIDField(primary_key=True)
+    user = models.OneToOneField(
+        User, on_delete=models.DO_NOTHING, db_column="user_id", related_name="token"
+    )
+    access_token = models.TextField(null=True, blank=True)
+    access_token_obtained_at = models.DateTimeField(null=True, blank=True)
+    access_token_expires_in = models.IntegerField(null=True, blank=True)
+    refresh_token = models.TextField(null=True, blank=True)
+    id_token = models.TextField(null=True, blank=True)
+    refresh_token_last_used_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(null=True, blank=True)
+    updated_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        managed = False
+        db_table = "user_token"
+
+
 class Entity(models.Model):
     """Read-only mirror of pettycashv2.entities managed by the Flask app."""
 
     id = models.CharField(max_length=36, primary_key=True)
     name = models.CharField(max_length=100)
+    # The member who connected this company to Xero; their user_token row is the one a
+    # publish uses. Replaces the old user.xero_entity_id (C1).
+    connected_by_user_id = models.UUIDField(null=True, blank=True)
     # FKs into the registries: country_code is the ISO alpha-2
     # country_info PK; currency_id is a uuid into currency_info(id)
     # (Alembic c8e0a2b4d6f8 / d0f2b4c6e8a0 reshaped both).
@@ -72,7 +107,7 @@ class UserEntity(models.Model):
     entity = models.ForeignKey(
         Entity, on_delete=models.DO_NOTHING, db_column="entity_id"
     )
-    role = models.CharField(max_length=20)
+    role = PgEnumField("entity_role", choices=EntityRole.choices)
     approved = models.BooleanField(default=True)
 
     class Meta:

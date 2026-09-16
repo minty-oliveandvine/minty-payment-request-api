@@ -227,7 +227,7 @@ bills_router = Router()
 def create_bill_endpoint(request, payload: BillCreateIn):
     check_not_system_superuser(request, "create bills")
     check_create_bill(request.entity_role)
-    bill = create_bill(payload, request.auth_user.id, request.entity_id)
+    bill = create_bill(payload, str(request.auth_user.id), request.entity_id)
     return 201, _bill_to_out(bill)
 
 
@@ -239,7 +239,7 @@ def create_bill_endpoint(request, payload: BillCreateIn):
 def submit_bill_endpoint(request, payload: BillCreateIn):
     check_not_system_superuser(request, "submit bills")
     check_create_bill(request.entity_role)
-    bill = submit_bill(payload, request.auth_user.id, request.entity_id)
+    bill = submit_bill(payload, str(request.auth_user.id), request.entity_id)
     return 201, _bill_to_out(bill)
 
 
@@ -251,7 +251,7 @@ def submit_bill_endpoint(request, payload: BillCreateIn):
 def save_draft_endpoint(request, payload: BillDraftIn):
     check_not_system_superuser(request, "save drafts")
     check_create_bill(request.entity_role)
-    bill = save_bill_draft(payload, request.auth_user.id, request.entity_id)
+    bill = save_bill_draft(payload, str(request.auth_user.id), request.entity_id)
     return 201, _bill_to_out(bill)
 
 
@@ -269,7 +269,7 @@ def update_draft_endpoint(request, bill_id: str, payload: BillDraftIn):
     # Role check runs before the paid-immutability guard so elevated roles
     # (Accountant, Admin, Super Admin) can edit paid bills as per the spec.
     check_edit_bill(request.entity_role, bill.status)
-    bill = update_bill_draft(bill, payload, request.auth_user.id)
+    bill = update_bill_draft(bill, payload, str(request.auth_user.id))
     return _bill_to_out(bill)
 
 
@@ -405,7 +405,7 @@ def update_bill_endpoint(request, bill_id: str, payload: BillUpdateIn):
     check_edit_bill(request.entity_role, bill.status)
     if payload.status == "paid" and bill.status != "paid":
         check_mark_paid(request.entity_role)
-    bill = update_bill(bill, payload, request.auth_user.id)
+    bill = update_bill(bill, payload, str(request.auth_user.id))
     return _bill_to_out(bill)
 
 
@@ -418,7 +418,7 @@ def delete_bill_endpoint(request, bill_id: str):
     check_not_system_superuser(request, "delete bills")
     bill = _get_bill_or_404(bill_id, request.entity_id)
     check_delete_bill(request.entity_role, bill.status)
-    outcome = delete_bill(bill, request.auth_user.id)
+    outcome = delete_bill(bill, str(request.auth_user.id))
     message = "Bill deleted" if outcome == "deleted" else "Bill voided"
     return {"message": message}
 
@@ -486,7 +486,7 @@ def return_bill(request, bill_id: str, payload: ReturnBillIn):
         bill_id,
         action,
         bill.status,
-        request.auth_user.id,
+        str(request.auth_user.id),
     )
     return _bill_to_out(bill)
 
@@ -504,7 +504,7 @@ def publish_bill_endpoint(request, bill_id: str):
 
     access_token = resolve_xero_access_token_for_entity(
         request.entity_id,
-        request.auth_user.id,
+        str(request.auth_user.id),
     )
     result = publish_bill_to_xero(
         bill_id=bill_id,
@@ -570,7 +570,7 @@ def upload_attachment_endpoint(
 
     created = []
     for file in files:
-        bill_attachment = upload_attachment(bill, file, request.auth_user.id)
+        bill_attachment = upload_attachment(bill, file, str(request.auth_user.id))
         created.append(_bill_attachment_to_out(bill_attachment))
 
     return 201, created
@@ -601,7 +601,7 @@ def delete_attachment_endpoint(request, bill_id: str, attachment_id: str):
         check_bill_mutable(bill.status)
     check_edit_bill(request.entity_role, bill.status)
 
-    xero_attachment_id = delete_attachment(bill, attachment_id, request.auth_user.id)
+    xero_attachment_id = delete_attachment(bill, attachment_id, str(request.auth_user.id))
 
     # If the bill is published and the attachment had a Xero file, delete it from
     # Xero immediately so it does not reappear on the next republish.
@@ -610,7 +610,7 @@ def delete_attachment_endpoint(request, bill_id: str, attachment_id: str):
             entity = Entity.objects.get(id=bill.entity_id)
             access_token = resolve_xero_access_token_for_entity(
                 str(request.entity_id),
-                request.auth_user.id,
+                str(request.auth_user.id),
             )
             _delete_xero_file(access_token, entity.xero_org_id, xero_attachment_id)
         except Exception as exc:

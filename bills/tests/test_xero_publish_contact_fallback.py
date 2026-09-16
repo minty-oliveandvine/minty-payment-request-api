@@ -29,7 +29,7 @@ from shared_models.models import Entity, User, UserEntity, XeroContactSync
 
 FAKE_ORG_ID = "xero-org-fallback-001"
 FAKE_ACCESS_TOKEN = "fake-bearer-token-fallback"
-FAKE_USER_ID = "fallback-user-001"
+FAKE_USER_ID = "e37ecb13-fdc7-5b79-8adb-8398e8d00c1d"  # was "fallback-user-001"; user.id is a uuid now
 FAKE_INVOICE_ID = "xero-invoice-fallback-0001"
 FAKE_INVOICE_NUMBER = "INV-FALL-001"
 FAKE_XERO_CONTACT_UUID = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"
@@ -115,7 +115,7 @@ def fall_user(db) -> User:
         first_name="Fall",
         last_name="Back",
         username="fallbackuser",
-        system_role="user",
+        system_role="normal",
     )
 
 

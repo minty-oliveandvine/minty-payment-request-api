@@ -145,7 +145,7 @@ class TestUpdateProfileEmailIdentity:
         from shared_models.models import User
 
         User.objects.create(
-            id="test-user-002",
+            id="34f91ee7-b7c2-5108-b5fd-4f1166fec43b",
             email="taken@minty.com",
             password="hashed_pw",
             first_name="Someone",
@@ -170,7 +170,7 @@ class TestUpdateProfileEmailIdentity:
         test_user.username = test_user.email
         test_user.save()
         User.objects.create(
-            id="test-user-003",
+            id="136cf2ea-2314-5a89-ae75-da4ea58e6257",
             email="different@minty.com",
             password="hashed_pw",
             first_name="Someone",

@@ -13,6 +13,8 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
+from bills.tests.conftest import give_xero_token
+
 from bills.services.contact_service import get_entity_bill_contacts
 from shared_models.models import XeroContactSync
 
@@ -60,8 +62,7 @@ def disconnected_entity(db, test_entity):
 
 @pytest.fixture
 def user_with_token(db, test_user):
-    test_user.access_token = "fake-xero-token"
-    test_user.save()
+    give_xero_token(test_user, "fake-xero-token")
     return test_user
 
 

@@ -1,4 +1,8 @@
-"""Tests for Xero OAuth refresh parity with Module 1 Flask."""
+"""Xero access tokens on the billing side: read from ``user_token``, never refreshed here.
+
+The connector's row (``entities.connected_by_user_id``) is preferred, the JWT user's is the
+fallback; anything expired or missing is fetched from Minty's token service.
+"""
 
 from datetime import timedelta
 from unittest.mock import MagicMock, patch
@@ -9,64 +13,10 @@ import requests
 from django.utils import timezone as django_tz
 
 from bills.services.xero_publish_service import _upload_file_to_xero_files_api
-from bills.services.xero_token_service import (
-    ensure_valid_token_persist,
-    resolve_xero_access_token_for_entity,
-)
+from bills.services.xero_token_service import resolve_xero_access_token_for_entity
+from bills.tests.conftest import give_xero_token
 from core.exceptions import BillValidationError
-
-
-@pytest.mark.django_db
-class TestEnsureValidTokenPersist:
-    def test_skips_refresh_when_expiry_fields_missing(self, test_user):
-        """Missing expires_in / token_created_at → treated as expired, refresh attempted."""
-        test_user.access_token = "at"
-        test_user.refresh_token = "rt"
-        test_user.expires_in = None
-        test_user.token_created_at = None
-        test_user.save()
-
-        fake = MagicMock()
-        fake.status_code = 200
-        fake.json.return_value = {
-            "access_token": "refreshed-at",
-            "refresh_token": "refreshed-rt",
-            "expires_in": 1800,
-        }
-
-        with patch(
-            "bills.services.xero_token_service.requests.post",
-            return_value=fake,
-        ) as mock_post:
-            result = ensure_valid_token_persist(test_user)
-            assert result is True
-            mock_post.assert_called_once()
-
-    def test_refreshes_when_expired_and_persists(self, test_user):
-        test_user.access_token = "old-at"
-        test_user.refresh_token = "rt"
-        test_user.expires_in = 1800
-        test_user.token_created_at = django_tz.now() - timedelta(hours=2)
-        test_user.save()
-
-        fake = MagicMock()
-        fake.status_code = 200
-        fake.json.return_value = {
-            "access_token": "new-at",
-            "refresh_token": "new-rt",
-            "expires_in": 1800,
-            "id_token": "idt",
-        }
-
-        with patch(
-            "bills.services.xero_token_service.requests.post",
-            return_value=fake,
-        ):
-            assert ensure_valid_token_persist(test_user) is True
-
-        test_user.refresh_from_db()
-        assert test_user.access_token == "new-at"
-        assert test_user.refresh_token == "new-rt"
+from shared_models.models import User
 
 
 @pytest.mark.django_db
@@ -79,11 +29,7 @@ class TestResolveAccessTokenForEntity:
         test_entity.xero_org_id = "org-abc"
         test_entity.save()
 
-        test_user.access_token = "old-at"
-        test_user.refresh_token = "rt"
-        test_user.expires_in = 1800
-        test_user.token_created_at = django_tz.now() - timedelta(hours=2)
-        test_user.save()
+        give_xero_token(test_user, "old-at", obtained_at=django_tz.now() - timedelta(hours=2))
 
         fake = MagicMock()
         fake.status_code = 200
@@ -111,12 +57,9 @@ class TestResolveAccessTokenForEntity:
         test_entity.xero_org_id = "org-tc002"
         test_entity.save()
 
-        test_user.xero_entity_id = "org-tc002"
-        test_user.access_token = "stale-at"
-        test_user.refresh_token = "valid-rt"
-        test_user.expires_in = 1800
-        test_user.token_created_at = django_tz.now() - timedelta(hours=3)
-        test_user.save()
+        test_entity.connected_by_user_id = test_user.id
+        test_entity.save()
+        give_xero_token(test_user, "stale-at", obtained_at=django_tz.now() - timedelta(hours=3))
 
         fake = MagicMock()
         fake.status_code = 200
@@ -142,12 +85,9 @@ class TestResolveAccessTokenForEntity:
         test_entity.xero_org_id = "org-tc003"
         test_entity.save()
 
-        test_user.xero_entity_id = "org-tc003"
-        test_user.access_token = "stale-at"
-        test_user.refresh_token = "expired-rt"
-        test_user.expires_in = 1800
-        test_user.token_created_at = django_tz.now() - timedelta(hours=3)
-        test_user.save()
+        test_entity.connected_by_user_id = test_user.id
+        test_entity.save()
+        give_xero_token(test_user, "stale-at", obtained_at=django_tz.now() - timedelta(hours=3))
 
         fake_500 = MagicMock()
         fake_500.status_code = 500
@@ -171,12 +111,9 @@ class TestResolveAccessTokenForEntity:
         test_entity.xero_org_id = "org-tc010"
         test_entity.save()
 
-        test_user.xero_entity_id = "org-tc010"
-        test_user.access_token = "stale-at"
-        test_user.refresh_token = "rt"
-        test_user.expires_in = 1800
-        test_user.token_created_at = django_tz.now() - timedelta(hours=3)
-        test_user.save()
+        test_entity.connected_by_user_id = test_user.id
+        test_entity.save()
+        give_xero_token(test_user, "stale-at", obtained_at=django_tz.now() - timedelta(hours=3))
 
         service_resp = MagicMock()
         service_resp.status_code = 200
@@ -208,12 +145,9 @@ class TestResolveAccessTokenForEntity:
         test_entity.xero_org_id = "org-tc015"
         test_entity.save()
 
-        test_user.xero_entity_id = "org-tc015"
-        test_user.access_token = "stale-at"
-        test_user.refresh_token = "rt"
-        test_user.expires_in = 1800
-        test_user.token_created_at = django_tz.now() - timedelta(hours=3)
-        test_user.save()
+        test_entity.connected_by_user_id = test_user.id
+        test_entity.save()
+        give_xero_token(test_user, "stale-at", obtained_at=django_tz.now() - timedelta(hours=3))
 
         service_resp = MagicMock()
         service_resp.status_code = 200
@@ -243,12 +177,9 @@ class TestResolveAccessTokenForEntity:
         test_entity.xero_org_id = "org-tc016"
         test_entity.save()
 
-        test_user.xero_entity_id = "org-tc016"
-        test_user.access_token = "stale-at"
-        test_user.refresh_token = "rt"
-        test_user.expires_in = 1800
-        test_user.token_created_at = django_tz.now() - timedelta(hours=3)
-        test_user.save()
+        test_entity.connected_by_user_id = test_user.id
+        test_entity.save()
+        give_xero_token(test_user, "stale-at", obtained_at=django_tz.now() - timedelta(hours=3))
 
         service_resp = MagicMock()
         service_resp.status_code = 409
@@ -271,12 +202,9 @@ class TestResolveAccessTokenForEntity:
         test_entity.xero_org_id = "org-tc017"
         test_entity.save()
 
-        test_user.xero_entity_id = "org-tc017"
-        test_user.access_token = "stale-at"
-        test_user.refresh_token = "rt"
-        test_user.expires_in = 1800
-        test_user.token_created_at = django_tz.now() - timedelta(hours=3)
-        test_user.save()
+        test_entity.connected_by_user_id = test_user.id
+        test_entity.save()
+        give_xero_token(test_user, "stale-at", obtained_at=django_tz.now() - timedelta(hours=3))
 
         with patch(
             "bills.services.xero_token_service.requests.post",
@@ -297,12 +225,9 @@ class TestResolveAccessTokenForEntity:
         test_entity.xero_org_id = "org-tc012"
         test_entity.save()
 
-        test_user.xero_entity_id = "org-tc012"
-        test_user.access_token = "expired-but-present"
-        test_user.refresh_token = "rt"
-        test_user.expires_in = 1800
-        test_user.token_created_at = django_tz.now() - timedelta(hours=3)
-        test_user.save()
+        test_entity.connected_by_user_id = test_user.id
+        test_entity.save()
+        give_xero_token(test_user, "expired-but-present", obtained_at=django_tz.now() - timedelta(hours=3))
 
         fake_400 = MagicMock()
         fake_400.status_code = 400
@@ -329,12 +254,9 @@ class TestResolveAccessTokenForEntity:
         test_entity.xero_org_id = "org-tc013"
         test_entity.save()
 
-        test_user.xero_entity_id = "org-tc013"
-        test_user.access_token = "stale-at"
-        test_user.refresh_token = "rt"
-        test_user.expires_in = 1800
-        test_user.token_created_at = django_tz.now() - timedelta(hours=3)
-        test_user.save()
+        test_entity.connected_by_user_id = test_user.id
+        test_entity.save()
+        give_xero_token(test_user, "stale-at", obtained_at=django_tz.now() - timedelta(hours=3))
 
         service_resp = MagicMock()
         service_resp.status_code = 409
@@ -363,18 +285,56 @@ class TestResolveAccessTokenForEntity:
         test_entity.xero_org_id = "org-tc014"
         test_entity.save()
 
-        test_user.xero_entity_id = "org-tc014"
-        test_user.access_token = "flask-issued-at"
-        test_user.refresh_token = "rt"
-        test_user.expires_in = 1800
-        test_user.token_created_at = django_tz.now()
-        test_user.save()
+        test_entity.connected_by_user_id = test_user.id
+        test_entity.save()
+        give_xero_token(test_user, "flask-issued-at")
 
         with patch("bills.services.xero_token_service.requests.post") as mock_post:
             token = resolve_xero_access_token_for_entity(test_entity.id, test_user.id)
 
         mock_post.assert_not_called()
         assert token == "flask-issued-at"
+
+    def test_the_connectors_token_wins_over_the_jwt_users(
+        self, test_entity, test_user, test_user_entity
+    ):
+        """Two members hold separate bundles; a publish uses the one who connected the org."""
+        connector = User.objects.create(
+            id="0b1b7b4e-6c1e-5b8a-9c1d-000000000c01", email="conn@minty.com", password="x",
+            first_name="Con", last_name="Nector", username="connector", system_role="normal",
+        )
+        give_xero_token(connector, "connector-at")
+        give_xero_token(test_user, "member-at")
+        test_entity.xero_org_id = "org-two"
+        test_entity.connected_by_user_id = connector.id
+        test_entity.save()
+
+        with patch("bills.services.xero_token_service.requests.post") as mock_post:
+            token = resolve_xero_access_token_for_entity(test_entity.id, test_user.id)
+
+        mock_post.assert_not_called()
+        assert token == "connector-at"
+
+    def test_a_token_without_expiry_metadata_is_treated_as_expired(
+        self, test_entity, test_user, test_user_entity
+    ):
+        test_entity.xero_org_id = "org-meta"
+        test_entity.save()
+        give_xero_token(test_user, "no-expiry-at", expires_in=None, obtained_at=django_tz.now())
+        row = test_user.token
+        row.access_token_obtained_at = None
+        row.save()
+
+        service_resp = MagicMock()
+        service_resp.status_code = 200
+        service_resp.json.return_value = {"access_token": "fresh-at", "xero_org_id": "org-meta"}
+        with patch(
+            "bills.services.xero_token_service.requests.post", return_value=service_resp
+        ) as mock_post:
+            token = resolve_xero_access_token_for_entity(test_entity.id, test_user.id)
+
+        assert token == "fresh-at"
+        mock_post.assert_called_once()
 
     # TC-XERO-011: Files API upload with empty token uses guard, does not send any HTTP request
     def test_tc_xero_011_attachment_upload_empty_token_guard(self):

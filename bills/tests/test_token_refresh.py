@@ -27,13 +27,13 @@ def client():
 @pytest.fixture
 def user(db):
     return User.objects.create(
-        id="refresh-test-user",
+        id="59413a81-db95-5233-928a-14fbdb3fa29b",
         email="refresh@minty.com",
         password="hashed_pw",
         first_name="Refresh",
         last_name="Test",
         username="refreshtest",
-        system_role="user",
+        system_role="normal",
     )
 
 

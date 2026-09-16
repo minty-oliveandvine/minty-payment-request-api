@@ -4,6 +4,8 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
+from bills.tests.conftest import give_xero_token
+
 from shared_models.models import XeroContactSync
 
 
@@ -68,8 +70,7 @@ class TestEntityBillContactsCreate:
         test_entity.status = "connected"
         test_entity.xero_org_id = "org-abc"
         test_entity.save()
-        test_user.access_token = "fake-xero-token"
-        test_user.save()
+        give_xero_token(test_user, "fake-xero-token")
 
         fake_resp = MagicMock()
         fake_resp.status_code = 200
@@ -117,8 +118,7 @@ class TestEntityBillContactsCreate:
         test_entity.status = "connected"
         test_entity.xero_org_id = "org-abc"
         test_entity.save()
-        test_user.access_token = "fake-xero-token"
-        test_user.save()
+        give_xero_token(test_user, "fake-xero-token")
 
         fake_resp = MagicMock()
         fake_resp.status_code = 400

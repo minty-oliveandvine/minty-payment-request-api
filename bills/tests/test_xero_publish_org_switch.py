@@ -56,7 +56,7 @@ ORG_B = "xero-org-NEW"
 OLD_INVOICE_ID = "invoice-in-org-a"
 NEW_INVOICE_ID = "invoice-in-org-b"
 ACCESS_TOKEN = "fake-bearer-token"
-USER_ID = "org-switch-user-001"
+USER_ID = "f9f70ce4-fbc3-507e-99f7-ec48f3ea2ac1"  # was "org-switch-user-001"; user.id is a uuid now
 
 _PUT_PATH = "bills.services.xero_publish_service.requests.put"
 _POST_PATH = "bills.services.xero_publish_service.requests.post"
@@ -115,7 +115,7 @@ def switch_user(db) -> User:
         first_name="Switch",
         last_name="Er",
         username="switcher",
-        system_role="user",
+        system_role="normal",
     )
 
 

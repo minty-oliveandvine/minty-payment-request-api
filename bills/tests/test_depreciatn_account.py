@@ -27,13 +27,13 @@ def api():
 @pytest.fixture
 def user(db):
     return User.objects.create(
-        id="deprec-user",
+        id="a03d6b1f-f9d8-5ef9-9ffa-385f731bef2e",
         email="deprec@minty.com",
         password="hashed",
         first_name="Deprec",
         last_name="Test",
         username="deprectest",
-        system_role="user",
+        system_role="normal",
     )
 
 

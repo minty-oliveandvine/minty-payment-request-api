@@ -134,7 +134,7 @@ def token_refresh(request):
 
     logger.info(
         "Token refreshed user_id=%s entity_id=%s",
-        request.auth_user.id,
+        str(request.auth_user.id),
         request.entity_id,
     )
     return TokenRefreshOut(token=new_token, expires_in=expires_in)

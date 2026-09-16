@@ -45,13 +45,13 @@ def api():
 @pytest.fixture
 def user(db):
     return User.objects.create(
-        id="perm-user-001",
+        id="c428cdf9-479b-509f-9850-92c75f8add26",
         email="perm@minty.com",
         password="hashed",
         first_name="Perm",
         last_name="Tester",
         username="permtester",
-        system_role="user",
+        system_role="normal",
     )
 
 

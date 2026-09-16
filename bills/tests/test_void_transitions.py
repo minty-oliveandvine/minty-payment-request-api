@@ -37,13 +37,13 @@ def api():
 @pytest.fixture
 def user(db):
     return User.objects.create(
-        id="void-user-001",
+        id="144d4449-4bc4-5f53-9a6d-bd9701c7cfc7",
         email="void@minty.com",
         password="hashed",
         first_name="Void",
         last_name="Tester",
         username="voidtester",
-        system_role="user",
+        system_role="normal",
     )
 
 

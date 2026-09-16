@@ -36,7 +36,7 @@ FAKE_INVOICE_ID = "xero-invoice-bs-0001"
 FAKE_INVOICE_NUMBER = "INV-BS-0001"
 FAKE_ORG_ID = "xero-org-bs-001"
 FAKE_ACCESS_TOKEN = "fake-bearer-token-bs"
-FAKE_USER_ID = "bs-user-001"
+FAKE_USER_ID = "f471f257-f5fb-5ab8-82c2-f336ff8e9b21"  # was "bs-user-001"; user.id is a uuid now
 FAKE_S3_BYTES = b"%PDF-1.4 fake bankslip bytes"
 
 
@@ -70,7 +70,7 @@ def user(db) -> User:
         first_name="Bs",
         last_name="User",
         username="bsuser",
-        system_role="user",
+        system_role="normal",
     )
 
 
