@@ -91,7 +91,7 @@ def _db_to_bill_contact(row: XeroContactSync) -> dict:
     """Normalise a DB row to EntityBillContactOut shape."""
     return {
         "id": row.xero_contact_id,
-        "entity_id": row.entity_id,
+        "entity_id": str(row.entity_id) if row.entity_id else None,  # uuid column since C5
         "xero_contact_id": row.xero_contact_id,
         "xero_org_id": row.xero_org_id or None,
         "name": row.name,

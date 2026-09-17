@@ -14,11 +14,19 @@ from django.utils import timezone as django_tz
 from shared_models.models import User, XeroContactSync, UserToken
 
 
+def _uid(label):
+    """xero_contact_sync.id is a uuid column since C5: a stable uuid for a test label."""
+    import uuid as _uuid
+
+    return _uuid.uuid5(_uuid.NAMESPACE_URL, f"minty-test-{label}")
+
+
+
 @pytest.fixture
 def _seed_contacts(db, test_entity):
     """Seed xero_contact_sync with contacts covering all xero_org_id states."""
     XeroContactSync.objects.create(
-        id="c1",
+        id=_uid("c1"),
         entity_id=test_entity.id,
         xero_contact_id="xero-001",
         xero_org_id="org-abc",
@@ -26,7 +34,7 @@ def _seed_contacts(db, test_entity):
         category="SUPPLIER",
     )
     XeroContactSync.objects.create(
-        id="c2",
+        id=_uid("c2"),
         entity_id=test_entity.id,
         xero_contact_id="xero-002",
         xero_org_id="org-abc",
@@ -34,7 +42,7 @@ def _seed_contacts(db, test_entity):
         category="SUPPLIER",
     )
     XeroContactSync.objects.create(
-        id="c3",
+        id=_uid("c3"),
         entity_id=test_entity.id,
         xero_contact_id="xero-003",
         xero_org_id=None,
@@ -42,7 +50,7 @@ def _seed_contacts(db, test_entity):
         category="SUPPLIER",
     )
     XeroContactSync.objects.create(
-        id="c4",
+        id=_uid("c4"),
         entity_id=test_entity.id,
         xero_contact_id="xero-004",
         xero_org_id="",
@@ -50,7 +58,7 @@ def _seed_contacts(db, test_entity):
         category="SUPPLIER",
     )
     XeroContactSync.objects.create(
-        id="c5",
+        id=_uid("c5"),
         entity_id=test_entity.id,
         xero_contact_id="xero-005",
         xero_org_id="org-abc",
@@ -265,7 +273,7 @@ class TestContactListParity:
         give_xero_token(test_user, "fake-xero-token")
 
         XeroContactSync.objects.create(
-            id="sync-not-in-live-yet",
+            id=_uid("sync-not-in-live-yet"),
             entity_id=test_entity.id,
             xero_contact_id="xero-just-posted",
             xero_org_id="org-abc",

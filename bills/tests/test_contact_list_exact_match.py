@@ -11,12 +11,22 @@ For each scenario we compare the NAME SET produced by each module.
 
 from unittest.mock import MagicMock, patch
 
+import uuid
+
 import pytest
 
 from bills.tests.conftest import give_xero_token
 
 from bills.services.contact_service import get_entity_bill_contacts
 from shared_models.models import XeroContactSync
+
+
+def _uid(label):
+    """xero_contact_sync.id is a uuid column since C5: a stable uuid for a test label."""
+    import uuid as _uuid
+
+    return _uuid.uuid5(_uuid.NAMESPACE_URL, f"minty-test-{label}")
+
 
 # ── Helpers that replicate Module 1 logic exactly ────────────────────────
 
@@ -80,7 +90,7 @@ def _seed_db_contacts(db, test_entity):
         start=1,
     ):
         XeroContactSync.objects.create(
-            id=f"c{i}",
+            id=uuid.uuid5(uuid.NAMESPACE_URL, f"contact-{i}"),  # a uuid column since C5
             entity_id=test_entity.id,
             xero_contact_id=f"xero-{i:03d}",
             xero_org_id=org_id,
@@ -258,7 +268,7 @@ def test_duplicate_display_names_collapsed_to_one_row(db, test_entity, test_user
     uid = test_user.id
     for cid, xid in [("dup-a", "xid-a"), ("dup-b", "xid-b")]:
         XeroContactSync.objects.create(
-            id=cid,
+            id=_uid(cid),
             entity_id=eid,
             xero_contact_id=xid,
             xero_org_id=None,

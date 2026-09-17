@@ -38,6 +38,14 @@ from bills.services.contact_service import (
 )
 from shared_models.models import XeroContactSync
 
+
+def _uid(label):
+    """xero_contact_sync.id is a uuid column since C5: a stable uuid for a test label."""
+    import uuid as _uuid
+
+    return _uuid.uuid5(_uuid.NAMESPACE_URL, f"minty-test-{label}")
+
+
 # ── helpers ────────────────────────────────────────────────────────────────
 
 
@@ -90,7 +98,7 @@ def _seed_standard_contacts(entity_id: str):
     ]
     for pk, xid, org, name, cat in data:
         XeroContactSync.objects.create(
-            id=pk,
+            id=_uid(pk),
             entity_id=entity_id,
             xero_contact_id=xid,
             xero_org_id=org,
@@ -129,7 +137,7 @@ class TestDbOnlyPathNoDuplicates:
         self, disconnected_entity, test_user, test_user_entity
     ):
         XeroContactSync.objects.create(
-            id="only-one",
+            id=_uid("only-one"),
             entity_id=disconnected_entity.id,
             xero_contact_id="xero-solo",
             xero_org_id=None,
@@ -174,7 +182,7 @@ class TestDbOnlyPathNoDuplicates:
         """Larger dataset to surface any O(n^2) set-membership bugs."""
         for i in range(20):
             XeroContactSync.objects.create(
-                id=f"bulk-{i}",
+                id=_uid(f"bulk-{i}"),
                 entity_id=disconnected_entity.id,
                 xero_contact_id=f"xero-bulk-{i:03d}",
                 xero_org_id="org-abc",
@@ -208,7 +216,7 @@ class TestXeroLivePathMergeNoDuplicates:
         """Primary regression test: the exact overlap scenario that causes the bug."""
         # This contact exists in both Xero API response and local DB.
         XeroContactSync.objects.create(
-            id="overlap-1",
+            id=_uid("overlap-1"),
             entity_id=connected_entity.id,
             xero_contact_id="xero-overlap",
             xero_org_id="org-abc",
@@ -246,7 +254,7 @@ class TestXeroLivePathMergeNoDuplicates:
         ]
         for i, (xid, name) in enumerate(xero_data, start=1):
             XeroContactSync.objects.create(
-                id=f"db-{i}",
+                id=_uid(f"db-{i}"),
                 entity_id=connected_entity.id,
                 xero_contact_id=xid,
                 xero_org_id="org-abc",
@@ -298,7 +306,7 @@ class TestXeroLivePathMergeNoDuplicates:
     ):
         """DB contacts not yet in Xero live GET are appended exactly once."""
         XeroContactSync.objects.create(
-            id="db-only",
+            id=_uid("db-only"),
             entity_id=connected_entity.id,
             xero_contact_id="xero-db-only",
             xero_org_id="org-abc",
@@ -377,7 +385,7 @@ class TestContactIdCaseSensitivity:
         """Baseline: matching case — contact must appear exactly once."""
         xid = "XERO-CASE-ABC"
         XeroContactSync.objects.create(
-            id="case-db",
+            id=_uid("case-db"),
             entity_id=connected_entity.id,
             xero_contact_id=xid,
             xero_org_id="org-abc",
@@ -406,7 +414,7 @@ class TestContactIdCaseSensitivity:
         xero_id_lowercase = "xero-case-abc"
 
         XeroContactSync.objects.create(
-            id="case-db-lower",
+            id=_uid("case-db-lower"),
             entity_id=connected_entity.id,
             xero_contact_id=xero_id_lowercase,
             xero_org_id="org-abc",
@@ -444,7 +452,7 @@ class TestMergeHelperNoDuplicates:
     def test_already_present_contact_not_appended(self, db, test_entity):
         """If live list already contains the xero_contact_id, DB row is skipped."""
         XeroContactSync.objects.create(
-            id="m1",
+            id=_uid("m1"),
             entity_id=test_entity.id,
             xero_contact_id="xero-111",
             xero_org_id=None,
@@ -472,7 +480,7 @@ class TestMergeHelperNoDuplicates:
     def test_missing_db_contact_appended_once(self, db, test_entity):
         """DB contact absent from live list is appended exactly once."""
         XeroContactSync.objects.create(
-            id="m2",
+            id=_uid("m2"),
             entity_id=test_entity.id,
             xero_contact_id="xero-222",
             xero_org_id=None,
@@ -490,7 +498,7 @@ class TestMergeHelperNoDuplicates:
         """Two distinct DB contacts absent from live list are each appended once."""
         for i in (3, 4):
             XeroContactSync.objects.create(
-                id=f"m{i}",
+                id=_uid(f"m{i}"),
                 entity_id=test_entity.id,
                 xero_contact_id=f"xero-{i:03d}",
                 xero_org_id=None,
@@ -504,7 +512,7 @@ class TestMergeHelperNoDuplicates:
     def test_empty_xero_contact_id_in_live_not_added_to_seen(self, db, test_entity):
         """A live contact with an empty xero_contact_id should not pollute the seen set."""
         XeroContactSync.objects.create(
-            id="m5",
+            id=_uid("m5"),
             entity_id=test_entity.id,
             xero_contact_id="xero-real",
             xero_org_id=None,
@@ -594,7 +602,7 @@ class TestApiEndpointNoDuplicates:
     ):
         """Two xero_contact_sync rows with the same xero_contact_id — one API row."""
         XeroContactSync.objects.create(
-            id="dup-a",
+            id=_uid("dup-a"),
             entity_id=test_entity.id,
             xero_contact_id="xero-same",
             xero_org_id=None,
@@ -602,7 +610,7 @@ class TestApiEndpointNoDuplicates:
             category=None,
         )
         XeroContactSync.objects.create(
-            id="dup-b",
+            id=_uid("dup-b"),
             entity_id=test_entity.id,
             xero_contact_id="xero-same",
             xero_org_id=None,
@@ -716,7 +724,7 @@ class TestMultiEntityIsolation:
 
         # Contacts for entity A.
         XeroContactSync.objects.create(
-            id="a-c1",
+            id=_uid("a-c1"),
             entity_id=test_entity.id,
             xero_contact_id="xero-shared",
             xero_org_id=None,
@@ -725,7 +733,7 @@ class TestMultiEntityIsolation:
         )
         # Same xero_contact_id but belongs to entity B.
         XeroContactSync.objects.create(
-            id="b-c1",
+            id=_uid("b-c1"),
             entity_id=entity_b.id,
             xero_contact_id="xero-shared",
             xero_org_id=None,

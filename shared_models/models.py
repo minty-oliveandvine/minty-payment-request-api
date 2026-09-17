@@ -151,8 +151,8 @@ class AccountInfo(models.Model):
     structural changes (insert/delete/schema) remain Flask's responsibility.
     """
 
-    id = models.CharField(max_length=36, primary_key=True)
-    entity_id = models.CharField(max_length=36)
+    id = models.UUIDField(primary_key=True)
+    entity_id = models.UUIDField()
     type = models.CharField(max_length=50)
     name = models.CharField(max_length=80)
     xero_account_id = models.CharField(max_length=36, null=True, blank=True)
@@ -160,6 +160,8 @@ class AccountInfo(models.Model):
     status = models.CharField(max_length=50, default="ACTIVE")
     class_type = models.CharField(max_length=50, null=True, blank=True)
     description = models.CharField(max_length=255, null=True, blank=True)
+    created_at = models.DateTimeField(db_default=Now())
+    updated_at = models.DateTimeField(db_default=Now())
 
     class Meta:
         managed = False
@@ -167,14 +169,17 @@ class AccountInfo(models.Model):
 
 
 class XeroContactSync(models.Model):
-    """Read-only mirror of pettycashv3.xero_contact_sync."""
+    """Mirror of pettycashv3.xero_contact_sync (uuids and stamps since C5); the bill contact
+    picker reads it and ``contact_service`` adds a row when a contact is created in Xero."""
 
-    id = models.CharField(max_length=36, primary_key=True)
-    entity_id = models.CharField(max_length=36)
+    id = models.UUIDField(primary_key=True)
+    entity_id = models.UUIDField(null=True, blank=True)
     xero_contact_id = models.CharField(max_length=36)
     xero_org_id = models.CharField(max_length=36, null=True, blank=True)
     name = models.CharField(max_length=150)
     category = models.CharField(max_length=50, null=True, blank=True)
+    created_at = models.DateTimeField(db_default=Now())
+    updated_at = models.DateTimeField(db_default=Now())
 
     class Meta:
         managed = False

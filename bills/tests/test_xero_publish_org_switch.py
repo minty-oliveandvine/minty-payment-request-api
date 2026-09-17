@@ -51,6 +51,14 @@ from bills.services.xero_publish_service import (
 from core.exceptions import BillValidationError
 from shared_models.models import Entity, User, UserEntity, XeroContactSync
 
+
+def _uid(label):
+    """xero_contact_sync.id is a uuid column since C5: a stable uuid for a test label."""
+    import uuid as _uuid
+
+    return _uuid.uuid5(_uuid.NAMESPACE_URL, f"minty-test-{label}")
+
+
 ORG_A = "xero-org-OLD"
 ORG_B = "xero-org-NEW"
 OLD_INVOICE_ID = "invoice-in-org-a"
@@ -148,7 +156,7 @@ def switched_bill(db, entity_on_org_b, switch_user) -> Bill:
 def contact_in_org_b(db, entity_on_org_b) -> XeroContactSync:
     """The bill's contact, as it exists in the new org."""
     return XeroContactSync.objects.create(
-        id="contact-row-org-b",
+        id=_uid("contact-row-org-b"),
         entity_id=entity_on_org_b.id,
         xero_contact_id="contact-from-org-b",
         xero_org_id=ORG_B,
@@ -325,7 +333,7 @@ class TestCleanupOnSwitch:
         """TC-ORG-011: a contact belonging to org A must not be re-attached."""
         _make_sync(switched_bill, OLD_INVOICE_ID, ORG_A)
         XeroContactSync.objects.create(
-            id="contact-row-org-a",
+            id=_uid("contact-row-org-a"),
             entity_id=entity_on_org_b.id,
             xero_contact_id="contact-from-org-a",
             xero_org_id=ORG_A,
