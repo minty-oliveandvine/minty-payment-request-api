@@ -1,7 +1,7 @@
 from django.db import models
 from django.db.models.functions import Now
 
-from shared_models.enums import EntityRole, EntityStatus, SystemRole
+from shared_models.enums import EntityRole, EntityStatus, ModuleCode, SubscriptionPhase, SystemRole
 from shared_models.fields import CharNField, PgEnumField
 
 
@@ -129,11 +129,11 @@ class EntityModuleSubscription(models.Model):
     that on write), so any row answers "who pays for this company".
     """
 
-    id = models.CharField(max_length=36, primary_key=True)
-    entity_id = models.CharField(max_length=36, db_index=True)
-    function_code = models.CharField(max_length=100)
-    payer_user_id = models.CharField(max_length=36, db_index=True)
-    phase = models.CharField(max_length=30)
+    id = models.UUIDField(primary_key=True)
+    entity_id = models.UUIDField(db_index=True)
+    function_code = PgEnumField("module_code", choices=ModuleCode.choices)
+    payer_user_id = models.UUIDField(db_index=True)
+    phase = PgEnumField("subscription_phase", choices=SubscriptionPhase.choices)
 
     class Meta:
         managed = False

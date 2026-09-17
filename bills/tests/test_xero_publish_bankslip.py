@@ -85,7 +85,7 @@ def published_bill(db, entity, user) -> Bill:
         entity_id=entity.id,
         contact="Vendor Co",
         xero_contact_id="xero-contact-bs",
-        status=Bill.Status.AUTHORISED,
+        status=Bill.Status.SUBMITTED,
         amount=Decimal("100.00"),
         description="Bank slip test",
         reference="REF-BS-001",

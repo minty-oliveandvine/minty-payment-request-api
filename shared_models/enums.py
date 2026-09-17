@@ -44,6 +44,17 @@ class ModuleCode(models.TextChoices):
     PAYMENT_REQUEST = "PAYMENT_REQUEST"
 
 
+class SubscriptionPhase(models.TextChoices):
+    """``subscription_phase`` — the life of a module's subscription; read here for the gate."""
+
+    TRIAL = "trial"
+    ACTIVE = "active"
+    PAST_DUE = "past_due"
+    SCHEDULED_CANCEL = "scheduled_cancel"
+    CANCELLED = "cancelled"
+    EXPIRED = "expired"
+
+
 class EntityRole(models.TextChoices):
     """``entity_role`` — a person's role within one company (``user_entity.role``)."""
 

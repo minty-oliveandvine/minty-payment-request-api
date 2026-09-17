@@ -126,7 +126,7 @@ def check_bill_mutable(bill_status: str):
     defer to check_edit_bill(), which allows elevated roles (Accountant, Admin,
     Super Admin) to edit paid bills per the permission matrix.
     """
-    if bill_status == "voided":
+    if bill_status == "void":
         raise PermissionDeniedError("Cannot edit a voided bill.")
     if bill_status == "paid":
         raise PermissionDeniedError(

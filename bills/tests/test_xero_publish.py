@@ -151,7 +151,7 @@ def authorised_bill(db, xero_entity, xero_user) -> Bill:
         entity_id=xero_entity.id,
         contact="Acme Corp",
         xero_contact_id="xero-contact-abc",
-        status=Bill.Status.AUTHORISED,
+        status=Bill.Status.SUBMITTED,
         amount=Decimal("500.00"),
         description="Office supplies",
         reference="INV-LOCAL-001",
@@ -170,7 +170,7 @@ def bill_with_line_items(db, xero_entity, xero_user) -> Bill:
         entity_id=xero_entity.id,
         contact="Line Corp",
         xero_contact_id="xero-contact-line",
-        status=Bill.Status.AUTHORISED,
+        status=Bill.Status.SUBMITTED,
         amount=Decimal("300.00"),
         description="Consulting",
         reference="INV-LINE-001",
@@ -904,7 +904,7 @@ class TestAuditTrail:
             bill=authorised_bill,
             action=Audit.Action.PUBLISHED_TO_XERO,
         ).last()
-        assert audit.user_id == FAKE_USER_ID
+        assert str(audit.user_id) == FAKE_USER_ID
 
     def test_republish_audit_user_id_recorded(
         self, authorised_bill, xero_entity, xero_user_entity,
@@ -925,7 +925,7 @@ class TestAuditTrail:
             bill=authorised_bill,
             action=Audit.Action.PUBLISHED_TO_XERO,
         ).last()
-        assert audit.user_id == FAKE_USER_ID
+        assert str(audit.user_id) == FAKE_USER_ID
 
 
 # ═══════════════════════════════════════════════════════════════════════════

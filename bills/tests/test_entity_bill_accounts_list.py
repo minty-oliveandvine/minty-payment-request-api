@@ -85,8 +85,8 @@ def test_default_list_includes_only_allowed_types(
     EntityBillAccountXero.objects.create(
         entity_id=entity.id,
         account_code="820",
-        account_name="Current Liability",
-        account_type="CURRLIAB",
+        account_name="Overheads",
+        account_type="OVERHEADS",
         is_active=True,
         is_deleted=False,
         xero_account_id="xero-liab-1",
@@ -149,8 +149,8 @@ def test_bill_dropdown_includes_only_allowed_types(
     EntityBillAccountXero.objects.create(
         entity_id=entity.id,
         account_code="820",
-        account_name="Current Liability",
-        account_type="CURRLIAB",
+        account_name="Overheads",
+        account_type="OVERHEADS",
         is_active=True,
         is_deleted=False,
         xero_account_id="xero-liab-2",
@@ -184,15 +184,13 @@ def test_bill_dropdown_includes_only_allowed_types(
 
 
 @pytest.mark.django_db
-def test_all_eight_permitted_types_appear(api, entity, auth_headers, user_entity):
-    """All 8 permitted account types are returned; nothing else is."""
+def test_all_permitted_types_appear(api, entity, auth_headers, user_entity):
+    """Every permitted account type (BILL_SETTINGS_ACCOUNT_TYPES - five, decided 2026-09-17)
+    is returned; nothing else is."""
     permitted = [
-        ("100", "Current Asset", "CURRENT", "xero-cur-1"),
-        ("110", "Non-current Asset", "NONCURRENT", "xero-nc-1"),
-        ("200", "Current Liability", "CURRLIAB", "xero-cl-1"),
-        ("210", "Non-current Liability", "TERMLIAB", "xero-nl-1"),
         ("300", "Fixed Asset", "FIXED", "xero-fa-1"),
-        ("400", "Inventory", "INVENTORY", "xero-inv-1"),
+        ("500", "Overheads", "OVERHEADS", "xero-oh-1"),
+        ("550", "Prepayment", "PREPAYMENT", "xero-pp-1"),
         ("600", "Direct Cost", "DIRECTCOSTS", "xero-dc-3"),
         ("700", "Expense", "EXPENSE", "xero-exp-3"),
     ]
@@ -241,16 +239,13 @@ def test_all_eight_permitted_types_appear(api, entity, auth_headers, user_entity
     data = json.loads(resp.content)
     returned_types = {row["account_type"] for row in data}
     assert returned_types == {
-        "CURRENT",
-        "NONCURRENT",
-        "CURRLIAB",
-        "TERMLIAB",
-        "FIXED",
-        "INVENTORY",
         "DIRECTCOSTS",
         "EXPENSE",
+        "FIXED",
+        "OVERHEADS",
+        "PREPAYMENT",
     }
-    assert len(data) == 8
+    assert len(data) == 5
 
 
 @pytest.mark.django_db
@@ -271,8 +266,8 @@ def test_explicit_account_type_overrides_default_filter(
     EntityBillAccountXero.objects.create(
         entity_id=entity.id,
         account_code="820",
-        account_name="Current Liability",
-        account_type="CURRLIAB",
+        account_name="Overheads",
+        account_type="OVERHEADS",
         is_active=True,
         is_deleted=False,
         xero_account_id="xero-liab-3",

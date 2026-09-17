@@ -136,11 +136,17 @@ def switch_user_entity(db, switch_user, entity_on_org_b) -> UserEntity:
 
 @pytest.fixture
 def switched_bill(db, entity_on_org_b, switch_user) -> Bill:
+    # the contact the bill still names is org A's row (a bill.contact_id points at a
+    # xero_contact_sync row since C8; assigning the Xero id resolves to it)
+    XeroContactSync.objects.get_or_create(
+        entity_id=entity_on_org_b.id, xero_contact_id="contact-from-org-a",
+        defaults={"id": _uid("contact-row-org-a"), "xero_org_id": ORG_A, "name": "Acme Corp"},
+    )
     return Bill.objects.create(
         entity_id=entity_on_org_b.id,
         contact="Acme Corp",
         xero_contact_id="contact-from-org-a",
-        status=Bill.Status.AUTHORISED,
+        status=Bill.Status.SUBMITTED,
         amount=Decimal("500.00"),
         description="Office supplies",
         reference="INV-LOCAL-001",
@@ -332,13 +338,7 @@ class TestCleanupOnSwitch:
     ):
         """TC-ORG-011: a contact belonging to org A must not be re-attached."""
         _make_sync(switched_bill, OLD_INVOICE_ID, ORG_A)
-        XeroContactSync.objects.create(
-            id=_uid("contact-row-org-a"),
-            entity_id=entity_on_org_b.id,
-            xero_contact_id="contact-from-org-a",
-            xero_org_id=ORG_A,
-            name="Acme Corp",
-        )
+        # the org-A contact row exists (the switched_bill fixture made it)
 
         with (
             patch(_PUT_PATH, return_value=_xero_200()),

@@ -14,7 +14,7 @@ class TestEntityBillContactsCreate:
     def test_requires_bill_role(
         self, api_client, auth_token, test_entity, test_user_entity
     ):
-        test_user_entity.role = "guest"
+        test_user_entity.role = "entity_base"  # the lowest entity_role: no bill permissions
         test_user_entity.save(update_fields=["role"])
         try:
             resp = api_client.post(

@@ -38,7 +38,7 @@ class TestPaymentAttachmentBankSlipUpload:
         pending_payment,
         test_user_entity,
     ):
-        mock_s3 = MagicMock()
+        mock_s3 = MagicMock(**{"generate_presigned_url.return_value": "https://s3.test/signed"})
         mock_get_s3.return_value = mock_s3
 
         pdf = SimpleUploadedFile(
@@ -90,7 +90,7 @@ class TestPaymentAttachmentBankSlipUpload:
         pending_payment,
         test_user_entity,
     ):
-        mock_get_s3.return_value = MagicMock()
+        mock_get_s3.return_value = MagicMock(**{"generate_presigned_url.return_value": "https://s3.test/signed"})
         pdf = SimpleUploadedFile("x.pdf", b"%PDF-1.4", content_type="application/pdf")
         resp = api_client.post(
             f"/api/v1/bills/{draft_bill.id}/payments/{pending_payment.id}/attachments",

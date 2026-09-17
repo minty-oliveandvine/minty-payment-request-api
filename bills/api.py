@@ -4,6 +4,7 @@ import re
 from botocore.exceptions import ClientError
 from django.conf import settings
 from django.db.models import OuterRef, Q, Subquery
+from django.core.exceptions import ValidationError
 from django.http import Http404, StreamingHttpResponse
 from ninja import File, Query, Router
 from ninja.files import UploadedFile
@@ -59,7 +60,7 @@ logger = logging.getLogger("minty-api")
 def _get_bill_or_404(bill_id: str, entity_id: str) -> Bill:
     try:
         return Bill.objects.get(id=bill_id, entity_id=entity_id)
-    except Bill.DoesNotExist:
+    except (Bill.DoesNotExist, ValidationError, ValueError):  # a malformed id is not found either
         raise Http404("Bill not found")
 
 
@@ -96,7 +97,7 @@ def _bill_to_out(bill: Bill) -> dict:
 
     return {
         "id": str(bill.id),
-        "entity_id": bill.entity_id,
+        "entity_id": str(bill.entity_id),
         "contact": bill.contact,
         "xero_contact_id": bill.xero_contact_id,
         "status": bill.status,
@@ -109,7 +110,7 @@ def _bill_to_out(bill: Bill) -> dict:
         "currency_code": bill.currency_code,
         "xero_account_code": bill.xero_account_code,
         "published": bill.published,
-        "uploaded_by": bill.uploaded_by,
+        "uploaded_by": bill.uploaded_by,  # str via the property
         "created_at": bill.created_at,
         "updated_at": bill.updated_at,
         "attachments": attachments,
@@ -167,7 +168,7 @@ def update_draft_endpoint(request, bill_id: str, payload: BillDraftIn):
     check_not_system_superuser(request, "update drafts")
     bill = _get_bill_or_404(bill_id, request.entity_id)
     # Voided bills are fully immutable for all roles; check this first.
-    if bill.status == "voided":
+    if bill.status == "void":
         check_bill_mutable(bill.status)
     # Role check runs before the paid-immutability guard so elevated roles
     # (Accountant, Admin, Super Admin) can edit paid bills as per the spec.
@@ -201,10 +202,10 @@ def list_bills(request, filters: Query[BillFilterQuery]):
     if filters.status:
         qs = qs.filter(status=filters.status)
     if filters.contact:
-        qs = qs.filter(contact__icontains=filters.contact)
+        qs = qs.filter(contact_name__icontains=filters.contact)
     if filters.search and filters.search.strip():
         q = filters.search.strip()
-        qs = qs.filter(Q(contact__icontains=q) | Q(description__icontains=q))
+        qs = qs.filter(Q(contact_name__icontains=q) | Q(description__icontains=q))
     if filters.amount_min is not None:
         qs = qs.filter(amount__gte=filters.amount_min)
     if filters.amount_max is not None:
@@ -233,7 +234,7 @@ def list_bills(request, filters: Query[BillFilterQuery]):
         "-status",
     }
     sort = filters.sort_by if filters.sort_by in allowed_sorts else "-created_at"
-    qs = qs.order_by(sort)
+    qs = qs.order_by(sort.replace("contact", "contact_name"))  # the column's name since C8
 
     page_size = min(max(1, filters.page_size), 100)
     page = max(1, filters.page)
@@ -243,7 +244,7 @@ def list_bills(request, filters: Query[BillFilterQuery]):
     return [
         {
             "id": str(b.id),
-            "entity_id": b.entity_id,
+            "entity_id": str(b.entity_id),
             "contact": b.contact,
             "status": b.status,
             "amount": b.amount,
@@ -293,7 +294,7 @@ def update_bill_endpoint(request, bill_id: str, payload: BillUpdateIn):
     check_not_system_superuser(request, "update bills")
     bill = _get_bill_or_404(bill_id, request.entity_id)
     # Voided bills are fully immutable for all roles; check this first.
-    if bill.status == "voided":
+    if bill.status == "void":
         check_bill_mutable(bill.status)
     # Role check runs before the paid-immutability guard so elevated roles
     # (Accountant, Admin, Super Admin) can edit paid bills as per the spec.
@@ -329,7 +330,7 @@ def return_bill(request, bill_id: str, payload: ReturnBillIn):
 
     - "payment_requested": bill must be in 'submitted' status → sets to 'returned'
     - "returned":          bill must be in 'returned' status  → sets back to 'submitted'
-    - "void":              bill must be in 'returned' status  → sets to 'voided'
+    - "void":              bill must be in 'returned' status  → sets to 'void'
 
     Requires Accountant, Admin, or Super Admin role for all transitions.
     """
@@ -459,7 +460,7 @@ def upload_attachment_endpoint(
     """
     check_not_system_superuser(request, "upload attachments")
     bill = _get_bill_or_404(bill_id, request.entity_id)
-    if bill.status == "voided":
+    if bill.status == "void":
         check_bill_mutable(bill.status)
     check_edit_bill(request.entity_role, bill.status)
 
@@ -492,7 +493,7 @@ def list_attachments(request, bill_id: str):
 def delete_attachment_endpoint(request, bill_id: str, attachment_id: str):
     check_not_system_superuser(request, "delete attachments")
     bill = _get_bill_or_404(bill_id, request.entity_id)
-    if bill.status == "voided":
+    if bill.status == "void":
         check_bill_mutable(bill.status)
     check_edit_bill(request.entity_role, bill.status)
 

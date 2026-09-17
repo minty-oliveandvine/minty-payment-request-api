@@ -273,6 +273,12 @@ class TestUpdateBill:
     def test_update_reference_and_currency(
         self, api_client, auth_headers, draft_bill, test_user_entity
     ):
+        # bill.currency_id points at currency_info since C8: the code must be a real currency
+        from bills.models import CurrencyInfo
+
+        CurrencyInfo.objects.get_or_create(
+            currency_code="USD", defaults={"currency_name": "US Dollar", "symbol": "$", "decimal_places": 2},
+        )
         resp = api_client.put(
             f"/api/v1/bills/{draft_bill.id}",
             data=json.dumps(

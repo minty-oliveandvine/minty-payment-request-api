@@ -24,10 +24,7 @@ _FIELD_LABELS = {
     "xero_contact_id": "Xero contact",
 }
 
-_STATUSES_EXCLUDED_FROM_REFERENCE_UNIQUENESS = (
-    Bill.Status.VOIDED,
-    Bill.Status.CANCELLED,
-)
+_STATUSES_EXCLUDED_FROM_REFERENCE_UNIQUENESS = (Bill.Status.VOID,)
 
 
 def _reference_unchanged_for_bill(bill: Bill, reference: str | None) -> bool:
@@ -403,8 +400,7 @@ def update_bill(bill: Bill, data, user_id: str) -> Bill:
             _STATUS_ACTION_MAP = {
                 "submitted": Audit.Action.SUBMITTED,
                 "paid": Audit.Action.MARKED_PAID,
-                "voided": Audit.Action.VOIDED,
-                "cancelled": Audit.Action.CANCELLED,
+                "void": Audit.Action.VOIDED,
             }
             action = _STATUS_ACTION_MAP.get(new_status, Audit.Action.STATUS_CHANGED)
             detail = _build_change_detail(
@@ -450,8 +446,8 @@ def delete_bill(bill: Bill, user_id: str) -> str:
         return "deleted"
 
     with transaction.atomic():
-        bill.status = Bill.Status.VOIDED
+        bill.status = Bill.Status.VOID
         bill.save(update_fields=["status", "updated_at"])
         log_audit(bill, Audit.Action.VOIDED, user_id, "Bill voided")
     logger.info("Bill voided id=%s by user=%s", bill.id, user_id)
-    return "voided"
+    return "voided"  # the outcome word the API answers with, not the status

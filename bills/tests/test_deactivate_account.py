@@ -57,9 +57,9 @@ def _user(suffix: str) -> User:
     )
 
 
-def _pays_for(entity: Entity, user: User, code: str = "BILL") -> None:
+def _pays_for(entity: Entity, user: User, code: str = "PAYMENT_REQUEST") -> None:
     EntityModuleSubscription.objects.create(
-        id=f"ems-{entity.id}-{code}",
+        id=uuid.uuid5(uuid.NAMESPACE_URL, f"ems-{entity.id}-{code}"),
         entity_id=entity.id,
         function_code=code,
         payer_user_id=user.id,
@@ -191,7 +191,7 @@ def test_a_bundled_company_is_named_once_not_per_module(client, db):
     entity = _entity(db, "a", name="Bundled Co")
     payer = _user("payer")
     UserEntity.objects.create(user=payer, entity=entity, role="admin")
-    _pays_for(entity, payer, code="BILL")
+    _pays_for(entity, payer, code="PAYMENT_REQUEST")
     _pays_for(entity, payer, code="PETTY_CASH")
 
     response = client.delete(URL, **_auth(payer.id, entity.id))

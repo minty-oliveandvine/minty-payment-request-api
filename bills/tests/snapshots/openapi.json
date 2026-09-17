@@ -79,8 +79,15 @@
             "type": "string"
           },
           "user_id": {
-            "title": "User Id",
-            "type": "string"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "User Id"
           },
           "user_name": {
             "default": "",
@@ -93,8 +100,7 @@
           "bill_id",
           "action",
           "detail",
-          "date",
-          "user_id"
+          "date"
         ],
         "title": "AuditOut",
         "type": "object"
@@ -587,8 +593,15 @@
             "type": "string"
           },
           "uploaded_by": {
-            "title": "Uploaded By",
-            "type": "string"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Uploaded By"
           },
           "xero_account_code": {
             "title": "Xero Account Code",
@@ -610,7 +623,6 @@
           "xero_account_code",
           "published",
           "created_at",
-          "uploaded_by",
           "paid_at"
         ],
         "title": "BillListOut",
@@ -711,8 +723,15 @@
             "type": "string"
           },
           "uploaded_by": {
-            "title": "Uploaded By",
-            "type": "string"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Uploaded By"
           },
           "xero_account_code": {
             "title": "Xero Account Code",
@@ -738,7 +757,6 @@
           "currency_code",
           "xero_account_code",
           "published",
-          "uploaded_by",
           "created_at",
           "updated_at"
         ],
@@ -1205,8 +1223,15 @@
             "type": "string"
           },
           "created_by": {
-            "title": "Created By",
-            "type": "string"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Created By"
           },
           "entity_id": {
             "title": "Entity Id",
@@ -1253,7 +1278,6 @@
           "is_deleted",
           "xero_account_id",
           "sort_order",
-          "created_by",
           "created_at",
           "updated_at"
         ],
@@ -1453,8 +1477,15 @@
             "type": "string"
           },
           "created_by": {
-            "title": "Created By",
-            "type": "string"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Created By"
           },
           "currency_info_id": {
             "format": "uuid",
@@ -1494,7 +1525,6 @@
           "is_default",
           "is_enabled",
           "sort_order",
-          "created_by",
           "created_at",
           "updated_at"
         ],
@@ -2252,8 +2282,15 @@
             "type": "string"
           },
           "created_by": {
-            "title": "Created By",
-            "type": "string"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Created By"
           },
           "created_by_name": {
             "default": "",
@@ -2297,7 +2334,6 @@
           "payment_method",
           "payment_status",
           "reference_no",
-          "created_by",
           "created_at"
         ],
         "title": "PaymentListOut",
@@ -2350,8 +2386,15 @@
             "type": "string"
           },
           "created_by": {
-            "title": "Created By",
-            "type": "string"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Created By"
           },
           "currency_code": {
             "title": "Currency Code",
@@ -2410,7 +2453,6 @@
           "reference_no",
           "note",
           "xero_payment_id",
-          "created_by",
           "created_at",
           "updated_at"
         ],
@@ -2975,8 +3017,15 @@
             "title": "Requested At"
           },
           "requested_by": {
-            "title": "Requested By",
-            "type": "string"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Requested By"
           },
           "responded_at": {
             "anyOf": [
@@ -3121,7 +3170,6 @@
           "last_retry_at",
           "has_errors",
           "error_message",
-          "requested_by",
           "requested_at",
           "responded_at",
           "created_at",
@@ -5088,7 +5136,7 @@
     },
     "/api/v1/bills/{bill_id}/return/": {
       "post": {
-        "description": "Handles three status transitions based on payload.status:\n\n- \"payment_requested\": bill must be in 'submitted' status \u2192 sets to 'returned'\n- \"returned\":          bill must be in 'returned' status  \u2192 sets back to 'submitted'\n- \"void\":              bill must be in 'returned' status  \u2192 sets to 'voided'\n\nRequires Accountant, Admin, or Super Admin role for all transitions.",
+        "description": "Handles three status transitions based on payload.status:\n\n- \"payment_requested\": bill must be in 'submitted' status \u2192 sets to 'returned'\n- \"returned\":          bill must be in 'returned' status  \u2192 sets back to 'submitted'\n- \"void\":              bill must be in 'returned' status  \u2192 sets to 'void'\n\nRequires Accountant, Admin, or Super Admin role for all transitions.",
         "operationId": "bills_api_return_bill",
         "parameters": [
           {

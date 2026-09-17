@@ -13,6 +13,7 @@ from decimal import Decimal
 import requests
 from botocore.exceptions import ClientError
 from django.conf import settings
+from django.core.exceptions import ValidationError
 from django.db import connection, transaction
 
 from bills.models import (
@@ -134,8 +135,8 @@ def publish_bill_to_xero(bill_id: str, entity_id: str, user_id: str, access_toke
             .first()
         )
         if sync_row and sync_row.xero_contact_id:
-            bill.xero_contact_id = sync_row.xero_contact_id
-            bill.save(update_fields=["xero_contact_id"])
+            bill.xero_contact_id = sync_row.xero_contact_id  # resolves to contact_id
+            bill.save(update_fields=["contact_id"])
         else:
             raise BillValidationError(
                 f"Contact '{bill.contact}' could not be matched to a Xero contact. "
@@ -355,7 +356,7 @@ def _load_bill(bill_id: str, entity_id: str) -> Bill:
         return Bill.objects.prefetch_related(
             "line_items", "bill_attachments__attachment",
         ).get(id=bill_id, entity_id=entity_id)
-    except Bill.DoesNotExist:
+    except (Bill.DoesNotExist, ValidationError, ValueError):  # a malformed id is not found either
         raise BillValidationError("I couldn't find that bill.")
 
 
@@ -511,7 +512,7 @@ def _create_sync_record(
         for li in bill.line_items.all().order_by("sort_order"):
             XeroBillSyncLine.objects.create(
                 xero_bill_sync=sync,
-                bill_line_item=li,
+                bill_line=li,
                 description=li.description,
                 quantity=li.quantity,
                 unit_amount=li.unit_amount,
@@ -1057,9 +1058,9 @@ def _reset_for_new_org(bill: Bill, foreign_sync: XeroBillSync, xero_org_id) -> N
         bill.id, _sync_org(foreign_sync) or "unknown", xero_org_id,
     )
 
-    if bill.xero_contact_id:
-        bill.xero_contact_id = ""
-        bill.save(update_fields=["xero_contact_id"])
+    if bill.contact_id:
+        bill.contact_id = None
+        bill.save(update_fields=["contact_id"])
 
     _assert_account_codes_exist(bill)
 
