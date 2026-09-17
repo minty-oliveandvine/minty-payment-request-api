@@ -103,7 +103,7 @@ class BearerAuth(HttpBearer):
             entity_id = header_entity_id or token_entity_id
 
             # Trust the JWT-claimed system_role first: Flask issued and signed
-            # this token, and reads its own pettycashv2.user table when doing
+            # this token, and reads its own pettycashv3.user table when doing
             # so. Falling back to a DB query here causes mismatches when the
             # stored value has unexpected casing or whitespace.
             jwt_system_role = (payload.get("system_role") or "").strip().lower()

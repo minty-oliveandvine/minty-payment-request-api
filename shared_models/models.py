@@ -6,7 +6,7 @@ from shared_models.fields import CharNField, PgEnumField
 
 
 class User(models.Model):
-    """Read-only mirror of pettycashv2.user (Minty owns the row).
+    """Read-only mirror of pettycashv3.user (Minty owns the row).
 
     No Xero token columns: the bundle lives in ``user_token`` and only Minty may read
     or refresh it (Xero rotates the refresh token on use). ``xero_entity_id`` is gone too -
@@ -41,7 +41,7 @@ class User(models.Model):
 
 
 class UserToken(models.Model):
-    """Read-only mirror of pettycashv2.user_token - a person's Xero OAuth bundle.
+    """Read-only mirror of pettycashv3.user_token - a person's Xero OAuth bundle.
 
     One row per user. Billing only ever READS ``access_token`` and its expiry pair; the
     refresh belongs to Minty (``/api/internal/xero/token``), see
@@ -67,7 +67,7 @@ class UserToken(models.Model):
 
 
 class Entity(models.Model):
-    """Read-only mirror of pettycashv2.entities managed by the Flask app.
+    """Read-only mirror of pettycashv3.entities managed by the Flask app.
 
     No ``xero_short_code`` and no Xero lock dates any more: the schema dropped them and
     billing asks Xero's Organisation for the lock dates at publish time
@@ -98,7 +98,7 @@ class Entity(models.Model):
 
 
 class UserEntity(models.Model):
-    """Read-only mirror of pettycashv2.user_entity managed by the Flask app."""
+    """Read-only mirror of pettycashv3.user_entity managed by the Flask app."""
 
     user = models.OneToOneField(
         User,
@@ -119,7 +119,7 @@ class UserEntity(models.Model):
 
 
 class EntityModuleSubscription(models.Model):
-    """Read-only mirror of pettycashv2.entity_module_subscription, owned by Flask.
+    """Read-only mirror of pettycashv3.entity_module_subscription, owned by Flask.
 
     Mirrored here for one field: ``payer_user_id``, the person whose card this
     company's billing sits on. Signing yourself out of a company has to refuse
@@ -144,7 +144,7 @@ class EntityModuleSubscription(models.Model):
 
 
 class AccountInfo(models.Model):
-    """Mirror of pettycashv2.account_info managed by the Flask app.
+    """Mirror of pettycashv3.account_info managed by the Flask app.
 
     The status field is written by Module 2 (Django) when the user toggles
     account codes in Bill Settings, keeping Module 1 in sync.  All other
@@ -167,7 +167,7 @@ class AccountInfo(models.Model):
 
 
 class XeroContactSync(models.Model):
-    """Read-only mirror of pettycashv2.xero_contact_sync."""
+    """Read-only mirror of pettycashv3.xero_contact_sync."""
 
     id = models.CharField(max_length=36, primary_key=True)
     entity_id = models.CharField(max_length=36)
@@ -182,7 +182,7 @@ class XeroContactSync(models.Model):
 
 
 class CountryInfo(models.Model):
-    """Read-only mirror of pettycashv2.country_info (ISO alpha-2 primary key).
+    """Read-only mirror of pettycashv3.country_info (ISO alpha-2 primary key).
 
     Billing never writes it; it is here so the ``entities.country_code`` FK can be
     satisfied in tests and so a country can be named from a code.

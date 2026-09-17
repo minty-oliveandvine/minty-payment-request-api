@@ -396,7 +396,7 @@ class EntityBillAccountXero(models.Model):
 
 
 class CurrencyInfo(models.Model):
-    # The pettycashv2.currency_info PK is a real uuid column (Alembic
+    # The pettycashv3.currency_info PK is a real uuid column (Alembic
     # c8e0a2b4d6f8) — UUIDField so the ORM round-trips it cleanly.
     id = models.UUIDField(primary_key=True, default=uuid.uuid4)
     currency_code = CharNField(max_length=3, unique=True)

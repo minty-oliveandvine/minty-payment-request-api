@@ -16,7 +16,7 @@ ALLOWED_HOSTS = os.environ.get("ALLOWED_HOSTS", "*").split(",")
 # Nothing here uses them: authentication is our own bearer scheme (core.auth)
 # and authorisation our own role checks (core.permissions). There is no admin,
 # no sessions, no ContentType lookups. Installing them only made `migrate`
-# want to CREATE TABLE django_content_type / auth_* inside pettycashv2 — a
+# want to CREATE TABLE django_content_type / auth_* inside pettycashv3 — a
 # schema Flask owns — which fails on any database where those tables already
 # exist. Keep them out; they buy nothing and only fight Alembic for the schema.
 INSTALLED_APPS = [
@@ -67,7 +67,7 @@ TEMPLATES = [
 ]
 
 # ---------------------------------------------------------------------------
-# Database — shared with Module 1 Flask app (pettycashv2 schema)
+# Database — shared with Module 1 Flask app (pettycashv3 schema)
 # ---------------------------------------------------------------------------
 DATABASES = {
     "default": {
@@ -77,7 +77,7 @@ DATABASES = {
         "PASSWORD": os.environ.get("POSTGRES_PASSWORD", "admin"),
         "HOST": os.environ.get("DB_HOST", "localhost"),
         "PORT": os.environ.get("DB_PORT", "5432"),
-        "OPTIONS": {"options": "-c search_path=pettycashv2,public"},
+        "OPTIONS": {"options": "-c search_path=pettycashv3,public"},
     }
 }
 
