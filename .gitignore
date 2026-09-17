@@ -1,18 +1,21 @@
+# --- Environments and tooling caches ---------------------------------------
+.venv/
+venv/
 __pycache__/
-*.pyc
-*.pyo
-.env
-.venv
-venv
-db.sqlite3
-uploads/
-logs/*.log
+*.py[cod]
 *.egg-info/
 .pytest_cache/
-htmlcov/
-.coverage
-minty_billing/logs/core.log
-minty_billing/logs/api.log.DS_Store
-.cleanse/
-.cleanse-venv/
 .ruff_cache/
+.coverage
+htmlcov/
+.claude/
+.DS_Store
+
+# --- Secrets ---------------------------------------------------------------
+# .env.example is the documented template and stays tracked.
+.env
+
+# --- Runtime output --------------------------------------------------------
+logs/*.log
+uploads/
+db.sqlite3

@@ -4,7 +4,6 @@
 # Virtualenvs — dependencies are reinstalled inside the image from requirements.txt
 .venv
 venv
-.cleanse-venv
 
 # Python bytecode & tool caches
 __pycache__
@@ -30,7 +29,6 @@ db.sqlite3
 .git
 .gitignore
 .claude
-.cleanse
 
 # OS / editor cruft
 .DS_Store
