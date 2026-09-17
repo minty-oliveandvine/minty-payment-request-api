@@ -340,7 +340,7 @@ def build_pdf():
         "CREATE INDEX idx_audit_date    ON pettycashv2.audit (date);"
     )
 
-    output_path = "docs/db_design_ko.pdf"
+    output_path = "docs/archive/pettycashv2_design/db_design_ko.pdf"
     pdf.output(output_path)
     print(f"PDF generated: {output_path}")
 
