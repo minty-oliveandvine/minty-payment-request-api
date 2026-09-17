@@ -13,7 +13,7 @@ COPY . .
 
 RUN mkdir -p /app/logs
 
-# The entrypoint waits for the shared database and the pettycashv2 schema that
+# The entrypoint waits for the shared database and the pettycashv3 schema that
 # Flask (Module 1) owns, then runs Django's migrations. `sed` strips CRLF so the
 # script still runs when the repo is checked out on Windows with autocrlf.
 COPY docker/entrypoint.sh /usr/local/bin/entrypoint.sh

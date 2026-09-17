@@ -13,7 +13,7 @@ behind a Postgres advisory lock.
 
 The refresh path this module once carried for its unit tests
 (`refresh_access_token_for_user`, `_persist_tokens_from_refresh`,
-`ensure_valid_token_persist`) is gone with C1 of docs/modernisation_plan.md: the six
+`ensure_valid_token_persist`) is gone with C1 of docs/modernisation/modernisation_plan.md: the six
 token columns left ``user``, and billing has no business writing ``user_token``.
 """
 

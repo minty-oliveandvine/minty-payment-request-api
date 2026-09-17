@@ -1,7 +1,7 @@
 """The API contract, pinned.
 
 ``bills/tests/snapshots/openapi.json`` is the django-ninja schema as it was before phase C8 of
-docs/modernisation_plan.md (in the Minty repo). Any change to a route, a payload field or an
+docs/modernisation/modernisation_plan.md (in the Minty repo). Any change to a route, a payload field or an
 enum value shows up here as a readable diff instead of as a broken page in billing-frontend.
 
 When a change is intended, regenerate with
