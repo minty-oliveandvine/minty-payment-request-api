@@ -69,6 +69,13 @@ TEMPLATES = [
 # ---------------------------------------------------------------------------
 # Database — shared with Module 1 Flask app (pettycashv3 schema)
 # ---------------------------------------------------------------------------
+# The schema every model lives in, shared with Minty (blueprints/shared/schema.py reads the
+# SAME variable with the same default). pettycashv3 is the permanent production name; the
+# variable exists so the name is a setting, not a literal - every db_table is unqualified and
+# resolves through search_path, and the raw queries below read this. The test settings and
+# the root conftest read it too, so `MINTY_DB_SCHEMA=pettycash_alt pytest` proves it.
+DB_SCHEMA = os.environ.get("MINTY_DB_SCHEMA", "pettycashv3")
+
 DATABASES = {
     "default": {
         "ENGINE": "django.db.backends.postgresql",
@@ -77,7 +84,7 @@ DATABASES = {
         "PASSWORD": os.environ.get("POSTGRES_PASSWORD", "admin"),
         "HOST": os.environ.get("DB_HOST", "localhost"),
         "PORT": os.environ.get("DB_PORT", "5432"),
-        "OPTIONS": {"options": "-c search_path=pettycashv3,public"},
+        "OPTIONS": {"options": f"-c search_path={DB_SCHEMA},public"},
     }
 }
 

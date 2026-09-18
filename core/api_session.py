@@ -159,8 +159,8 @@ def entity_currency(request):
     if entity_id:
         with connection.cursor() as cur:
             cur.execute(
-                "SELECT ci.currency_code FROM pettycashv3.entities e "
-                "JOIN pettycashv3.currency_info ci ON ci.id = e.currency_id "
+                f"SELECT ci.currency_code FROM {settings.DB_SCHEMA}.entities e "
+                f"JOIN {settings.DB_SCHEMA}.currency_info ci ON ci.id = e.currency_id "
                 "WHERE e.id = %s",
                 [entity_id],
             )
