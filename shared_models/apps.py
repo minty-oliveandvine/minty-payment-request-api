@@ -8,15 +8,13 @@ class SharedModelsConfig(AppConfig):
     verbose_name = "Shared Models (Module 1)"
 
     def ready(self):
+        # Every table is the schema's (docs/schema/01_schema_rebased.sql in the Minty repo):
+        # all models are ``managed = False`` and this service ships no DDL (``bills/migrations``
+        # went in C8). On SQLite - the test path with no schema file - the tables are built
+        # FROM the models instead, so ``managed`` is flipped on for every model of both apps.
         if getattr(settings, "SHARED_MODELS_MANAGED_FOR_TESTING", False):
-            from shared_models import models
+            from django.apps import apps
 
-            for model in (
-                models.User,
-                models.Entity,
-                models.UserEntity,
-                models.EntityModuleSubscription,
-                models.AccountInfo,
-                models.XeroContactSync,
-            ):
-                model._meta.managed = True
+            for app_label in ("shared_models", "bills"):
+                for model in apps.get_app_config(app_label).get_models():
+                    model._meta.managed = True

@@ -2,8 +2,7 @@
 Tests to verify DEPRECIATN account type is excluded from the bill settings list.
 
 The bill settings accounts list is restricted to exactly 8 permitted Xero account
-types (CURRENT, NONCURRENT, CURRLIAB, TERMLIAB, FIXED, INVENTORY, DIRECTCOSTS,
-EXPENSE).  DEPRECIATN is NOT in that set and must not appear in either the default
+types (DIRECTCOSTS, EXPENSE, FIXED, OVERHEADS, PREPAYMENT - BILL_SETTINGS_ACCOUNT_TYPES).  DEPRECIATN is NOT in that set and must not appear in either the default
 list or the bill_dropdown list.  It can still be retrieved via an explicit
 account_type= query parameter.
 """
@@ -27,24 +26,24 @@ def api():
 @pytest.fixture
 def user(db):
     return User.objects.create(
-        id="deprec-user",
+        id="a03d6b1f-f9d8-5ef9-9ffa-385f731bef2e",
         email="deprec@minty.com",
         password="hashed",
         first_name="Deprec",
         last_name="Test",
         username="deprectest",
-        system_role="user",
+        system_role="normal",
     )
 
 
 @pytest.fixture
 def entity(db):
     return Entity.objects.create(
-        id="deprec-entity",
+        id="55a90b72-7a93-5d03-a70c-fe103168f5e3",
         name="Deprec Entity",
         country_code="HK",
         currency_id="11111111-1111-1111-1111-111111111111",
-        status="active",
+        status="disconnected",
     )
 
 
@@ -240,7 +239,7 @@ def test_depreciatn_mixed_with_permitted_types_only_permitted_returned(
         entity_id=entity.id,
         account_code="820",
         account_name="Current Liability",
-        account_type="CURRLIAB",
+        account_type="OVERHEADS",
         is_active=True,
         is_deleted=False,
         xero_account_id="xero-liab-1",
@@ -254,7 +253,7 @@ def test_depreciatn_mixed_with_permitted_types_only_permitted_returned(
     types = {row["account_type"] for row in data}
 
     assert codes == {"600", "610", "820"}
-    assert types == {"EXPENSE", "DIRECTCOSTS", "CURRLIAB"}
+    assert types == {"EXPENSE", "DIRECTCOSTS", "OVERHEADS"}
     assert "DEPRECIATN" not in types
 
 

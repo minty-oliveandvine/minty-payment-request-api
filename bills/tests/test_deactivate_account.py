@@ -13,6 +13,7 @@ fix it, and the renewals keep charging the card.
 
 from __future__ import annotations
 
+import uuid
 from datetime import datetime, timezone
 
 import jwt as pyjwt
@@ -20,7 +21,9 @@ import pytest
 from django.conf import settings
 from django.test import Client
 
-from shared_models.models import (Entity, EntityModuleSubscription, User,
+from bills.tests.conftest import give_xero_token
+
+from shared_models.models import (Entity, EntityModuleSubscription, User, UserToken,
                                   UserEntity)
 
 URL = "/api/v1/profile/me"
@@ -33,30 +36,30 @@ def client():
 
 def _entity(db, suffix: str, name: str | None = None) -> Entity:
     return Entity.objects.create(
-        id=f"deact-entity-{suffix}",
+        id=str(uuid.uuid5(uuid.NAMESPACE_URL, f"deact-entity-{suffix}")),
         name=name or f"Company {suffix.title()}",
         country_code="HK",
         currency_id="11111111-1111-1111-1111-111111111111",
-        status="active",
+        status="disconnected",
     )
 
 
 def _user(suffix: str) -> User:
     return User.objects.create(
-        id=f"deact-user-{suffix}",
+        id=str(uuid.uuid5(uuid.NAMESPACE_URL, f"deact-user-{suffix}")),
         email=f"deact-{suffix}@minty.com",
         password="hashed_pw",
         first_name="Dee",
         last_name=suffix.title(),
         username=f"deact{suffix}",
-        system_role="user",
+        system_role="normal",
         approved=True,
     )
 
 
-def _pays_for(entity: Entity, user: User, code: str = "BILL") -> None:
+def _pays_for(entity: Entity, user: User, code: str = "PAYMENT_REQUEST") -> None:
     EntityModuleSubscription.objects.create(
-        id=f"ems-{entity.id}-{code}",
+        id=uuid.uuid5(uuid.NAMESPACE_URL, f"ems-{entity.id}-{code}"),
         entity_id=entity.id,
         function_code=code,
         payer_user_id=user.id,
@@ -118,18 +121,19 @@ def test_signing_out_clears_the_tokens_and_the_signed_in_stamp(client, db):
     entity = _entity(db, "a")
     leaver = _user("leaver")
     UserEntity.objects.create(user=leaver, entity=entity, role="admin")
+    give_xero_token(leaver, "a", refresh_token="r", id_token="i")
     User.objects.filter(id=leaver.id).update(
-        access_token="a", refresh_token="r", id_token="i", expires_in=1800,
         signed_in_at=datetime(2026, 8, 14, 10, 0, tzinfo=timezone.utc),
     )
 
     client.delete(URL, **_auth(leaver.id, entity.id))
 
     fresh = _reload(leaver)
-    assert fresh.access_token is None
-    assert fresh.refresh_token is None
-    assert fresh.id_token is None
-    assert fresh.expires_in is None
+    token = UserToken.objects.get(user_id=leaver.id)
+    assert token.access_token is None
+    assert token.refresh_token is None
+    assert token.id_token is None
+    assert token.access_token_expires_in is None
     assert fresh.signed_in_at is None
 
 
@@ -187,7 +191,7 @@ def test_a_bundled_company_is_named_once_not_per_module(client, db):
     entity = _entity(db, "a", name="Bundled Co")
     payer = _user("payer")
     UserEntity.objects.create(user=payer, entity=entity, role="admin")
-    _pays_for(entity, payer, code="BILL")
+    _pays_for(entity, payer, code="PAYMENT_REQUEST")
     _pays_for(entity, payer, code="PETTY_CASH")
 
     response = client.delete(URL, **_auth(payer.id, entity.id))

@@ -1,5 +1,6 @@
 import logging
 
+from django.core.exceptions import ValidationError
 from django.http import Http404
 from ninja import Router
 
@@ -15,7 +16,7 @@ audit_router = Router()
 def _get_bill_or_404(bill_id: str, entity_id: str) -> Bill:
     try:
         return Bill.objects.get(id=bill_id, entity_id=entity_id)
-    except Bill.DoesNotExist:
+    except (Bill.DoesNotExist, ValidationError, ValueError):  # a malformed id is not found either
         raise Http404("Bill not found")
 
 
@@ -26,7 +27,7 @@ def _get_bill_or_404(bill_id: str, entity_id: str) -> Bill:
 )
 def get_audit_history(request, bill_id: str):
     bill = _get_bill_or_404(bill_id, request.entity_id)
-    audits = list(Audit.objects.filter(bill=bill).order_by("-date"))
+    audits = list(Audit.objects.filter(bill=bill).order_by("-created_at"))
 
     user_ids = {a.user_id for a in audits}
     users = {str(u.id): u for u in User.objects.filter(id__in=user_ids)}
@@ -49,8 +50,8 @@ def get_audit_history(request, bill_id: str):
                 "bill_id": str(a.bill_id),
                 "action": a.action,
                 "detail": a.detail,
-                "date": a.date,
-                "user_id": a.user_id,
+                "date": a.created_at,
+                "user_id": str(a.user_id) if a.user_id else "",
                 "user_name": user_name,
                 "user_email": user_email,
             }

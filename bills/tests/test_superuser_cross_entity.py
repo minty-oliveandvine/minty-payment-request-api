@@ -31,37 +31,37 @@ def api():
 @pytest.fixture
 def superuser(db):
     return User.objects.create(
-        id="su-cross-001",
+        id="19f48472-c287-5441-8876-2fc9d7c15ddf",
         email="superuser@minty.com",
         password="hashed",
         first_name="Super",
         last_name="User",
         username="crosssuperuser",
-        system_role="superuser",
+        system_role="superadmin",
     )
 
 
 @pytest.fixture
 def regular_user(db):
     return User.objects.create(
-        id="reg-cross-001",
+        id="4a48cee1-30a6-557d-adee-8300a4cb9dc0",
         email="regular@minty.com",
         password="hashed",
         first_name="Regular",
         last_name="User",
         username="crossregular",
-        system_role="user",
+        system_role="normal",
     )
 
 
 @pytest.fixture
 def member_entity(db):
     return Entity.objects.create(
-        id="member-entity-001",
+        id="2030add5-c9df-581b-899b-49662d58e667",
         name="Member Entity",
         country_code="HK",
         currency_id="11111111-1111-1111-1111-111111111111",
-        status="active",
+        status="disconnected",
     )
 
 
@@ -69,11 +69,11 @@ def member_entity(db):
 def foreign_entity(db):
     """Entity the superuser has NO UserEntity row for."""
     return Entity.objects.create(
-        id="foreign-entity-001",
+        id="7b8b6827-d96b-58a5-9bef-5ad86f4e03af",
         name="Foreign Entity",
         country_code="HK",
         currency_id="11111111-1111-1111-1111-111111111111",
-        status="active",
+        status="disconnected",
     )
 
 

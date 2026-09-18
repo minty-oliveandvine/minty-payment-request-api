@@ -125,14 +125,14 @@ class Command(BaseCommand):
 
         with connection.cursor() as cur:
             cur.execute(
-                "SELECT country_code FROM pettycashv2.country_info "
+                f"SELECT country_code FROM {settings.DB_SCHEMA}.country_info "
                 "WHERE country_code = %s",
                 ["HK"],
             )
             row = cur.fetchone()
             hk_country_code = row[0] if row else None
             cur.execute(
-                "SELECT id FROM pettycashv2.currency_info " "WHERE currency_code = %s",
+                f"SELECT id FROM {settings.DB_SCHEMA}.currency_info " "WHERE currency_code = %s",
                 ["HKD"],
             )
             row = cur.fetchone()

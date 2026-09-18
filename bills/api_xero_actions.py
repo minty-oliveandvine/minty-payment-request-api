@@ -53,7 +53,7 @@ def upload_bankslip_endpoint(request, payload: BankslipUploadIn):
     access_token = (
         resolve_xero_access_token_for_entity(
             request.entity_id,
-            request.auth_user.id,
+            str(request.auth_user.id),
         )
         or ""
     )

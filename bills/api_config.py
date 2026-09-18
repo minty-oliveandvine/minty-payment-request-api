@@ -1,7 +1,6 @@
 import logging
 
 from django.core.exceptions import ValidationError
-from django.db import connection
 from django.http import Http404
 from ninja import Query, Router, Schema
 
@@ -41,7 +40,8 @@ from core.permissions import (
     check_not_system_superuser,
     normalize_role,
 )
-from shared_models.models import Entity, User
+from shared_models.enums import SystemRole
+from shared_models.models import Entity, User, UserEntity
 
 logger = logging.getLogger("minty-api")
 
@@ -185,7 +185,9 @@ def create_entity_function_map(request, payload: EntityFunctionMapCreateIn):
         settings_json=payload.settings_json,
         created_by=request.auth_user.id,
     )
-    logger.info("EntityFunctionMap created id=%s entity=%s", efm.id, request.entity_id)
+    logger.info(
+        "EntityFunctionMap created entity=%s function=%s", request.entity_id, efm.entity_function_id
+    )
     return 201, efm
 
 
@@ -216,50 +218,58 @@ def list_entity_function_names(request):
     return [{"function_name": r.entity_function.function_name} for r in rows]
 
 
+# A map row has no id of its own: it is THE row for (this entity, that function), so the
+# detail routes are addressed by the function id (the entity comes from the header).
 @entity_function_maps_router.get(
-    "/{map_id}",
+    "/{function_id}",
     response={200: EntityFunctionMapOut, 404: ErrorOut},
     summary="Get entity function map detail",
 )
-def get_entity_function_map(request, map_id: str):
+def get_entity_function_map(request, function_id: str):
     try:
-        return EntityFunctionMap.objects.get(id=map_id, entity_id=request.entity_id)
-    except EntityFunctionMap.DoesNotExist:
+        return EntityFunctionMap.objects.get(
+            entity_function_id=function_id, entity_id=request.entity_id
+        )
+    except (EntityFunctionMap.DoesNotExist, ValidationError):
         raise Http404("Entity function map not found")
 
 
 @entity_function_maps_router.put(
-    "/{map_id}",
+    "/{function_id}",
     response={200: EntityFunctionMapOut, 404: ErrorOut},
     summary="Update an entity function map",
 )
 def update_entity_function_map(
-    request, map_id: str, payload: EntityFunctionMapUpdateIn
+    request, function_id: str, payload: EntityFunctionMapUpdateIn
 ):
     check_not_system_superuser(request, "modify configuration")
     check_edit_bill_settings(request.entity_role)
     try:
-        efm = EntityFunctionMap.objects.get(id=map_id, entity_id=request.entity_id)
-    except EntityFunctionMap.DoesNotExist:
+        efm = EntityFunctionMap.objects.get(
+            entity_function_id=function_id, entity_id=request.entity_id
+        )
+    except (EntityFunctionMap.DoesNotExist, ValidationError):
         raise Http404("Entity function map not found")
 
     _apply_partial_update(efm, payload.dict(exclude_unset=True))
     efm.save()
-    logger.info("EntityFunctionMap updated id=%s", efm.id)
+    logger.info("EntityFunctionMap updated entity=%s function=%s", request.entity_id, function_id)
     return efm
 
 
 @entity_function_maps_router.delete(
-    "/{map_id}",
+    "/{function_id}",
     response={200: MessageOut, 404: ErrorOut},
     summary="Delete an entity function map",
 )
-def delete_entity_function_map(request, map_id: str):
+def delete_entity_function_map(request, function_id: str):
     check_not_system_superuser(request, "modify configuration")
     check_edit_bill_settings(request.entity_role)
     try:
-        efm = EntityFunctionMap.objects.get(id=map_id, entity_id=request.entity_id)
-    except EntityFunctionMap.DoesNotExist:
+        efm = EntityFunctionMap.objects.get(
+            entity_function_id=function_id, entity_id=request.entity_id
+        )
+    except (EntityFunctionMap.DoesNotExist, ValidationError):
         raise Http404("Entity function map not found")
 
     efm.delete()
@@ -284,7 +294,7 @@ def create_entity_bill_account(request, payload: EntityBillAccountXeroCreateIn):
     check_edit_bill_settings(request.entity_role)
     account = EntityBillAccountXero.objects.create(
         entity_id=request.entity_id,
-        created_by=request.auth_user.id,
+        created_by=str(request.auth_user.id),
         **payload.dict(),
     )
     logger.info(
@@ -452,7 +462,7 @@ def list_entity_bill_contacts(request, category: str = None):
 
     return get_entity_bill_contacts(
         entity_id=request.entity_id,
-        jwt_user_id=request.auth_user.id,
+        jwt_user_id=str(request.auth_user.id),
         category=category,
     )
 
@@ -473,7 +483,7 @@ def create_entity_bill_contact(request, payload: EntityBillContactCreateIn):
 
     row = create_entity_bill_contact_in_xero(
         request.entity_id,
-        jwt_user_id=request.auth_user.id,
+        jwt_user_id=str(request.auth_user.id),
         name=payload.name,
     )
     return 201, row
@@ -582,7 +592,7 @@ def create_entity_bill_currency(request, payload: EntityBillCurrencyCreateIn):
         is_default=payload.is_default,
         is_enabled=payload.is_enabled,
         sort_order=payload.sort_order,
-        created_by=request.auth_user.id,
+        created_by=str(request.auth_user.id),
     )
     logger.info(
         "EntityBillCurrency created id=%s entity=%s",
@@ -675,6 +685,19 @@ class EntityListItemOut(Schema):
     can_enter: bool
 
 
+def _member_entity_ids(user_id) -> set[str]:
+    """Ids (as strings) of the companies ``user_id`` holds a membership row on.
+
+    Materialised rather than a subquery: ``user_entity.entity_id`` is a uuid column while
+    ``Entity.id`` is still text until C2, and SQLite stores the two spellings differently.
+    """
+    return {
+        str(eid)
+        for eid in UserEntity.objects.filter(user_id=user_id).values_list("entity_id", flat=True)
+    }
+
+
+
 @entities_router.get(
     "/",
     response=list[EntityListItemOut],
@@ -687,11 +710,11 @@ def list_entities(request):
             .order_by("name")
             .values("id", "name")
         )
-        # System superusers (system_role='superuser') can enter any entity for
+        # System super admins (system_role='superadmin') can enter any entity for
         # read-only viewing.  Entity-level super_admins without the system role
         # are limited to entities they are explicitly a member of.
         user_is_system_superuser = User.objects.filter(
-            id=str(request.auth_user.id), system_role="superuser"
+            id=str(request.auth_user.id), system_role=SystemRole.SUPERADMIN
         ).exists()
 
         if user_is_system_superuser:
@@ -700,28 +723,16 @@ def list_entities(request):
                 for e in all_entities
             ]
 
-        with connection.cursor() as cursor:
-            cursor.execute(
-                "SELECT entity_id FROM user_entity WHERE user_id = %s",
-                [str(request.auth_user.id)],
-            )
-            user_entity_ids = {row[0] for row in cursor.fetchall()}
+        user_entity_ids = _member_entity_ids(str(request.auth_user.id))
         return [
             {"id": e["id"], "name": e["name"], "can_enter": e["id"] in user_entity_ids}
             for e in all_entities
         ]
     else:
-        with connection.cursor() as cursor:
-            cursor.execute(
-                """
-                SELECT e.id, e.name
-                FROM entities e
-                JOIN user_entity ue ON e.id = ue.entity_id
-                WHERE ue.user_id = %s
-                  AND (e.status IS NULL OR e.status != 'deleted')
-                ORDER BY e.name
-                """,
-                [str(request.auth_user.id)],
-            )
-            rows = cursor.fetchall()
+        rows = (
+            Entity.objects.filter(id__in=_member_entity_ids(str(request.auth_user.id)))
+            .exclude(status="deleted")
+            .order_by("name")
+            .values_list("id", "name")
+        )
         return [{"id": row[0], "name": row[1], "can_enter": True} for row in rows]

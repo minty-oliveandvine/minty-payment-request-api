@@ -134,7 +134,7 @@ def token_refresh(request):
 
     logger.info(
         "Token refreshed user_id=%s entity_id=%s",
-        request.auth_user.id,
+        str(request.auth_user.id),
         request.entity_id,
     )
     return TokenRefreshOut(token=new_token, expires_in=expires_in)
@@ -148,7 +148,7 @@ def token_refresh(request):
 def entity_currency(request):
     """Resolve the JWT entity's selected currency to its ISO code.
 
-    entities.currency_id is a uuid FK into pettycashv2.currency_info(id); the
+    entities.currency_id is a uuid FK into pettycashv3.currency_info(id); the
     UI renders money amounts with the currency_code. Raw SQL because entities
     is Flask-managed and only mirrored read-only here.
     """
@@ -159,8 +159,8 @@ def entity_currency(request):
     if entity_id:
         with connection.cursor() as cur:
             cur.execute(
-                "SELECT ci.currency_code FROM pettycashv2.entities e "
-                "JOIN pettycashv2.currency_info ci ON ci.id = e.currency_id "
+                f"SELECT ci.currency_code FROM {settings.DB_SCHEMA}.entities e "
+                f"JOIN {settings.DB_SCHEMA}.currency_info ci ON ci.id = e.currency_id "
                 "WHERE e.id = %s",
                 [entity_id],
             )

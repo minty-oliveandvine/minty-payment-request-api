@@ -2,7 +2,15 @@ from datetime import date, datetime
 from decimal import Decimal
 from uuid import UUID
 
+from typing import Annotated
+
 from ninja import Schema
+from pydantic import BeforeValidator
+
+#: An id on the wire is text. The columns are uuid since C8, and Django hands back
+#: ``uuid.UUID`` - which pydantic will not coerce to ``str`` on its own; this does.
+IdStr = Annotated[str, BeforeValidator(lambda v: str(v) if v is not None else v)]
+IdStrOrNone = Annotated[str | None, BeforeValidator(lambda v: str(v) if v is not None else v)]
 
 # ---------------------------------------------------------------------------
 # Generic
@@ -39,7 +47,7 @@ class LineItemIn(Schema):
 
 
 class LineItemOut(Schema):
-    id: str
+    id: IdStr
     description: str
     quantity: Decimal
     unit_amount: Decimal
@@ -59,7 +67,7 @@ class LineItemOut(Schema):
 
 
 class AttachmentOut(Schema):
-    id: str
+    id: IdStr
     original_name: str
     mime_type: str
     file_size: int
@@ -70,7 +78,7 @@ class AttachmentOut(Schema):
 
 
 class BillAttachmentOut(Schema):
-    id: str
+    id: IdStr
     attachment: AttachmentOut
     attachment_role: str
     sort_order: int
@@ -79,7 +87,7 @@ class BillAttachmentOut(Schema):
 
 
 class PaymentAttachmentOut(Schema):
-    id: str
+    id: IdStr
     attachment: AttachmentOut
     attachment_role: str
     sort_order: int
@@ -137,8 +145,8 @@ class BillUpdateIn(Schema):
 
 
 class BillOut(Schema):
-    id: str
-    entity_id: str
+    id: IdStr
+    entity_id: IdStr
     contact: str
     xero_contact_id: str
     status: str
@@ -151,7 +159,7 @@ class BillOut(Schema):
     currency_code: str
     xero_account_code: str
     published: str
-    uploaded_by: str
+    uploaded_by: IdStrOrNone = None  # NULL for an unattended (system) write
     created_at: datetime
     updated_at: datetime
     attachments: list[BillAttachmentOut] = []
@@ -159,8 +167,8 @@ class BillOut(Schema):
 
 
 class BillListOut(Schema):
-    id: str
-    entity_id: str
+    id: IdStr
+    entity_id: IdStr
     contact: str
     status: str
     amount: Decimal
@@ -173,7 +181,7 @@ class BillListOut(Schema):
     xero_account_code: str
     published: str
     created_at: datetime
-    uploaded_by: str
+    uploaded_by: IdStrOrNone = None  # NULL for an unattended (system) write
     paid_at: date | None
 
 
@@ -219,8 +227,8 @@ class PaymentUpdateIn(Schema):
 
 
 class PaymentOut(Schema):
-    id: str
-    bill_id: str
+    id: IdStr
+    bill_id: IdStr
     payment_date: date | None
     amount: Decimal
     currency_code: str
@@ -229,15 +237,15 @@ class PaymentOut(Schema):
     reference_no: str
     note: str
     xero_payment_id: str
-    created_by: str
+    created_by: IdStrOrNone = None  # NULL for an unattended (system) write
     created_at: datetime
     updated_at: datetime
     attachments: list[PaymentAttachmentOut] = []
 
 
 class PaymentListOut(Schema):
-    id: str
-    bill_id: str
+    id: IdStr
+    bill_id: IdStr
     bill_reference: str = ""
     bill_status: str = ""
     payment_date: date | None
@@ -245,7 +253,7 @@ class PaymentListOut(Schema):
     payment_method: str
     payment_status: str
     reference_no: str
-    created_by: str
+    created_by: IdStrOrNone = None  # NULL for an unattended (system) write
     created_by_name: str = ""
     created_at: datetime
 
@@ -284,7 +292,7 @@ class EntityFunctionUpdateIn(Schema):
 
 
 class EntityFunctionOut(Schema):
-    id: str
+    id: UUID
     function_code: str
     function_name: str
     description: str
@@ -312,14 +320,13 @@ class EntityFunctionMapUpdateIn(Schema):
 
 
 class EntityFunctionMapOut(Schema):
-    id: str
-    entity_id: str
-    entity_function_id: str
+    entity_id: UUID
+    entity_function_id: UUID
     is_enabled: bool
     enabled_at: datetime | None
     disabled_at: datetime | None
     settings_json: dict | None
-    created_by: str
+    created_by: UUID | None
     created_at: datetime
     updated_at: datetime
 
@@ -356,8 +363,8 @@ class EntityBillAccountXeroUpdateIn(Schema):
 
 
 class EntityBillAccountXeroOut(Schema):
-    id: str
-    entity_id: str
+    id: IdStr
+    entity_id: IdStr
     account_code: str
     account_name: str
     account_type: str
@@ -366,7 +373,7 @@ class EntityBillAccountXeroOut(Schema):
     is_deleted: bool
     xero_account_id: str
     sort_order: int
-    created_by: str
+    created_by: IdStrOrNone = None  # NULL for an unattended (system) write
     created_at: datetime
     updated_at: datetime
 
@@ -377,8 +384,8 @@ class EntityBillAccountXeroOut(Schema):
 
 
 class EntityBillContactOut(Schema):
-    id: str
-    entity_id: str
+    id: IdStr
+    entity_id: IdStr
     xero_contact_id: str
     xero_org_id: str | None = None
     name: str
@@ -440,13 +447,13 @@ class EntityBillCurrencyUpdateIn(Schema):
 
 
 class EntityBillCurrencyOut(Schema):
-    id: str
-    entity_id: str
+    id: IdStr
+    entity_id: IdStr
     currency_info_id: UUID
     is_default: bool
     is_enabled: bool
     sort_order: int
-    created_by: str
+    created_by: IdStrOrNone = None  # NULL for an unattended (system) write
     created_at: datetime
     updated_at: datetime
 
@@ -457,7 +464,7 @@ class EntityBillCurrencyOut(Schema):
 
 
 class XeroBillSyncLineOut(Schema):
-    id: str
+    id: IdStr
     bill_line_item_id: str | None
     description: str
     quantity: Decimal
@@ -473,7 +480,7 @@ class XeroBillSyncLineOut(Schema):
 
 
 class XeroBillSyncPayloadOut(Schema):
-    id: str
+    id: IdStr
     request_json: dict | None
     response_json: dict | None
     request_headers: dict | None
@@ -483,7 +490,7 @@ class XeroBillSyncPayloadOut(Schema):
 
 
 class XeroBillResponseLineOut(Schema):
-    id: str
+    id: IdStr
     xero_line_item_id: str
     description: str
     quantity: Decimal
@@ -498,8 +505,8 @@ class XeroBillResponseLineOut(Schema):
 
 
 class XeroBillSyncOut(Schema):
-    id: str
-    bill_id: str
+    id: IdStr
+    bill_id: IdStr
     sync_direction: str
     sync_type: str
     sync_status: str
@@ -526,7 +533,7 @@ class XeroBillSyncOut(Schema):
     last_retry_at: datetime | None
     has_errors: bool
     error_message: str
-    requested_by: str
+    requested_by: IdStrOrNone = None  # NULL for an unattended (system) write
     requested_at: datetime | None
     responded_at: datetime | None
     created_at: datetime
@@ -537,8 +544,8 @@ class XeroBillSyncOut(Schema):
 
 
 class XeroBillSyncListOut(Schema):
-    id: str
-    bill_id: str
+    id: IdStr
+    bill_id: IdStr
     sync_direction: str
     sync_type: str
     sync_status: str
@@ -553,12 +560,12 @@ class XeroBillSyncListOut(Schema):
 
 
 class AuditOut(Schema):
-    id: str
-    bill_id: str
+    id: IdStr
+    bill_id: IdStr
     action: str
     detail: str
     date: datetime
-    user_id: str
+    user_id: IdStrOrNone = None  # NULL for an unattended (system) write
     user_name: str = ""
     user_email: str = ""
 
@@ -575,7 +582,7 @@ class ProfileIn(Schema):
 
 
 class ProfileOut(Schema):
-    id: str
+    id: IdStr
     email: str
     first_name: str
     last_name: str

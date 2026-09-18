@@ -4,6 +4,8 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
+from bills.tests.conftest import give_xero_token
+
 from shared_models.models import XeroContactSync
 
 
@@ -12,7 +14,7 @@ class TestEntityBillContactsCreate:
     def test_requires_bill_role(
         self, api_client, auth_token, test_entity, test_user_entity
     ):
-        test_user_entity.role = "guest"
+        test_user_entity.role = "entity_base"  # the lowest entity_role: no bill permissions
         test_user_entity.save(update_fields=["role"])
         try:
             resp = api_client.post(
@@ -44,7 +46,7 @@ class TestEntityBillContactsCreate:
         test_entity,
         test_user_entity,
     ):
-        test_entity.status = "active"
+        test_entity.status = "disconnected"
         test_entity.xero_org_id = None
         test_entity.save()
         resp = api_client.post(
@@ -68,8 +70,7 @@ class TestEntityBillContactsCreate:
         test_entity.status = "connected"
         test_entity.xero_org_id = "org-abc"
         test_entity.save()
-        test_user.access_token = "fake-xero-token"
-        test_user.save()
+        give_xero_token(test_user, "fake-xero-token")
 
         fake_resp = MagicMock()
         fake_resp.status_code = 200
@@ -117,8 +118,7 @@ class TestEntityBillContactsCreate:
         test_entity.status = "connected"
         test_entity.xero_org_id = "org-abc"
         test_entity.save()
-        test_user.access_token = "fake-xero-token"
-        test_user.save()
+        give_xero_token(test_user, "fake-xero-token")
 
         fake_resp = MagicMock()
         fake_resp.status_code = 400

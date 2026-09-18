@@ -14,10 +14,7 @@ logger = logging.getLogger("minty-api")
 
 HK_TZ = ZoneInfo("Asia/Hong_Kong")
 
-_STATUSES_EXCLUDED_FROM_UNIQUENESS = (
-    Bill.Status.VOIDED,
-    Bill.Status.CANCELLED,
-)
+_STATUSES_EXCLUDED_FROM_UNIQUENESS = (Bill.Status.VOID,)
 
 
 def _name_prefix_3(user: User) -> str:

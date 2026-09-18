@@ -2,7 +2,7 @@
 # Container entrypoint for the billing (Module 2) Django API.
 #
 # Django here is a *tenant* of the schema Flask owns: settings.py pins
-# search_path to `pettycashv2`, and shared_models maps tables Flask's Alembic
+# search_path to `pettycashv3`, and shared_models maps tables Flask's Alembic
 # migrations create. So before migrating we wait for both the database and that
 # schema — rather than creating the schema ourselves, which would race Alembic
 # and let Django win the tables it is only supposed to read.
@@ -33,12 +33,12 @@ while time.monotonic() < deadline:
         try:
             with conn.cursor() as cur:
                 cur.execute(
-                    "SELECT 1 FROM information_schema.schemata "
-                    "WHERE schema_name = 'pettycashv2'"
+                    "SELECT 1 FROM information_schema.schemata WHERE schema_name = %s",
+                    [os.environ.get("MINTY_DB_SCHEMA", "pettycashv3")],
                 )
                 if cur.fetchone():
                     break
-                last_error = "schema pettycashv2 does not exist yet"
+                last_error = "schema " + os.environ.get("MINTY_DB_SCHEMA", "pettycashv3") + " does not exist yet"
         finally:
             conn.close()
     except Exception as exc:  # noqa: BLE001 - any connection failure is a retry

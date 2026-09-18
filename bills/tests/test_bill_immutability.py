@@ -29,24 +29,24 @@ def api():
 @pytest.fixture
 def user(db):
     return User.objects.create(
-        id="immut-user-001",
+        id="ed7b2b76-4a02-5d0e-85f1-7e10dcd7bfeb",
         email="immut@minty.com",
         password="hashed",
         first_name="Immut",
         last_name="Tester",
         username="immuttester",
-        system_role="user",
+        system_role="normal",
     )
 
 
 @pytest.fixture
 def entity(db):
     return Entity.objects.create(
-        id="immut-entity-001",
+        id="9e48eede-f5e7-5c03-9eaa-d76b54c61e8e",
         name="Immut Entity",
         country_code="HK",
         currency_id="11111111-1111-1111-1111-111111111111",
-        status="active",
+        status="disconnected",
     )
 
 

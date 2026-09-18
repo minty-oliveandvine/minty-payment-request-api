@@ -2,7 +2,7 @@
 
 What this API sends when something fails, and why. The copy standard is shared
 across Minty, billing-backend, billing-frontend and onboarding; the canonical
-write-up lives in the Minty repo as `ERROR_MESSAGE_LEAKS.md`.
+write-up lives in the Minty repo as `docs/features/ERROR_MESSAGE_LEAKS.md`.
 
 Everything here reaches a payer's screen: billing-frontend renders `detail`
 directly when it reads as a sentence.

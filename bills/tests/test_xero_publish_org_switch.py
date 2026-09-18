@@ -51,12 +51,20 @@ from bills.services.xero_publish_service import (
 from core.exceptions import BillValidationError
 from shared_models.models import Entity, User, UserEntity, XeroContactSync
 
+
+def _uid(label):
+    """xero_contact_sync.id is a uuid column since C5: a stable uuid for a test label."""
+    import uuid as _uuid
+
+    return _uuid.uuid5(_uuid.NAMESPACE_URL, f"minty-test-{label}")
+
+
 ORG_A = "xero-org-OLD"
 ORG_B = "xero-org-NEW"
 OLD_INVOICE_ID = "invoice-in-org-a"
 NEW_INVOICE_ID = "invoice-in-org-b"
 ACCESS_TOKEN = "fake-bearer-token"
-USER_ID = "org-switch-user-001"
+USER_ID = "f9f70ce4-fbc3-507e-99f7-ec48f3ea2ac1"  # was "org-switch-user-001"; user.id is a uuid now
 
 _PUT_PATH = "bills.services.xero_publish_service.requests.put"
 _POST_PATH = "bills.services.xero_publish_service.requests.post"
@@ -97,7 +105,7 @@ def _xero_200(invoice_id=NEW_INVOICE_ID) -> MagicMock:
 def entity_on_org_b(db) -> Entity:
     """Entity whose CURRENT Xero org is B (it used to be on A)."""
     return Entity.objects.create(
-        id="switch-entity-001",
+        id="8f95766b-e159-576c-a5b2-3d155b76fa6e",
         name="Switched Entity",
         country_code="HK",
         currency_id="11111111-1111-1111-1111-111111111111",
@@ -115,7 +123,7 @@ def switch_user(db) -> User:
         first_name="Switch",
         last_name="Er",
         username="switcher",
-        system_role="user",
+        system_role="normal",
     )
 
 
@@ -128,11 +136,17 @@ def switch_user_entity(db, switch_user, entity_on_org_b) -> UserEntity:
 
 @pytest.fixture
 def switched_bill(db, entity_on_org_b, switch_user) -> Bill:
+    # the contact the bill still names is org A's row (a bill.contact_id points at a
+    # xero_contact_sync row since C8; assigning the Xero id resolves to it)
+    XeroContactSync.objects.get_or_create(
+        entity_id=entity_on_org_b.id, xero_contact_id="contact-from-org-a",
+        defaults={"id": _uid("contact-row-org-a"), "xero_org_id": ORG_A, "name": "Acme Corp"},
+    )
     return Bill.objects.create(
         entity_id=entity_on_org_b.id,
         contact="Acme Corp",
         xero_contact_id="contact-from-org-a",
-        status=Bill.Status.AUTHORISED,
+        status=Bill.Status.SUBMITTED,
         amount=Decimal("500.00"),
         description="Office supplies",
         reference="INV-LOCAL-001",
@@ -148,7 +162,7 @@ def switched_bill(db, entity_on_org_b, switch_user) -> Bill:
 def contact_in_org_b(db, entity_on_org_b) -> XeroContactSync:
     """The bill's contact, as it exists in the new org."""
     return XeroContactSync.objects.create(
-        id="contact-row-org-b",
+        id=_uid("contact-row-org-b"),
         entity_id=entity_on_org_b.id,
         xero_contact_id="contact-from-org-b",
         xero_org_id=ORG_B,
@@ -324,13 +338,7 @@ class TestCleanupOnSwitch:
     ):
         """TC-ORG-011: a contact belonging to org A must not be re-attached."""
         _make_sync(switched_bill, OLD_INVOICE_ID, ORG_A)
-        XeroContactSync.objects.create(
-            id="contact-row-org-a",
-            entity_id=entity_on_org_b.id,
-            xero_contact_id="contact-from-org-a",
-            xero_org_id=ORG_A,
-            name="Acme Corp",
-        )
+        # the org-A contact row exists (the switched_bill fixture made it)
 
         with (
             patch(_PUT_PATH, return_value=_xero_200()),

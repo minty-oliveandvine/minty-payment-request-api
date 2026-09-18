@@ -126,7 +126,7 @@ def check_bill_mutable(bill_status: str):
     defer to check_edit_bill(), which allows elevated roles (Accountant, Admin,
     Super Admin) to edit paid bills per the permission matrix.
     """
-    if bill_status == "voided":
+    if bill_status == "void":
         raise PermissionDeniedError("Cannot edit a voided bill.")
     if bill_status == "paid":
         raise PermissionDeniedError(
@@ -138,7 +138,7 @@ def check_not_system_superuser(request, action: str = "modify data") -> None:
     """Raise PermissionDeniedError if the caller is a system superuser without
     explicit membership in the current entity.
 
-    System superusers (system_role='superuser') have view-only access ONLY for
+    System superusers (system_role='superadmin') have view-only access ONLY for
     entities they are not a member of.  A superuser who is also an explicit
     UserEntity member (e.g. super_admin of this entity) keeps full per-entity
     CRUD and is allowed to mutate.

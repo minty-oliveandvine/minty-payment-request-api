@@ -10,7 +10,7 @@ class TestAttachmentUpload:
     def test_upload_pdf(
         self, mock_s3, api_client, auth_headers, draft_bill, test_user_entity
     ):
-        mock_s3.return_value = MagicMock()
+        mock_s3.return_value = MagicMock(**{"generate_presigned_url.return_value": "https://s3.test/signed"})
         file = SimpleUploadedFile(
             "invoice.pdf",
             b"fake-pdf-content",
@@ -32,7 +32,7 @@ class TestAttachmentUpload:
     def test_upload_image(
         self, mock_s3, api_client, auth_headers, draft_bill, test_user_entity
     ):
-        mock_s3.return_value = MagicMock()
+        mock_s3.return_value = MagicMock(**{"generate_presigned_url.return_value": "https://s3.test/signed"})
         file = SimpleUploadedFile(
             "photo.jpg",
             b"fake-image-content",
@@ -51,7 +51,7 @@ class TestAttachmentUpload:
         self, mock_s3, api_client, auth_headers, draft_bill, test_user_entity
     ):
         """Uploading two files in one request creates two BillAttachment records."""
-        mock_s3.return_value = MagicMock()
+        mock_s3.return_value = MagicMock(**{"generate_presigned_url.return_value": "https://s3.test/signed"})
         pdf = SimpleUploadedFile(
             "invoice.pdf", b"pdf-data", content_type="application/pdf"
         )
@@ -97,7 +97,7 @@ class TestAttachmentUpload:
         draft_bill_with_attachment,
         test_user_entity,
     ):
-        mock_s3.return_value = MagicMock()
+        mock_s3.return_value = MagicMock(**{"generate_presigned_url.return_value": "https://s3.test/signed"})
         ba_id = str(draft_bill_with_attachment.bill_attachments.first().id)
         resp = api_client.delete(
             f"/api/v1/bills/{draft_bill_with_attachment.id}/attachments/{ba_id}",

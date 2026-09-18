@@ -48,7 +48,7 @@ FAKE_INVOICE_ID = "xero-invoice-uuid-0001"
 FAKE_INVOICE_NUMBER = "INV-0042"
 FAKE_ORG_ID = "xero-org-001"
 FAKE_ACCESS_TOKEN = "fake-bearer-token"
-FAKE_USER_ID = "pub-user-001"
+FAKE_USER_ID = "e0fa5eb6-c6a0-5e01-8f5d-87b88db95553"  # was "pub-user-001"; user.id is a uuid now
 
 
 def _xero_200(invoice_id=FAKE_INVOICE_ID, invoice_number=FAKE_INVOICE_NUMBER) -> MagicMock:
@@ -113,7 +113,7 @@ def _xero_422_with_validation_errors() -> MagicMock:
 @pytest.fixture
 def xero_entity(db) -> Entity:
     return Entity.objects.create(
-        id="pub-entity-001",
+        id="6e90bfe3-64eb-55ed-ac54-eeb9dbdd13b6",
         name="Publish Entity",
         country_code="HK",
         currency_id="11111111-1111-1111-1111-111111111111",
@@ -131,7 +131,7 @@ def xero_user(db) -> User:
         first_name="Pub",
         last_name="Lisher",
         username="publisher",
-        system_role="user",
+        system_role="normal",
     )
 
 
@@ -151,7 +151,7 @@ def authorised_bill(db, xero_entity, xero_user) -> Bill:
         entity_id=xero_entity.id,
         contact="Acme Corp",
         xero_contact_id="xero-contact-abc",
-        status=Bill.Status.AUTHORISED,
+        status=Bill.Status.SUBMITTED,
         amount=Decimal("500.00"),
         description="Office supplies",
         reference="INV-LOCAL-001",
@@ -170,7 +170,7 @@ def bill_with_line_items(db, xero_entity, xero_user) -> Bill:
         entity_id=xero_entity.id,
         contact="Line Corp",
         xero_contact_id="xero-contact-line",
-        status=Bill.Status.AUTHORISED,
+        status=Bill.Status.SUBMITTED,
         amount=Decimal("300.00"),
         description="Consulting",
         reference="INV-LINE-001",
@@ -904,7 +904,7 @@ class TestAuditTrail:
             bill=authorised_bill,
             action=Audit.Action.PUBLISHED_TO_XERO,
         ).last()
-        assert audit.user_id == FAKE_USER_ID
+        assert str(audit.user_id) == FAKE_USER_ID
 
     def test_republish_audit_user_id_recorded(
         self, authorised_bill, xero_entity, xero_user_entity,
@@ -925,7 +925,7 @@ class TestAuditTrail:
             bill=authorised_bill,
             action=Audit.Action.PUBLISHED_TO_XERO,
         ).last()
-        assert audit.user_id == FAKE_USER_ID
+        assert str(audit.user_id) == FAKE_USER_ID
 
 
 # ═══════════════════════════════════════════════════════════════════════════

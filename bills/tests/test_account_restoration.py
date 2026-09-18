@@ -25,24 +25,24 @@ def api():
 @pytest.fixture
 def user(db):
     return User.objects.create(
-        id="restore-user",
+        id="7370bfda-3e45-5130-a7fa-265f13e4fb70",
         email="restore@minty.com",
         password="hashed",
         first_name="Restore",
         last_name="Test",
         username="restoretest",
-        system_role="user",
+        system_role="normal",
     )
 
 
 @pytest.fixture
 def entity(db):
     return Entity.objects.create(
-        id="restore-entity",
+        id="bc7d6f60-2e10-5ef1-be04-6bee6134e525",
         name="Restore Entity",
         country_code="HK",
         currency_id="11111111-1111-1111-1111-111111111111",
-        status="active",
+        status="disconnected",
     )
 
 
@@ -80,8 +80,8 @@ def test_archived_then_restored_account_becomes_active(
     account = EntityBillAccountXero.objects.create(
         entity_id=entity.id,
         account_code="760",
-        account_name="Depreciation",
-        account_type="DEPRECIATN",
+        account_name="Expense",
+        account_type="EXPENSE",
         is_active=True,
         is_deleted=False,
         xero_account_id="xero-deprec-restore-1",
@@ -139,7 +139,7 @@ def test_inactive_account_archived_then_restored_becomes_active(
         entity_id=entity.id,
         account_code="761",
         account_name="Depreciation - Equipment",
-        account_type="DEPRECIATN",
+        account_type="EXPENSE",
         is_active=False,  # User had set this to inactive
         is_deleted=False,
         xero_account_id="xero-deprec-restore-2",
@@ -190,7 +190,7 @@ def test_multiple_accounts_archived_and_restored(
         entity_id=entity.id,
         account_code="760",
         account_name="Depreciation - Buildings",
-        account_type="DEPRECIATN",
+        account_type="EXPENSE",
         is_active=True,  # Was active
         is_deleted=False,
         xero_account_id="xero-deprec-multi-1",
@@ -200,7 +200,7 @@ def test_multiple_accounts_archived_and_restored(
         entity_id=entity.id,
         account_code="761",
         account_name="Depreciation - Equipment",
-        account_type="DEPRECIATN",
+        account_type="EXPENSE",
         is_active=False,  # Was inactive
         is_deleted=False,
         xero_account_id="xero-deprec-multi-2",
@@ -210,7 +210,7 @@ def test_multiple_accounts_archived_and_restored(
         entity_id=entity.id,
         account_code="762",
         account_name="Depreciation - Vehicles",
-        account_type="DEPRECIATN",
+        account_type="EXPENSE",
         is_active=True,  # Was active
         is_deleted=False,
         xero_account_id="xero-deprec-multi-3",
@@ -252,8 +252,8 @@ def test_restoration_with_code_change(api, entity, auth_headers, user_entity):
     account = EntityBillAccountXero.objects.create(
         entity_id=entity.id,
         account_code="760",
-        account_name="Depreciation",
-        account_type="DEPRECIATN",
+        account_name="Expense",
+        account_type="EXPENSE",
         is_active=False,  # Was inactive
         is_deleted=False,
         xero_account_id="xero-deprec-code-change",
@@ -292,8 +292,8 @@ def test_inactive_not_deleted_account_stays_inactive_until_sync(
     account = EntityBillAccountXero.objects.create(
         entity_id=entity.id,
         account_code="760",
-        account_name="Depreciation",
-        account_type="DEPRECIATN",
+        account_name="Expense",
+        account_type="EXPENSE",
         is_active=False,  # User unchecked it
         is_deleted=False,  # But it's not deleted
         xero_account_id="xero-deprec-inactive",

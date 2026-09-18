@@ -1,5 +1,6 @@
 import logging
 
+from django.core.exceptions import ValidationError
 from django.http import Http404
 from ninja import Router
 
@@ -12,7 +13,7 @@ logger = logging.getLogger("minty-api")
 def _get_bill_or_404(bill_id: str, entity_id: str) -> Bill:
     try:
         return Bill.objects.get(id=bill_id, entity_id=entity_id)
-    except Bill.DoesNotExist:
+    except (Bill.DoesNotExist, ValidationError, ValueError):  # a malformed id is not found either
         raise Http404("Bill not found")
 
 

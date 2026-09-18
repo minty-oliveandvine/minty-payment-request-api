@@ -34,7 +34,7 @@ from shared_models.models import Entity, User, UserEntity
 ALL_ROLES = ["cashier", "shop_manager", "accountant", "admin", "super_admin"]
 ELEVATED_ROLES = ["accountant", "admin", "super_admin"]
 BASIC_ROLES = ["cashier", "shop_manager"]
-DENIED_ROLE = "viewer"
+DENIED_ROLE = "entity_base"  # the lowest entity_role: a member with no bill permissions
 
 
 @pytest.fixture
@@ -45,24 +45,24 @@ def api():
 @pytest.fixture
 def user(db):
     return User.objects.create(
-        id="perm-user-001",
+        id="c428cdf9-479b-509f-9850-92c75f8add26",
         email="perm@minty.com",
         password="hashed",
         first_name="Perm",
         last_name="Tester",
         username="permtester",
-        system_role="user",
+        system_role="normal",
     )
 
 
 @pytest.fixture
 def entity(db):
     return Entity.objects.create(
-        id="perm-entity-001",
+        id="a13dcc34-7315-5ca9-9bc7-c014a0f5bfe2",
         name="Perm Entity",
         country_code="HK",
         currency_id="11111111-1111-1111-1111-111111111111",
-        status="active",
+        status="disconnected",
     )
 
 
@@ -110,25 +110,9 @@ def _make_completed_payment(bill, user, amount="100.00"):
 # ═══════════════════════════════════════════════════════════════════════════
 
 
-@pytest.mark.django_db
-class TestRoleNormalization:
-    """Spaces and hyphens in DB role strings map to the same matrix keys."""
-
-    def test_shop_manager_with_space_can_create_bill(self, api, user, entity):
-        _set_role(user, entity, "shop manager")
-        resp = api.post(
-            "/api/v1/bills/",
-            data=json.dumps({"contact": "Vendor"}),
-            content_type="application/json",
-            **_auth(user, entity),
-        )
-        assert resp.status_code == 201
-
-    def test_super_admin_hyphen_normalized_for_publish_gate(self):
-        from core.permissions import check_publish_xero
-
-        check_publish_xero("super-admin")  # should not raise
-
+# ``TestRoleNormalization`` ("shop manager" with a space maps to the same matrix key) went in
+# C8: ``user_entity.role`` is the ``entity_role`` enum, so a spelling with a space cannot be
+# stored any more - the loader normalised the one production row that had it.
 
 # ═══════════════════════════════════════════════════════════════════════════
 # 1. CREATE BILL
@@ -336,7 +320,7 @@ class TestDeletePaidBillPermissions:
         resp = api.delete(f"/api/v1/bills/{bill.id}", **_auth(user, entity))
         assert resp.status_code == 200, f"Role '{role}' should void {status} bills"
         bill.refresh_from_db()
-        assert bill.status == "voided"
+        assert bill.status == "void"
 
     @pytest.mark.parametrize("status", ["paid", "partially_paid"])
     @pytest.mark.parametrize("role", BASIC_ROLES)
@@ -432,7 +416,7 @@ class TestDeletePaymentPermissions:
 
     @pytest.mark.parametrize(
         "bill_status",
-        ["draft", "submitted", "paid", "partially_paid", "authorised"],
+        ["draft", "submitted", "paid", "partially_paid", "returned"],
     )
     @pytest.mark.parametrize("role", ELEVATED_ROLES)
     def test_elevated_can_delete_payment(

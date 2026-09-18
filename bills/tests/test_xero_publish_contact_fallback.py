@@ -29,7 +29,7 @@ from shared_models.models import Entity, User, UserEntity, XeroContactSync
 
 FAKE_ORG_ID = "xero-org-fallback-001"
 FAKE_ACCESS_TOKEN = "fake-bearer-token-fallback"
-FAKE_USER_ID = "fallback-user-001"
+FAKE_USER_ID = "e37ecb13-fdc7-5b79-8adb-8398e8d00c1d"  # was "fallback-user-001"; user.id is a uuid now
 FAKE_INVOICE_ID = "xero-invoice-fallback-0001"
 FAKE_INVOICE_NUMBER = "INV-FALL-001"
 FAKE_XERO_CONTACT_UUID = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"
@@ -97,7 +97,7 @@ def _xero_200(
 @pytest.fixture
 def fall_entity(db) -> Entity:
     return Entity.objects.create(
-        id="fall-entity-001",
+        id="13bd2fba-943a-598f-89b0-76e824cd30dd",
         name="Fallback Entity",
         country_code="HK",
         currency_id="11111111-1111-1111-1111-111111111111",
@@ -115,7 +115,7 @@ def fall_user(db) -> User:
         first_name="Fall",
         last_name="Back",
         username="fallbackuser",
-        system_role="user",
+        system_role="normal",
     )
 
 
@@ -135,7 +135,7 @@ def bill_with_contact_id(db, fall_entity, fall_user) -> Bill:
         entity_id=fall_entity.id,
         contact="24 Locks",
         xero_contact_id=FAKE_XERO_CONTACT_UUID,
-        status=Bill.Status.AUTHORISED,
+        status=Bill.Status.SUBMITTED,
         amount=Decimal("500.00"),
         description="Lock service invoice",
         reference="INV-LOCK-001",
@@ -154,7 +154,7 @@ def bill_without_contact_id(db, fall_entity, fall_user) -> Bill:
         entity_id=fall_entity.id,
         contact="24 Locks",
         xero_contact_id="",
-        status=Bill.Status.AUTHORISED,
+        status=Bill.Status.SUBMITTED,
         amount=Decimal("500.00"),
         description="Lock service invoice",
         reference="INV-LOCK-002",
@@ -190,14 +190,22 @@ class TestContactFallbackSkippedWhenContactIdPresent:
     def test_publish_proceeds_without_querying_contact_sync(
         self, bill_with_contact_id, fall_entity, fall_user_entity
     ):
-        """XeroContactSync.objects.filter should not be called when xero_contact_id is set."""
+        """The by-NAME heal must not run when the contact is set. (The contact's Xero id is
+        read through its xero_contact_sync row since C8, so the table IS queried - by id.)"""
+        from shared_models.models import XeroContactSync
+
+        real_filter = XeroContactSync.objects.filter
+        calls = []
+
+        def spy(*args, **kwargs):
+            calls.append(kwargs)
+            return real_filter(*args, **kwargs)
+
         with (
             patch(_PUT_PATH, return_value=_xero_200()),
             patch(_UPLOAD_ATTACHMENTS_PATH),
             patch(_UPLOAD_BANKSLIPS_PATH),
-            patch(
-                "bills.services.xero_publish_service.XeroContactSync.objects"
-            ) as mock_qs,
+            patch.object(XeroContactSync.objects, "filter", side_effect=spy),
         ):
             publish_bill_to_xero(
                 str(bill_with_contact_id.id),
@@ -206,7 +214,7 @@ class TestContactFallbackSkippedWhenContactIdPresent:
                 FAKE_ACCESS_TOKEN,
             )
 
-        mock_qs.filter.assert_not_called()
+        assert not any("name__iexact" in kw for kw in calls), calls
 
     def test_bill_published_successfully_when_contact_id_present(
         self, bill_with_contact_id, fall_entity, fall_user_entity
@@ -288,7 +296,7 @@ class TestContactFallbackSuccessCaseInsensitive:
             entity_id=fall_entity.id,
             contact="24 locks",  # all-lowercase
             xero_contact_id="",
-            status=Bill.Status.AUTHORISED,
+            status=Bill.Status.SUBMITTED,
             amount=Decimal("500.00"),
             description="Case test",
             reference="INV-CASE-001",
@@ -478,7 +486,7 @@ class TestContactFallbackPersistsToDatabase:
     ):
         """A sync row for a different entity must not heal a bill belonging to fall_entity."""
         other_entity = Entity.objects.create(
-            id="other-entity-999",
+            id="76c7eb0e-e711-54bd-acaf-e22bda56239b",
             name="Other Entity",
             country_code="HK",
             currency_id="11111111-1111-1111-1111-111111111111",
@@ -497,7 +505,7 @@ class TestContactFallbackPersistsToDatabase:
             entity_id=fall_entity.id,
             contact="24 Locks",
             xero_contact_id="",
-            status=Bill.Status.AUTHORISED,
+            status=Bill.Status.SUBMITTED,
             amount=Decimal("500.00"),
             description="Isolation test",
             reference="INV-ISO-001",

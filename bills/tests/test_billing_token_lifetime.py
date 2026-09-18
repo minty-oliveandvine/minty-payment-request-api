@@ -30,24 +30,24 @@ def client():
 @pytest.fixture
 def user(db):
     return User.objects.create(
-        id="token-test-user",
+        id="1c08b8a6-bfd8-5549-9fb4-357b8a73a267",
         email="tokentest@minty.com",
         password="hashed_pw",
         first_name="Token",
         last_name="Test",
         username="tokentest",
-        system_role="user",
+        system_role="normal",
     )
 
 
 @pytest.fixture
 def entity(db):
     return Entity.objects.create(
-        id="token-test-entity",
+        id="ada454e6-a55f-580e-a4f9-2db03fe0e938",
         name="Token Test Entity",
         country_code="HK",
         currency_id="11111111-1111-1111-1111-111111111111",
-        status="active",
+        status="disconnected",
     )
 
 

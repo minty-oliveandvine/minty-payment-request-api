@@ -7,16 +7,26 @@ Verify the bill contacts endpoint now matches Module 1 behaviour:
 from unittest.mock import MagicMock, patch
 
 import pytest
+
+from bills.tests.conftest import give_xero_token
 from django.utils import timezone as django_tz
 
-from shared_models.models import User, XeroContactSync
+from shared_models.models import User, XeroContactSync, UserToken
+
+
+def _uid(label):
+    """xero_contact_sync.id is a uuid column since C5: a stable uuid for a test label."""
+    import uuid as _uuid
+
+    return _uuid.uuid5(_uuid.NAMESPACE_URL, f"minty-test-{label}")
+
 
 
 @pytest.fixture
 def _seed_contacts(db, test_entity):
     """Seed xero_contact_sync with contacts covering all xero_org_id states."""
     XeroContactSync.objects.create(
-        id="c1",
+        id=_uid("c1"),
         entity_id=test_entity.id,
         xero_contact_id="xero-001",
         xero_org_id="org-abc",
@@ -24,7 +34,7 @@ def _seed_contacts(db, test_entity):
         category="SUPPLIER",
     )
     XeroContactSync.objects.create(
-        id="c2",
+        id=_uid("c2"),
         entity_id=test_entity.id,
         xero_contact_id="xero-002",
         xero_org_id="org-abc",
@@ -32,7 +42,7 @@ def _seed_contacts(db, test_entity):
         category="SUPPLIER",
     )
     XeroContactSync.objects.create(
-        id="c3",
+        id=_uid("c3"),
         entity_id=test_entity.id,
         xero_contact_id="xero-003",
         xero_org_id=None,
@@ -40,7 +50,7 @@ def _seed_contacts(db, test_entity):
         category="SUPPLIER",
     )
     XeroContactSync.objects.create(
-        id="c4",
+        id=_uid("c4"),
         entity_id=test_entity.id,
         xero_contact_id="xero-004",
         xero_org_id="",
@@ -48,7 +58,7 @@ def _seed_contacts(db, test_entity):
         category="SUPPLIER",
     )
     XeroContactSync.objects.create(
-        id="c5",
+        id=_uid("c5"),
         entity_id=test_entity.id,
         xero_contact_id="xero-005",
         xero_org_id="org-abc",
@@ -127,8 +137,7 @@ class TestContactListParity:
         test_entity.status = "connected"
         test_entity.xero_org_id = "org-abc"
         test_entity.save()
-        test_user.access_token = "fake-xero-token"
-        test_user.save()
+        give_xero_token(test_user, "fake-xero-token")
 
         fake_xero_response = MagicMock()
         fake_xero_response.status_code = 200
@@ -164,8 +173,7 @@ class TestContactListParity:
         test_entity.status = "connected"
         test_entity.xero_org_id = "org-abc"
         test_entity.save()
-        test_user.access_token = "fake-xero-token"
-        test_user.save()
+        give_xero_token(test_user, "fake-xero-token")
 
         fake_xero_response = MagicMock()
         fake_xero_response.status_code = 500
@@ -197,8 +205,7 @@ class TestContactListParity:
         test_entity.status = "connected"
         test_entity.xero_org_id = "org-abc"
         test_entity.save()
-        test_user.access_token = None
-        test_user.save()
+        UserToken.objects.filter(user=test_user).delete()
 
         resp = api_client.get("/api/v1/entity-bill-contacts/", **auth_headers)
         assert resp.status_code == 200
@@ -215,24 +222,20 @@ class TestContactListParity:
         _seed_contacts,
     ):
         """Match Flask: org-linked user supplies Xero token when JWT user has none."""
-        User.objects.create(
-            id="owner-user-xyz",
+        owner = User.objects.create(
+            id="bc375f64-b00c-5c13-bda1-52ba31540b5d",
             email="owner_xyz@minty.com",
             password="x",
             first_name="O",
             last_name="wner",
             username="ownerxyz",
-            system_role="user",
-            xero_entity_id="org-abc",
-            access_token="owner-only-token",
-            expires_in=1800,
-            token_created_at=django_tz.now(),
+            system_role="normal",
         )
+        give_xero_token(owner, "owner-only-token")
         test_entity.status = "connected"
         test_entity.xero_org_id = "org-abc"
+        test_entity.connected_by_user_id = owner.id
         test_entity.save()
-        test_user.access_token = None
-        test_user.save()
 
         fake_xero_response = MagicMock()
         fake_xero_response.status_code = 200
@@ -267,11 +270,10 @@ class TestContactListParity:
         test_entity.status = "connected"
         test_entity.xero_org_id = "org-abc"
         test_entity.save()
-        test_user.access_token = "fake-xero-token"
-        test_user.save()
+        give_xero_token(test_user, "fake-xero-token")
 
         XeroContactSync.objects.create(
-            id="sync-not-in-live-yet",
+            id=_uid("sync-not-in-live-yet"),
             entity_id=test_entity.id,
             xero_contact_id="xero-just-posted",
             xero_org_id="org-abc",

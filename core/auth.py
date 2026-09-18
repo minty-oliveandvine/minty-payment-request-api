@@ -1,24 +1,37 @@
 import logging
 
 import jwt
+from django.core.exceptions import ValidationError
 from django.conf import settings
-from django.db import connection
 from ninja.security import HttpBearer
 
-from shared_models.models import User
+from shared_models.enums import EntityRole, SystemRole, is_superadmin
+from shared_models.models import User, UserEntity
 
 logger = logging.getLogger("minty-api")
 
 
 def get_entity_role(user_id: str, entity_id: str) -> str | None:
-    """Return the user's role for the entity, or None if no access."""
-    with connection.cursor() as cursor:
-        cursor.execute(
-            "SELECT role FROM user_entity WHERE user_id = %s AND entity_id = %s LIMIT 1",
-            [user_id, entity_id],
+    """Return the user's role for the entity, or None if no access.
+
+    ``entity_id`` is a uuid column now: an empty or malformed id (a handoff token with no
+    entity, a hand-typed header) is "no access", not a query error.
+    """
+    if not user_id or not entity_id:
+        return None
+    try:
+        return (
+            UserEntity.objects.filter(user_id=user_id, entity_id=entity_id)
+            .values_list("role", flat=True)
+            .first()
         )
-        row = cursor.fetchone()
-        return row[0] if row else None
+    except (ValidationError, ValueError):
+        return None
+
+
+def _holds_super_admin_anywhere(user_id) -> bool:
+    """An entity-level ``super_admin`` row on any company (the "see all" paths key on it)."""
+    return UserEntity.objects.filter(user_id=user_id, role=EntityRole.SUPER_ADMIN).exists()
 
 
 class BearerAuth(HttpBearer):
@@ -58,14 +71,9 @@ class BearerAuth(HttpBearer):
         is a fact about the person and the entity list depends on it.
         """
         system_superuser = (
-            jwt_system_role == "superuser" or self._is_system_superuser(str(user.id))
+            is_superadmin(jwt_system_role) or self._is_system_superuser(str(user.id))
         )
-        with connection.cursor() as cursor:
-            cursor.execute(
-                "SELECT 1 FROM user_entity WHERE user_id = %s AND role = 'super_admin' LIMIT 1",
-                [str(user.id)],
-            )
-            is_super_admin = cursor.fetchone() is not None or system_superuser
+        is_super_admin = system_superuser or _holds_super_admin_anywhere(user.id)
 
         request.auth_user = user
         request.entity_id = entity_id
@@ -95,7 +103,7 @@ class BearerAuth(HttpBearer):
             entity_id = header_entity_id or token_entity_id
 
             # Trust the JWT-claimed system_role first: Flask issued and signed
-            # this token, and reads its own pettycashv2.user table when doing
+            # this token, and reads its own pettycashv3.user table when doing
             # so. Falling back to a DB query here causes mismatches when the
             # stored value has unexpected casing or whitespace.
             jwt_system_role = (payload.get("system_role") or "").strip().lower()
@@ -129,7 +137,7 @@ class BearerAuth(HttpBearer):
             # Trust the JWT claim first (see comment above), then fall back to
             # DB lookup so older tokens without the claim still work.
             system_superuser = (
-                jwt_system_role == "superuser"
+                is_superadmin(jwt_system_role)
                 or self._is_system_superuser(str(user.id))
             )
             # is_entity_member is True only when the user has an explicit
@@ -138,7 +146,7 @@ class BearerAuth(HttpBearer):
             # role granted below).
             is_entity_member = entity_role is not None
 
-            # Superusers (system_role='superuser') are allowed into any entity
+            # Super admins (system_role='superadmin') are allowed into any entity
             # for read-only access even without a user_entity row.  Give them a
             # virtual 'super_admin' entity role so permission checks downstream
             # still work correctly.
@@ -182,14 +190,9 @@ class BearerAuth(HttpBearer):
                     return None
 
             # is_super_admin is True for entity-level super_admin users AND for
-            # system superusers (system_role='superuser') so that the entity
+            # system superusers (system_role='superadmin') so that the entity
             # list and other "see all" paths work correctly for both groups.
-            with connection.cursor() as cursor:
-                cursor.execute(
-                    "SELECT 1 FROM user_entity WHERE user_id = %s AND role = 'super_admin' LIMIT 1",
-                    [str(user.id)],
-                )
-                is_super_admin = cursor.fetchone() is not None or system_superuser
+            is_super_admin = system_superuser or _holds_super_admin_anywhere(user.id)
 
             request.auth_user = user
             request.entity_id = entity_id
@@ -217,14 +220,12 @@ class BearerAuth(HttpBearer):
 
     @staticmethod
     def _is_system_superuser(user_id: str) -> bool:
-        """Return True if the user has system_role='superuser'.
+        """Return True if the user's stored system_role is the super admin.
 
-        Case-insensitive match so legacy rows with non-canonical casing
-        ('Superuser', 'SUPERUSER', etc.) still resolve correctly.
+        The column is the ``system_role`` enum (``superadmin``); a comparison, not a
+        case-insensitive match - the type has one spelling.
         """
-        return User.objects.filter(
-            id=str(user_id), system_role__iexact="superuser"
-        ).exists()
+        return User.objects.filter(id=str(user_id), system_role=SystemRole.SUPERADMIN).exists()
 
 
 class SelfBearerAuth(BearerAuth):

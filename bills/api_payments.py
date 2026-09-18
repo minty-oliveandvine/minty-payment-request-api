@@ -2,6 +2,7 @@ import logging
 
 from botocore.exceptions import ClientError
 from django.conf import settings
+from django.core.exceptions import ValidationError
 from django.db.models import Sum
 from django.http import Http404, StreamingHttpResponse
 from ninja import File, Query, Router
@@ -49,7 +50,7 @@ logger = logging.getLogger("minty-api")
 def _get_payment_or_404(payment_id: str, bill: Bill) -> Payment:
     try:
         return Payment.objects.get(id=payment_id, bill=bill)
-    except Payment.DoesNotExist:
+    except (Payment.DoesNotExist, ValidationError, ValueError):
         raise Http404("Payment not found")
 
 
@@ -59,14 +60,14 @@ def _same_supplier_bill_ids(bill: Bill) -> list[str]:
     when set, otherwise exact contact name. Empty supplier matches only this bill.
     """
     qs = Bill.objects.filter(entity_id=bill.entity_id)
-    xero_id = (bill.xero_contact_id or "").strip()
+    xero_id = (bill.xero_contact_id or "").strip()  # the linked contact's Xero id
     if xero_id:
-        qs = qs.filter(xero_contact_id=xero_id)
+        qs = qs.filter(contact_id=bill.contact_id)
     else:
         contact = (bill.contact or "").strip()
         if not contact:
             return [str(bill.id)]
-        qs = qs.filter(contact=bill.contact)
+        qs = qs.filter(contact_name=bill.contact_name)
     return [str(pk) for pk in qs.values_list("id", flat=True)]
 
 
@@ -91,7 +92,7 @@ def _payment_to_list_out(payment: Payment, users: dict) -> dict:
         "payment_method": payment.payment_method,
         "payment_status": payment.payment_status,
         "reference_no": payment.reference_no,
-        "created_by": payment.created_by,
+        "created_by": str(payment.created_by) if payment.created_by else "",
         "created_by_name": _resolve_user_name(payment.created_by, users),
         "created_at": payment.created_at,
     }
@@ -121,7 +122,7 @@ def _payment_to_out(payment: Payment) -> dict:
         "reference_no": payment.reference_no,
         "note": payment.note,
         "xero_payment_id": payment.xero_payment_id,
-        "created_by": payment.created_by,
+        "created_by": str(payment.created_by) if payment.created_by else "",
         "created_at": payment.created_at,
         "updated_at": payment.updated_at,
         "attachments": attachments,
@@ -145,7 +146,7 @@ def create_payment_endpoint(request, bill_id: str, payload: PaymentCreateIn):
     bill = _get_bill_or_404(bill_id, request.entity_id)
     check_bill_mutable(bill.status)
     check_mark_paid(request.entity_role)
-    payment = create_payment(bill, payload, request.auth_user.id)
+    payment = create_payment(bill, payload, str(request.auth_user.id))
     return 201, _payment_to_out(payment)
 
 
@@ -227,7 +228,7 @@ def update_payment_endpoint(
     check_bill_mutable(bill.status)
     check_mark_paid(request.entity_role)
     payment = _get_payment_or_404(payment_id, bill)
-    payment = update_payment(payment, payload, request.auth_user.id)
+    payment = update_payment(payment, payload, str(request.auth_user.id))
     return _payment_to_out(payment)
 
 
@@ -241,7 +242,7 @@ def delete_payment_endpoint(request, bill_id: str, payment_id: str):
     bill = _get_bill_or_404(bill_id, request.entity_id)
     check_mark_paid(request.entity_role)
     payment = _get_payment_or_404(payment_id, bill)
-    delete_payment(payment, request.auth_user.id)
+    delete_payment(payment, str(request.auth_user.id))
     return {"message": "Payment deleted"}
 
 
@@ -266,12 +267,12 @@ def upload_payment_attachment_endpoint(
 ):
     check_not_system_superuser(request, "upload payment attachments")
     bill = _get_bill_or_404(bill_id, request.entity_id)
-    if bill.status == "voided":
+    if bill.status == "void":
         raise PermissionDeniedError("Cannot modify payments on a voided bill.")
     check_mark_paid(request.entity_role)
     payment = _get_payment_or_404(payment_id, bill)
     pa = upload_payment_attachment(
-        payment, file, request.auth_user.id, attachment_role=attachment_role
+        payment, file, str(request.auth_user.id), attachment_role=attachment_role
     )
 
     if bill.published == Bill.PublishStatus.PUBLISHED:
@@ -279,7 +280,7 @@ def upload_payment_attachment_endpoint(
             access_token = (
                 resolve_xero_access_token_for_entity(
                     request.entity_id,
-                    request.auth_user.id,
+                    str(request.auth_user.id),
                 )
                 or ""
             )
@@ -338,11 +339,11 @@ def delete_payment_attachment_endpoint(
 ):
     check_not_system_superuser(request, "delete payment attachments")
     bill = _get_bill_or_404(bill_id, request.entity_id)
-    if bill.status == "voided":
+    if bill.status == "void":
         raise PermissionDeniedError("Cannot modify payments on a voided bill.")
     check_mark_paid(request.entity_role)
     payment = _get_payment_or_404(payment_id, bill)
-    delete_payment_attachment(payment, attachment_id, request.auth_user.id)
+    delete_payment_attachment(payment, attachment_id, str(request.auth_user.id))
     return {"message": "Payment attachment deleted"}
 
 

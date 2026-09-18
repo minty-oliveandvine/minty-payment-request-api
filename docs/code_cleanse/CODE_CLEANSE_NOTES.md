@@ -1,5 +1,10 @@
 # Code Cleanse Notes
 
+> Historical (July 2026). The `.cleanse/` tooling this log tells you to run is gone and
+> the baseline it quotes predates pettycashv3; the current per-repo work document is
+> `Minty/docs/code_cleanse/Code Cleanse - billing-backend.docx`. Kept for the decisions
+> it records (isort `--profile black`, the "deliberately left alone" list).
+
 Running log so this work can be resumed in a fresh session.
 Branch: `code-cleanse` (branched from `Minty-BillingBackend`). **Nothing is committed by
 Claude — the user commits.**

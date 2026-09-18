@@ -3,14 +3,17 @@ Publish a bill to Xero as an ACCPAY invoice, log sync records, and upload attach
 """
 
 import logging
+import re
 import threading
 import uuid
 from datetime import datetime, timezone
+from zoneinfo import ZoneInfo
 from decimal import Decimal
 
 import requests
 from botocore.exceptions import ClientError
 from django.conf import settings
+from django.core.exceptions import ValidationError
 from django.db import connection, transaction
 
 from bills.models import (
@@ -132,20 +135,22 @@ def publish_bill_to_xero(bill_id: str, entity_id: str, user_id: str, access_toke
             .first()
         )
         if sync_row and sync_row.xero_contact_id:
-            bill.xero_contact_id = sync_row.xero_contact_id
-            bill.save(update_fields=["xero_contact_id"])
+            bill.xero_contact_id = sync_row.xero_contact_id  # resolves to contact_id
+            bill.save(update_fields=["contact_id"])
         else:
             raise BillValidationError(
                 f"Contact '{bill.contact}' could not be matched to a Xero contact. "
                 "Please re-select the contact from the dropdown and save before publishing."
             )
 
+    lock_dates = fetch_lock_dates(access_token, xero_org_id)
+
     if prior_sync and prior_sync.response_invoice_id:
         # Republish — update the existing Xero invoice via POST /Invoices/{InvoiceID}
-        return _update_bill_to_xero(bill, entity, user_id, access_token, prior_sync)
+        return _update_bill_to_xero(bill, entity, user_id, access_token, prior_sync, lock_dates)
 
     # First publish — create a new Xero invoice via PUT /Invoices
-    payload = _build_xero_invoice_payload(bill, entity)
+    payload = _build_xero_invoice_payload(bill, entity, lock_dates)
     idempotency_key = str(uuid.uuid4())
     sync = _create_sync_record(bill, user_id, idempotency_key, is_republish=False)
 
@@ -196,6 +201,7 @@ def publish_bill_to_xero(bill_id: str, entity_id: str, user_id: str, access_toke
 
 def _update_bill_to_xero(
     bill: Bill, entity: Entity, user_id: str, access_token: str, prior_sync: XeroBillSync,
+    lock_dates=(None, None),
 ) -> dict:
     """Update an existing Xero invoice via POST /Invoices/{InvoiceID}.
 
@@ -211,7 +217,7 @@ def _update_bill_to_xero(
         "_update_bill_to_xero: updating invoice=%s bill=%s", invoice_id, bill.id,
     )
 
-    payload = _build_xero_invoice_payload(bill, entity)
+    payload = _build_xero_invoice_payload(bill, entity, lock_dates)
     target_status = payload["Invoices"][0]["Status"]
 
     request_headers = {
@@ -350,7 +356,7 @@ def _load_bill(bill_id: str, entity_id: str) -> Bill:
         return Bill.objects.prefetch_related(
             "line_items", "bill_attachments__attachment",
         ).get(id=bill_id, entity_id=entity_id)
-    except Bill.DoesNotExist:
+    except (Bill.DoesNotExist, ValidationError, ValueError):  # a malformed id is not found either
         raise BillValidationError("I couldn't find that bill.")
 
 
@@ -361,22 +367,83 @@ def _load_entity(entity_id: str) -> Entity:
         raise BillValidationError("I couldn't find that company.")
 
 
-def _build_xero_invoice_payload(bill: Bill, entity: Entity) -> dict:
-    """Build the Xero Invoices payload from bill data."""
+_HK_TZ = ZoneInfo("Asia/Hong_Kong")
+_MS_DATE_RE = re.compile(r"/Date\((-?\d+)[+-]\d+\)/")
 
+
+def _parse_xero_ms_date(raw):
+    """Parse a Xero ``/Date(ms+offset)/`` string to a date in Asia/Hong_Kong."""
+    if not raw:
+        return None
+    m = _MS_DATE_RE.search(str(raw))
+    if not m:
+        return None
+    ms = int(m.group(1))
+    return datetime.fromtimestamp(ms / 1000, tz=timezone.utc).astimezone(_HK_TZ).date()
+
+
+def fetch_lock_dates(access_token: str, xero_org_id: str) -> tuple:
+    """``(period_lock_date, end_of_year_lock_date)`` from Xero's Organisation, each a
+    ``date`` or None.
+
+    Asked at publish time and never stored (decided 2026-09-16; the ``entities`` columns
+    that cached them are gone): a lock moved in Xero applies to the very next publish. A
+    failed lookup is logged and answers ``(None, None)``, which publishes AUTHORISED -
+    exactly what an empty cache used to do.
+    """
+    try:
+        resp = requests.get(
+            "https://api.xero.com/api.xro/2.0/Organisation",
+            headers={
+                "Authorization": f"Bearer {access_token}",
+                "Xero-Tenant-Id": str(xero_org_id),
+                "Accept": "application/json",
+            },
+            timeout=15,
+        )
+        if resp.status_code != 200:
+            logger.error(
+                "lock dates: Xero Organisation returned %s org=%s body=%s",
+                resp.status_code, xero_org_id, (resp.text or "")[:300],
+            )
+            return None, None
+        orgs = (resp.json() or {}).get("Organisations", [])
+        org = next(
+            (o for o in orgs if o.get("OrganisationID") == str(xero_org_id)),
+            orgs[0] if orgs else None,
+        )
+        if not org:
+            logger.error("lock dates: no organisation in Xero response org=%s", xero_org_id)
+            return None, None
+        return (
+            _parse_xero_ms_date(org.get("PeriodLockDate")),
+            _parse_xero_ms_date(org.get("EndOfYearLockDate")),
+        )
+    except Exception as exc:  # noqa: BLE001 - a lock-date hiccup must not block a publish
+        logger.error("lock dates: lookup failed org=%s %s: %s", xero_org_id, type(exc).__name__, exc)
+        return None, None
+
+
+def _build_xero_invoice_payload(bill: Bill, entity: Entity, lock_dates=(None, None)) -> dict:
+    """Build the Xero Invoices payload from bill data.
+
+    ``lock_dates`` is ``fetch_lock_dates(...)``: a bill dated on or before either lock is
+    sent as DRAFT (Xero refuses to AUTHORISE into a locked period); otherwise AUTHORISED.
+    """
+    period_lock_date, end_of_year_lock_date = lock_dates
     xero_status = "AUTHORISED"
     if bill.invoice_date:
-        if entity.period_lock_date and bill.invoice_date <= entity.period_lock_date:
+        if period_lock_date and bill.invoice_date <= period_lock_date:
             xero_status = "DRAFT"
             logger.info(
-                "bill=%s invoice_date=%s on/before period_lock_date=%s → DRAFT",
-                bill.id, bill.invoice_date, entity.period_lock_date,
+                "bill=%s invoice_date=%s on/before period_lock_date=%s -> DRAFT",
+                bill.id, bill.invoice_date, period_lock_date,
             )
-        elif entity.end_of_year_lock_date and bill.invoice_date <= entity.end_of_year_lock_date:
+        elif end_of_year_lock_date and bill.invoice_date <= end_of_year_lock_date:
             xero_status = "DRAFT"
             logger.info(
-                "bill=%s invoice_date=%s on/before end_of_year_lock_date=%s → DRAFT",
-                bill.id, bill.invoice_date, entity.end_of_year_lock_date,
+                "bill=%s invoice_date=%s on/before end_of_year_lock_date=%s -> DRAFT",
+                bill.id, bill.invoice_date, end_of_year_lock_date,
             )
 
     line_items = []
@@ -445,7 +512,7 @@ def _create_sync_record(
         for li in bill.line_items.all().order_by("sort_order"):
             XeroBillSyncLine.objects.create(
                 xero_bill_sync=sync,
-                bill_line_item=li,
+                bill_line=li,
                 description=li.description,
                 quantity=li.quantity,
                 unit_amount=li.unit_amount,
@@ -991,9 +1058,9 @@ def _reset_for_new_org(bill: Bill, foreign_sync: XeroBillSync, xero_org_id) -> N
         bill.id, _sync_org(foreign_sync) or "unknown", xero_org_id,
     )
 
-    if bill.xero_contact_id:
-        bill.xero_contact_id = ""
-        bill.save(update_fields=["xero_contact_id"])
+    if bill.contact_id:
+        bill.contact_id = None
+        bill.save(update_fields=["contact_id"])
 
     _assert_account_codes_exist(bill)
 
