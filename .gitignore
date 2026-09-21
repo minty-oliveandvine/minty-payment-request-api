@@ -6,14 +6,23 @@ __pycache__/
 *.egg-info/
 .pytest_cache/
 .ruff_cache/
+.mypy_cache/
 .coverage
 htmlcov/
+# Claude Code's per-checkout scratch (settings.local.json holds one machine's permission
+# rules). The file was committed before this rule existed and has been untracked.
 .claude/
+.vscode/
+.idea/
 .DS_Store
+Thumbs.db
 
 # --- Secrets ---------------------------------------------------------------
-# .env.example is the documented template and stays tracked.
+# .env.example is the documented template and stays tracked; every other variant is a
+# machine's own.
 .env
+.env.*
+!.env.example
 
 # --- Runtime output --------------------------------------------------------
 logs/*.log
