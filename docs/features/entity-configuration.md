@@ -26,6 +26,15 @@ names enabled for the entity) are the raw tables for tooling.
 elevated roles edit (`check_edit_bill_settings`). `GET /api/entities/` lists the
 companies the caller may enter (all of them for a super admin, own only otherwise).
 
+`is_active` is the payment module's own tick (Payment Settings). `PUT /{id}` writes only this
+table: Petty Cash's `account_info.status` is Petty Cash's tick state (its publish refuses a
+non-ACTIVE code), so the old "mirror into account_info" was removed on 2026-10-01 - it unticked
+codes in Petty Cash. **At least one ticked:** a PUT that would untick the entity's last live
+(`is_deleted=False`) code of a `BILL_SETTINGS_ACCOUNT_TYPES` type answers **409** "Keep at least
+one account code ticked." and writes nothing (the entity's rows are locked `FOR UPDATE` in id
+order, so two parallel unticks cannot both pass). billing-frontend sends ticks ON before OFF so a
+swap never trips it.
+
 ## Contacts (`/api/entity-bill-contacts/*`)
 
 `GET` returns the entity's suppliers from `xero_contact_sync` scoped to the entity's
@@ -49,7 +58,8 @@ if anything changed), `trigger_flask_contact_sync` — over the JWT-authenticate
 
 ## Tests
 
-`bills/tests/test_entity_bill_accounts_list.py`, `test_entity_bill_contacts_create.py`,
+`bills/tests/test_entity_bill_accounts_list.py`, `test_entity_bill_accounts_update.py` (the
+PUT leaves `account_info` alone, the 409, the function-map DELETE), `test_entity_bill_contacts_create.py`,
 `test_contact_dedup.py`, `test_contact_list_exact_match.py`, `test_contact_list_parity.py`,
 `test_contact_no_duplicates.py`, `test_account_restoration.py`, `test_depreciatn_account.py`,
 `test_char_schema.py` and `test_schema_name.py` (the schema the models expect).

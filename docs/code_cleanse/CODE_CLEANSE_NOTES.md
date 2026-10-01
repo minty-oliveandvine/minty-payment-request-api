@@ -266,7 +266,8 @@ Full detail in `.cleanse/patch_targets.md`. Summary of what is load-bearing:
         match the originals across 7 dict shapes including the falsy-but-not-None cases
         (`0`, `False`, `""`), which the `is not None` guard must still apply. The helper does
         **not** call `.save()` — each endpoint keeps its own save + logging + side effects
-        (e.g. the accounts endpoint's `account_info.status` mirror is untouched).
+        (e.g. the accounts endpoint's `account_info.status` mirror is untouched - that mirror was
+        later REMOVED, 2026-10-01: it unticked codes in Petty Cash).
     - *deliberately NOT merged:* the 6 CRUD groups in `api_config.py` (entity functions,
       function maps, accounts, currencies, bill currencies, contacts) share a *shape* but
       differ in model, scoping (global vs entity-scoped), every `Http404` message, every log

@@ -146,9 +146,9 @@ class EntityModuleSubscription(models.Model):
 class AccountInfo(models.Model):
     """Mirror of pettycashv3.account_info managed by the Flask app.
 
-    The status field is written by Module 2 (Django) when the user toggles
-    account codes in Bill Settings, keeping Module 1 in sync.  All other
-    structural changes (insert/delete/schema) remain Flask's responsibility.
+    Read-only from here. ``status`` is Petty Cash's own tick state (its publish refuses a
+    non-ACTIVE code), so Payment Settings never writes it — the bill module's flag is
+    ``entity_bill_account_xero.is_active``. Inserts, deletes and the schema are Flask's.
     """
 
     id = models.UUIDField(primary_key=True)

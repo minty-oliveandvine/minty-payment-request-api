@@ -1,6 +1,7 @@
 import logging
 
 from django.core.exceptions import ValidationError
+from django.db import transaction
 from django.http import Http404
 from ninja import Query, Router, Schema
 
@@ -83,6 +84,8 @@ BILL_SETTINGS_ACCOUNT_TYPES = frozenset(
         "PREPAYMENT",
     }
 )
+
+LAST_TICKED_CODE_MESSAGE = "Keep at least one account code ticked."
 
 
 # ═══════════════════════════════════════════════════════════════════════════
@@ -273,7 +276,7 @@ def delete_entity_function_map(request, function_id: str):
         raise Http404("Entity function map not found")
 
     efm.delete()
-    logger.info("EntityFunctionMap deleted id=%s", map_id)
+    logger.info("EntityFunctionMap deleted entity=%s function=%s", request.entity_id, function_id)
     return {"message": "Entity function map deleted"}
 
 
@@ -368,7 +371,7 @@ def get_entity_bill_account(request, account_id: str):
 
 @entity_bill_accounts_router.put(
     "/{account_id}",
-    response={200: EntityBillAccountXeroOut, 404: ErrorOut},
+    response={200: EntityBillAccountXeroOut, 404: ErrorOut, 409: ErrorOut},
     summary="Update an entity bill account",
 )
 def update_entity_bill_account(
@@ -376,40 +379,46 @@ def update_entity_bill_account(
 ):
     check_not_system_superuser(request, "modify configuration")
     check_edit_bill_settings(request.entity_role)
-    try:
-        account = EntityBillAccountXero.objects.get(
-            id=account_id,
-            entity_id=request.entity_id,
-            is_deleted=False,
-        )
-    except EntityBillAccountXero.DoesNotExist:
-        raise Http404("Entity bill account not found")
-
     update_data = payload.dict(exclude_unset=True)
-    _apply_partial_update(account, update_data)
-    account.save()
+    with transaction.atomic():
+        # Lock the entity's live rows (in id order, so concurrent saves queue rather
+        # than deadlock): two parallel unticks must not each see the other as "still
+        # ticked" and leave the company with none.
+        live = list(
+            EntityBillAccountXero.objects.select_for_update()
+            .filter(entity_id=request.entity_id, is_deleted=False)
+            .order_by("id")
+        )
+        wanted = account_id.strip().lower()
+        account = next((a for a in live if str(a.id) == wanted), None)
+        if account is None:
+            raise Http404("Entity bill account not found")
+
+        # At-least-one rule: the Add Payment dialog needs a code to offer, so the
+        # last ticked settings-type code cannot be unticked.
+        if (
+            update_data.get("is_active") is False
+            and account.is_active
+            and account.account_type in BILL_SETTINGS_ACCOUNT_TYPES
+            and not any(
+                a.is_active
+                and a.account_type in BILL_SETTINGS_ACCOUNT_TYPES
+                and a.id != account.id
+                for a in live
+            )
+        ):
+            logger.info(
+                "EntityBillAccountXero untick refused (last ticked code) id=%s",
+                account.id,
+            )
+            return 409, {"detail": LAST_TICKED_CODE_MESSAGE}
+
+        _apply_partial_update(account, update_data)
+        account.save()
     logger.info("EntityBillAccountXero updated id=%s", account.id)
 
-    # Mirror is_active into account_info.status so Module 1 stays in sync.
-    # Only propagate when is_active was explicitly included in the payload.
-    if "is_active" in update_data and account.account_code:
-        from shared_models.models import AccountInfo
-
-        new_status = "ACTIVE" if account.is_active else "INACTIVE"
-        updated = AccountInfo.objects.filter(
-            entity_id=account.entity_id,
-            xero_code=account.account_code,
-            type__in=["EXPENSE", "DIRECTCOSTS"],
-        ).update(status=new_status)
-        logger.info(
-            "update_entity_bill_account: mirrored status=%s to account_info "
-            "entity=%s code=%s rows_updated=%s",
-            new_status,
-            account.entity_id,
-            account.account_code,
-            updated,
-        )
-
+    # Payment Settings writes only its own table: account_info.status belongs to
+    # Petty Cash (its publish refuses a non-ACTIVE code), so it is never touched here.
     return account
 
 
