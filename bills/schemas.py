@@ -575,12 +575,6 @@ class AuditOut(Schema):
 # ---------------------------------------------------------------------------
 
 
-class ProfileIn(Schema):
-    email: str
-    first_name: str
-    last_name: str
-
-
 class ProfileOut(Schema):
     id: IdStr
     email: str
@@ -589,7 +583,3 @@ class ProfileOut(Schema):
     username: str
     is_view_only: bool = False
     member_entity_ids: list[str] = []
-
-
-class DeactivateAccountOut(Schema):
-    detail: str

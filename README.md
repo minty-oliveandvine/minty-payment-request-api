@@ -7,7 +7,7 @@ publishes bills to Xero as ACCPAY invoices. The API docs are served at `/api/doc
 ```bash
 python -m venv .venv && .venv/Scripts/pip install -r requirements.txt
 python manage.py runserver 8000      # .env: SECRET_KEY shared with Minty, FLASK_APP_URL, S3_*, MINTY_DB_SCHEMA
-pytest                                # Postgres; needs MINTY_REPO for the schema harness (443 passed on 2026-09-18)
+pytest                                # Postgres; needs MINTY_REPO for the schema harness (419 passed on 2026-10-01)
 ```
 
 - [`docs/features/README.md`](docs/features/README.md) — one page per feature: authentication

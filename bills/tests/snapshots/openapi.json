@@ -1062,81 +1062,6 @@
         "title": "CurrencyInfoUpdateIn",
         "type": "object"
       },
-      "CurrentUserOut": {
-        "properties": {
-          "email": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Email"
-          },
-          "first_name": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "First Name"
-          },
-          "id": {
-            "title": "Id",
-            "type": "string"
-          },
-          "last_name": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Last Name"
-          },
-          "system_role": {
-            "title": "System Role",
-            "type": "string"
-          },
-          "username": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Username"
-          }
-        },
-        "required": [
-          "id",
-          "system_role"
-        ],
-        "title": "CurrentUserOut",
-        "type": "object"
-      },
-      "DeactivateAccountOut": {
-        "properties": {
-          "detail": {
-            "title": "Detail",
-            "type": "string"
-          }
-        },
-        "required": [
-          "detail"
-        ],
-        "title": "DeactivateAccountOut",
-        "type": "object"
-      },
       "EntitlementsOut": {
         "properties": {
           "billing_enabled": {
@@ -2558,29 +2483,6 @@
         "title": "PaymentUpdateIn",
         "type": "object"
       },
-      "ProfileIn": {
-        "properties": {
-          "email": {
-            "title": "Email",
-            "type": "string"
-          },
-          "first_name": {
-            "title": "First Name",
-            "type": "string"
-          },
-          "last_name": {
-            "title": "Last Name",
-            "type": "string"
-          }
-        },
-        "required": [
-          "email",
-          "first_name",
-          "last_name"
-        ],
-        "title": "ProfileIn",
-        "type": "object"
-      },
       "ProfileOut": {
         "properties": {
           "email": {
@@ -3366,34 +3268,6 @@
           }
         ],
         "summary": "Invalidate the current billing session",
-        "tags": [
-          "Session"
-        ]
-      }
-    },
-    "/api/v1/auth/me": {
-      "get": {
-        "description": "Return profile data for the currently authenticated user.",
-        "operationId": "core_api_session_current_user",
-        "parameters": [],
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/CurrentUserOut"
-                }
-              }
-            },
-            "description": "OK"
-          }
-        },
-        "security": [
-          {
-            "SelfBearerAuth": []
-          }
-        ],
-        "summary": "Get current authenticated user data",
         "tags": [
           "Session"
         ]
@@ -6597,32 +6471,6 @@
       }
     },
     "/api/v1/profile/me": {
-      "delete": {
-        "description": "Sign the caller out of Minty for good \u2014 the account, not one company.\n\nDEACTIVATES, never deletes. Reports, bills and payments are attributed to the person\nwho made them, so removing the row would orphan every record they ever touched. The\naccount is switched off and the history stays readable \u2014 the same policy Module 1\nstates at ``deactivate_my_account``, which is this endpoint's sibling.\n\nONE GUARD, and it spans every company they belong to: if their card pays for any of\nthem, they cannot go. The payer is recorded on the subscription rows, not on the\nmembership, so switching the account off does not move it \u2014 it strands it. What that\nleaves is unrecoverable from inside the app: every remaining admin is refused because\na payer exists and is not them, the payer can no longer sign in to fix it, and the\nrenewals keep charging the card.\n\nBeing the last admin somewhere is NOT checked. That is deliberate and worth\nrevisiting: it would be consistent with the per-company rule, but applied to a whole\naccount it can trap someone who is the sole admin of a company where nobody else can\nbe promoted.",
-        "operationId": "bills_api_profile_deactivate_account_endpoint",
-        "parameters": [],
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/DeactivateAccountOut"
-                }
-              }
-            },
-            "description": "OK"
-          }
-        },
-        "security": [
-          {
-            "BearerAuth": []
-          }
-        ],
-        "summary": "Deactivate Account Endpoint",
-        "tags": [
-          "Profile"
-        ]
-      },
       "get": {
         "description": "Get current user's profile information including view-only status.\n\n`member_entity_ids` lists the entity IDs the caller has an explicit\nUserEntity membership for.  Frontend uses this to decide whether to render\nread-only UI when a system superuser is viewing an entity they are not a\nmember of.",
         "operationId": "bills_api_profile_get_profile_endpoint",
@@ -6645,42 +6493,6 @@
           }
         ],
         "summary": "Get Profile Endpoint",
-        "tags": [
-          "Profile"
-        ]
-      },
-      "put": {
-        "description": "Update current user's profile (email, first_name, last_name).",
-        "operationId": "bills_api_profile_update_profile_endpoint",
-        "parameters": [],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/ProfileIn"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProfileOut"
-                }
-              }
-            },
-            "description": "OK"
-          }
-        },
-        "security": [
-          {
-            "BearerAuth": []
-          }
-        ],
-        "summary": "Update Profile Endpoint",
         "tags": [
           "Profile"
         ]

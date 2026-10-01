@@ -36,11 +36,17 @@ A system superuser (`system_role = superadmin`) with no row on the entity gets a
 |---|---|
 | `GET /session` | the role and entity of the current token, from the DB |
 | `POST /token/refresh` | re-mints the billing JWT (8 hours, `BILLING_TOKEN_HOURS`) from a still-valid one — the frontend's cookie lives 8 hours too |
-| `GET /me` | the person |
 | `GET /entitlements` | `petty_cash_enabled` / `billing_enabled` read **live** from `entity_function_map` (`core/entitlements.py`) — the JWT's claims are hints only |
 | `GET /xero-status` | whether the entity's Xero token bearer still holds a usable bundle |
 | `GET /entity-currency` | the entity's ISO currency code |
 | `POST /logout` | clears the presence stamps Minty keeps (`signed_in_at`, `last_seen_at`), so leaving from here counts as leaving |
+
+`GET /auth/me` was removed on 2026-10-01 together with `PUT /profile/me` (profile update) and
+`DELETE /profile/me` (deactivation): their only caller was billing-frontend's My Profile page,
+which moved to minty-web - that page reads and saves the profile through Minty's
+`/api/me/profile`. `GET /profile/me` (`bills/api_profile.py`) stays: the frontend's
+`lib/useUserRole.ts` reads `is_view_only` and `member_entity_ids` from it. Deactivating an
+account is Minty's `DELETE /minty/api/users/me`.
 
 ## The permission matrix (`core/permissions.py`)
 
@@ -81,6 +87,6 @@ populating them would make this a second refresher and brick the connection.
 
 `bills/tests/test_bill_permissions.py`, `test_superuser_cross_entity.py`,
 `test_token_refresh.py`, `test_billing_token_lifetime.py`, `test_logout.py`,
-`test_xero_token_service.py`, `test_deactivate_account.py`; the frontend's
+`test_xero_token_service.py`; the frontend's
 `e2e/01_handoff.spec.ts` proves the database entitlement, not the claim, decides what
 shows.

@@ -2,7 +2,6 @@
 
 import logging
 from datetime import datetime, timedelta, timezone
-from typing import Optional
 
 import jwt
 from django.conf import settings
@@ -34,15 +33,6 @@ class XeroStatusOut(Schema):
 class EntitlementsOut(Schema):
     petty_cash_enabled: bool
     billing_enabled: bool
-
-
-class CurrentUserOut(Schema):
-    id: str
-    email: Optional[str] = None
-    first_name: Optional[str] = None
-    last_name: Optional[str] = None
-    username: Optional[str] = None
-    system_role: str
 
 
 class LogoutOut(Schema):
@@ -168,25 +158,6 @@ def entity_currency(request):
             if row and row[0]:
                 code = row[0]
     return EntityCurrencyOut(currency_code=code)
-
-
-@session_router.get(
-    "/me",
-    auth=SelfBearerAuth(),
-    response={200: CurrentUserOut},
-    summary="Get current authenticated user data",
-)
-def current_user(request):
-    """Return profile data for the currently authenticated user."""
-    user = request.auth_user
-    return CurrentUserOut(
-        id=str(user.id),
-        email=user.email,
-        first_name=user.first_name,
-        last_name=user.last_name,
-        username=user.username,
-        system_role=user.system_role,
-    )
 
 
 @session_router.get(

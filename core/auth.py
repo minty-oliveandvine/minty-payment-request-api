@@ -238,7 +238,7 @@ class SelfBearerAuth(BearerAuth):
 
     WHY THAT IS SAFE HERE, endpoint by endpoint:
 
-    * ``/auth/me`` and ``/auth/xero-status`` read ``request.auth_user`` only. Neither has
+    * ``/profile/me`` and ``/auth/xero-status`` read ``request.auth_user`` only. Neither has
       ever consulted the entity — they are a person's name and a person's Xero token.
     * ``/auth/entitlements`` reads ``get_module_claims(request.entity_id or "")``. It was
       already written to tolerate an empty entity and answers "no modules enabled", which
