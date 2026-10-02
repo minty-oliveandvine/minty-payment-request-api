@@ -23,7 +23,8 @@ RUN sed -i 's/\r$//' /usr/local/bin/entrypoint.sh && \
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
 
-EXPOSE 8000
+EXPOSE 8020
 
 ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
-CMD ["gunicorn", "-w", "4", "-b", "0.0.0.0:8000", "config.wsgi:application"]
+# Shell form so the host-injected PORT is honoured; exec keeps gunicorn as the signal target.
+CMD exec gunicorn -w 4 -b "0.0.0.0:${PORT:-8020}" config.wsgi:application

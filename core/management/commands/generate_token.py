@@ -64,7 +64,7 @@ class Command(BaseCommand):
         self.stdout.write("Usage:")
         self.stdout.write(f'  curl -H "Authorization: Bearer {token}" \\')
         self.stdout.write(f'       -H "X-Entity-Id: {entity.id}" \\')
-        self.stdout.write("       http://localhost:8000/api/v1/bills/")
+        self.stdout.write("       http://localhost:8020/api/v1/bills/")
         self.stdout.write("")
 
     def _resolve(self, user_id, entity_id):

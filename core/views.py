@@ -61,7 +61,7 @@ def landing(request):
 
         logger.info("Landing handoff user_id=%s entity_id=%s", user_id, entity_id)
 
-        frontend_url = settings.FRONTEND_APP_URL.rstrip("/")
+        frontend_url = settings.PAYMENT_REQUEST_WEB_URL
         qs = urlencode(
             {
                 "token": billing_token,

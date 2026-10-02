@@ -1,4 +1,4 @@
-# Authentication and permissions — billing-backend's half
+# Authentication and permissions — minty-payment-request-api's half
 
 This service **verifies**; it never signs anyone in. Minty (Flask) mints the token a
 person arrives with; the system-wide picture — the sign-in paths, sessions, the hand-off
@@ -42,7 +42,7 @@ A system superuser (`system_role = superadmin`) with no row on the entity gets a
 | `POST /logout` | clears the presence stamps Minty keeps (`signed_in_at`, `last_seen_at`), so leaving from here counts as leaving |
 
 `GET /auth/me` was removed on 2026-10-01 together with `PUT /profile/me` (profile update) and
-`DELETE /profile/me` (deactivation): their only caller was billing-frontend's My Profile page,
+`DELETE /profile/me` (deactivation): their only caller was minty-payment-request-web's My Profile page,
 which moved to minty-web - that page reads and saves the profile through Minty's
 `/api/me/profile`. `GET /profile/me` (`bills/api_profile.py`) stays: the frontend's
 `lib/useUserRole.ts` reads `is_view_only` and `member_entity_ids` from it. Deactivating an
@@ -72,16 +72,18 @@ plus `check_bill_mutable(status)` (a `void` bill accepts nothing). `PermissionDe
 This service **never refreshes** a Xero token. `bills/services/xero_token_service.py`
 uses the stored bundle of the entity's connector (`entities.connected_by_user_id`, else
 the caller's own) while it is unexpired, and otherwise asks Minty:
-`POST {XERO_TOKEN_SERVICE_URL}` (default `{FLASK_APP_URL}/api/internal/xero/token`) with a
+`POST {XERO_TOKEN_SERVICE_URL}` (always `{PETTY_CASH_URL}/api/internal/xero/token`) with a
 60-second assertion JWT (`scope: xero-access-token`, the entity in the signed claims). A
 409 from Minty means "reconnect" and surfaces as *Your Xero connection has expired*.
-`XERO_CLIENT_ID` / `XERO_CLIENT_SECRET` exist in settings but must stay empty here —
-populating them would make this a second refresher and brick the connection.
+There are deliberately no Xero client credentials in this service's settings — holding them
+would make it a second refresher and brick the connection.
 
 ## Configuration
 
-`SECRET_KEY` (shared), `FLASK_APP_URL` / `XERO_TOKEN_SERVICE_URL` / `XERO_TOKEN_SERVICE_TIMEOUT`,
-`FRONTEND_APP_URL` (CORS), `MINTY_DB_SCHEMA` → `DB_SCHEMA` (the `search_path`).
+`APP_ENV` (`development` → `DEBUG`; otherwise the placeholder `SECRET_KEY` refuses to boot),
+`SECRET_KEY` (shared), `PETTY_CASH_URL` (→ `XERO_TOKEN_SERVICE_URL`; `XERO_TOKEN_SERVICE_TIMEOUT`
+is a 15-second constant), `PAYMENT_REQUEST_WEB_URL` / `ONBOARDING_WEB_URL` (CORS default;
+`CORS_ALLOWED_ORIGINS` overrides), `?schema=` on `DATABASE_URL` → `DB_SCHEMA` (the `search_path`).
 
 ## Tests
 

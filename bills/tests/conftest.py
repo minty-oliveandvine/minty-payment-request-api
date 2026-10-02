@@ -18,7 +18,7 @@ def _block_real_token_service_calls(monkeypatch):
 
     `resolve_xero_access_token_for_entity` POSTs to the Flask token service whenever the
     stored token is expired or absent. Unblocked, the suite talks to whatever is
-    listening on FLASK_APP_URL — on a developer machine that is a running Minty against
+    listening on PETTY_CASH_URL — on a developer machine that is a running Minty against
     a real database, and that endpoint can spend a single-use Xero refresh token.
 
     Tests that exercise the token service patch `requests.post` themselves; those

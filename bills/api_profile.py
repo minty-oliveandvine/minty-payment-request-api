@@ -8,7 +8,7 @@ from shared_models.models import UserEntity
 logger = logging.getLogger("minty-api")
 
 # GET /me only. PUT /me (profile update) and DELETE /me (deactivation) were removed on
-# 2026-10-01: their caller, billing-frontend's My Profile page, moved to minty-web, which saves
+# 2026-10-01: their caller, minty-payment-request-web's My Profile page, moved to minty-web, which saves
 # the profile through Minty's /api/me/profile. The GET stays for lib/useUserRole.ts
 # (is_view_only, member_entity_ids).
 profile_router = Router()

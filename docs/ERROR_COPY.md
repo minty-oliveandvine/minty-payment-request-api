@@ -1,10 +1,10 @@
 # Error copy
 
 What this API sends when something fails, and why. The copy standard is shared
-across Minty, billing-backend, billing-frontend and onboarding; the canonical
+across Minty, minty-payment-request-api, minty-payment-request-web and the onboarding apps; the canonical
 write-up lives in the Minty repo as `docs/features/ERROR_MESSAGE_LEAKS.md`.
 
-Everything here reaches a payer's screen: billing-frontend renders `detail`
+Everything here reaches a payer's screen: minty-payment-request-web renders `detail`
 directly when it reads as a sentence.
 
 ## The standard

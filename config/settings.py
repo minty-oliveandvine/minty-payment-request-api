@@ -1,14 +1,31 @@
 import os
 from pathlib import Path
 
+from django.core.exceptions import ImproperlyConfigured
 from dotenv import load_dotenv
+
+from config.dburl import database_url, parse_database_url
+from config.s3url import parse_s3_url
 
 load_dotenv()
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-SECRET_KEY = os.environ.get("SECRET_KEY", "change-me-in-production")
-DEBUG = os.environ.get("DEBUG", "True").lower() in ("true", "1", "yes")
+# APP_ENV: "development" or "production" (the default; anything unrecognised counts as production).
+APP_ENV = os.environ.get("APP_ENV", "production").strip().lower()
+DEBUG = APP_ENV == "development"
+
+_DEFAULT_SECRET_KEY = "change-me-in-production"
+SECRET_KEY = os.environ.get("SECRET_KEY", _DEFAULT_SECRET_KEY)
+
+# REFUSE TO BOOT WITH THE PLACEHOLDER KEY OUTSIDE DEVELOPMENT. Without the shared key every
+# authenticated call answers 401 while public endpoints keep working, and the placeholder is
+# in the repo, so tokens signed with it are forgeable. A crash at startup is the loud failure.
+if not DEBUG and SECRET_KEY == _DEFAULT_SECRET_KEY:
+    raise ImproperlyConfigured(
+        "SECRET_KEY is not set. It must be the same value the Flask app mints tokens "
+        "with; without it every request is refused with 401. Refusing to start."
+    )
 ALLOWED_HOSTS = os.environ.get("ALLOWED_HOSTS", "*").split(",")
 
 # Deliberately no django.contrib.contenttypes / django.contrib.auth.
@@ -33,13 +50,21 @@ MIDDLEWARE = [
 ]
 
 # ---------------------------------------------------------------------------
-# CORS — allow the frontend to call the API from the browser
+# Cross-module URLs (trailing slashes stripped)
 # ---------------------------------------------------------------------------
-FRONTEND_APP_URL = os.environ.get("FRONTEND_APP_URL", "http://localhost:3000")
+PETTY_CASH_URL = os.environ.get("PETTY_CASH_URL", "http://localhost:8010").rstrip("/")
+PAYMENT_REQUEST_WEB_URL = os.environ.get("PAYMENT_REQUEST_WEB_URL", "http://localhost:3020").rstrip("/")
+ONBOARDING_WEB_URL = os.environ.get("ONBOARDING_WEB_URL", "http://localhost:3030").rstrip("/")
 
+# ---------------------------------------------------------------------------
+# CORS — allow the payment-request and onboarding web apps to call the API from the browser.
+# CORS_ALLOWED_ORIGINS (comma-separated) overrides the derived default.
+# ---------------------------------------------------------------------------
 CORS_ALLOWED_ORIGINS = [
-    origin.strip()
-    for origin in os.environ.get("CORS_ALLOWED_ORIGINS", FRONTEND_APP_URL).split(",")
+    origin.strip().rstrip("/")
+    for origin in os.environ.get(
+        "CORS_ALLOWED_ORIGINS", f"{PAYMENT_REQUEST_WEB_URL},{ONBOARDING_WEB_URL}"
+    ).split(",")
     if origin.strip()
 ]
 CORS_ALLOW_HEADERS = [
@@ -69,24 +94,14 @@ TEMPLATES = [
 # ---------------------------------------------------------------------------
 # Database — shared with Module 1 Flask app (pettycashv3 schema)
 # ---------------------------------------------------------------------------
-# The schema every model lives in, shared with Minty (blueprints/shared/schema.py reads the
-# SAME variable with the same default). pettycashv3 is the permanent production name; the
-# variable exists so the name is a setting, not a literal - every db_table is unqualified and
-# resolves through search_path, and the raw queries below read this. The test settings and
-# the root conftest read it too, so `MINTY_DB_SCHEMA=pettycash_alt pytest` proves it.
-DB_SCHEMA = os.environ.get("MINTY_DB_SCHEMA", "pettycashv3")
-
-DATABASES = {
-    "default": {
-        "ENGINE": "django.db.backends.postgresql",
-        "NAME": os.environ.get("POSTGRES_DB", "postgres"),
-        "USER": os.environ.get("POSTGRES_USER", "postgres"),
-        "PASSWORD": os.environ.get("POSTGRES_PASSWORD", "admin"),
-        "HOST": os.environ.get("DB_HOST", "localhost"),
-        "PORT": os.environ.get("DB_PORT", "5432"),
-        "OPTIONS": {"options": f"-c search_path={DB_SCHEMA},public"},
-    }
-}
+# DATABASE_URL = postgresql://user:pass@host:5432/dbname?schema=pettycashv3[&sslmode=...]
+# (config/dburl.py). DB_SCHEMA is the schema every model lives in, shared with Minty, which
+# reads ?schema= from its own DATABASE_URL the same way. pettycashv3 is the permanent
+# production name; it is a setting, not a literal - every db_table is unqualified and
+# resolves through search_path, and the raw queries read this. The test settings and the
+# root conftest read it too, so `?schema=pettycash_alt` on the test URL proves it.
+_DEFAULT_DB, DB_SCHEMA = parse_database_url(database_url())
+DATABASES = {"default": _DEFAULT_DB}
 
 # LocMem debounce for Flask chart sync (single-process; replace for multi-worker).
 CACHES = {
@@ -106,40 +121,29 @@ USE_TZ = True
 # ---------------------------------------------------------------------------
 # S3 / Backblaze — for attachment uploads
 # ---------------------------------------------------------------------------
-S3_BUCKET = os.environ.get("S3_BUCKET", "")
-S3_KEY = os.environ.get("S3_KEY", "")
-S3_SECRET = os.environ.get("S3_SECRET", "")
-S3_REGION = os.environ.get("S3_REGION", "us-east-1")
-S3_ENDPOINT_URL = os.environ.get("S3_ENDPOINT_URL", "")
+# S3_URL = https://KEY:SECRET@s3.<region>.backblazeb2.com/<bucket> (config/s3url.py)
+_S3 = parse_s3_url(os.environ.get("S3_URL", "").strip())
+S3_BUCKET = _S3["bucket"]
+S3_KEY = _S3["key"]
+S3_SECRET = _S3["secret"]
+S3_REGION = _S3["region"]
+S3_ENDPOINT_URL = _S3["endpoint_url"]
 
 # ---------------------------------------------------------------------------
-# Xero OAuth
+# Xero
 #
-# Intentionally empty. Xero rotates refresh tokens on every use and invalidates
-# the previous one, so only ONE service may ever call /connect/token. That service
-# is the Flask app. Populating these makes billing a second refresher, which will
-# brick the Xero connection until a user manually reconnects. To obtain a fresh
-# token, billing calls the Flask app (see XERO_TOKEN_SERVICE_URL below).
+# No Xero OAuth client credentials here, deliberately. Xero rotates refresh tokens on
+# every use and invalidates the previous one, so only ONE service may ever call
+# /connect/token: the Flask app. To obtain a fresh token, this service asks the Flask
+# app's internal token endpoint, authenticated with the shared SECRET_KEY.
 # ---------------------------------------------------------------------------
-XERO_CLIENT_ID = os.environ.get("XERO_CLIENT_ID", "")
-XERO_CLIENT_SECRET = os.environ.get("XERO_CLIENT_SECRET", "")
-
-# ---------------------------------------------------------------------------
-# Cross-module
-# ---------------------------------------------------------------------------
-FLASK_APP_URL = os.environ.get("FLASK_APP_URL", "http://localhost:5001")
-# FRONTEND_APP_URL is defined above (CORS section)
-
-# Flask app's internal token endpoint. Authenticated with the shared SECRET_KEY.
-XERO_TOKEN_SERVICE_URL = os.environ.get(
-    "XERO_TOKEN_SERVICE_URL",
-    f"{FLASK_APP_URL}/api/internal/xero/token",
-)
-XERO_TOKEN_SERVICE_TIMEOUT = int(os.environ.get("XERO_TOKEN_SERVICE_TIMEOUT", "15"))
+XERO_TOKEN_SERVICE_URL = f"{PETTY_CASH_URL}/api/internal/xero/token"
+XERO_TOKEN_SERVICE_TIMEOUT = 15  # seconds
 
 # ---------------------------------------------------------------------------
 # Logging — core + API formatters
 # ---------------------------------------------------------------------------
+LOG_LEVEL = os.environ.get("LOG_LEVEL", "INFO").upper()
 LOG_DIR = BASE_DIR / "logs"
 LOG_DIR.mkdir(exist_ok=True)
 
@@ -173,11 +177,11 @@ LOGGING = {
     "loggers": {
         "minty-api": {
             "handlers": ["console_core", "file_core"],
-            "level": "INFO",
+            "level": LOG_LEVEL,
         },
         "minty-api.http": {
             "handlers": ["console_api", "file_api"],
-            "level": "INFO",
+            "level": LOG_LEVEL,
             "propagate": False,
         },
     },

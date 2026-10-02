@@ -1,10 +1,10 @@
 import os
 
-from config.settings import *  # noqa: F401, F403
+# Development mode before settings import, so the placeholder-SECRET_KEY guard does not trip.
+os.environ.setdefault("APP_ENV", "development")
 
-# Token refresh tests call Xero identity URL with Basic auth (mocked).
-XERO_CLIENT_ID = "test-xero-client-id"
-XERO_CLIENT_SECRET = "test-xero-client-secret"
+from config.dburl import parse_database_url  # noqa: E402
+from config.settings import *  # noqa: F401, F403, E402
 
 # Two test databases, chosen by MINTY_TEST_PG_URI:
 #
@@ -14,24 +14,21 @@ XERO_CLIENT_SECRET = "test-xero-client-secret"
 #             by tests/pg_harness.py (loaded by conftest.py at the repo root). Nothing is created
 #             from the models; a mirror column the schema lacks fails on the SELECT, which is the
 #             point. Same knobs as Minty: MINTY_TEST_PG_DBNAME (minty_test), MINTY_TEST_PG_KEEP=1,
-#             PG_BIN, MINTY_REPO (C:\Github\Minty).
+#             PG_BIN, MINTY_REPO (C:\Github\Minty). The URI may carry ?schema= like
+#             DATABASE_URL (config/dburl.py); it then replaces DB_SCHEMA for the run.
 _PG_URI = os.environ.get("MINTY_TEST_PG_URI")
 if _PG_URI:
-    from urllib.parse import urlsplit as _urlsplit
-
-    _u = _urlsplit(_PG_URI)
+    _db, DB_SCHEMA = parse_database_url(_PG_URI)
+    _dbname = os.environ.get("MINTY_TEST_PG_DBNAME", "minty_test")
     DATABASES = {
         "default": {
-            "ENGINE": "django.db.backends.postgresql",
-            "NAME": os.environ.get("MINTY_TEST_PG_DBNAME", "minty_test"),
-            "USER": _u.username or "postgres",
-            "PASSWORD": _u.password or "",
-            "HOST": _u.hostname or "localhost",
-            "PORT": str(_u.port or 5432),
-            "OPTIONS": {"options": f"-c search_path={DB_SCHEMA},public"},
+            **_db,
+            "NAME": _dbname,
+            "USER": _db["USER"] or "postgres",
+            "HOST": _db["HOST"] or "localhost",
             # Never let pytest-django create/destroy a database of its own here; the
             # root conftest overrides django_db_setup and hands it the harness's build.
-            "TEST": {"NAME": os.environ.get("MINTY_TEST_PG_DBNAME", "minty_test")},
+            "TEST": {"NAME": _dbname},
         }
     }
 else:

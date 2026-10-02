@@ -393,7 +393,7 @@ def fetch_lock_dates(access_token: str, xero_org_id: str) -> tuple:
     """
     try:
         resp = requests.get(
-            "https://api.xero.com/api.xro/2.0/Organisation",
+            f"{XERO_API_BASE}/Organisation",
             headers={
                 "Authorization": f"Bearer {access_token}",
                 "Xero-Tenant-Id": str(xero_org_id),
