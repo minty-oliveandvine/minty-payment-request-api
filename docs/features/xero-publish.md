@@ -56,4 +56,4 @@ in Xero and caches it.
 `bills/tests/test_xero_publish.py`, `test_xero_publish_org_switch.py`,
 `test_xero_publish_contact_fallback.py`, `test_xero_publish_bankslip.py`,
 `test_xero_token_service.py`, `test_contact_*.py`; for real, against a Demo Company,
-`billing-frontend/e2e/04_xero_publish.spec.ts` with `E2E_XERO=1`.
+`minty-payment-request-web/e2e/04_xero_publish.spec.ts` with `E2E_XERO=1`.

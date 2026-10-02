@@ -32,7 +32,7 @@ non-ACTIVE code), so the old "mirror into account_info" was removed on 2026-10-0
 codes in Petty Cash. **At least one ticked:** a PUT that would untick the entity's last live
 (`is_deleted=False`) code of a `BILL_SETTINGS_ACCOUNT_TYPES` type answers **409** "Keep at least
 one account code ticked." and writes nothing (the entity's rows are locked `FOR UPDATE` in id
-order, so two parallel unticks cannot both pass). billing-frontend sends ticks ON before OFF so a
+order, so two parallel unticks cannot both pass). minty-payment-request-web sends ticks ON before OFF so a
 swap never trips it.
 
 ## Contacts (`/api/entity-bill-contacts/*`)

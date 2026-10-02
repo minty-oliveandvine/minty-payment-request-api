@@ -1,7 +1,7 @@
 """
 Ask Flask (Module 1) to refresh entity_bill_account_xero from Xero.
 
-Uses FLASK_APP_URL (base URL only, e.g. http://localhost:5001). Debounced
+Uses PETTY_CASH_URL (base URL only, e.g. http://localhost:8010). Debounced
 per entity via Django cache to avoid hammering Xero when the UI polls lists.
 """
 
@@ -32,10 +32,10 @@ def trigger_flask_bill_chart_sync(
     _BILL_CHART_SYNC_TTL (e.g. list polling). Use force=True on Module 2
     settings so Xero reconciliation always runs when the user opens settings.
     """
-    base = (getattr(settings, "FLASK_APP_URL", "") or "").rstrip("/")
+    base = (getattr(settings, "PETTY_CASH_URL", "") or "").rstrip("/")
     if not base:
         logger.error(
-            "FLASK_APP_URL not set; bill chart sync skipped entity=%s — "
+            "PETTY_CASH_URL not set; bill chart sync skipped entity=%s — "
             "accounts list may be empty or stale",
             entity_id,
         )
@@ -120,10 +120,10 @@ def trigger_chart_sync_if_changed(
     Returns True if the sync request was sent, False if skipped or failed.
     Debounced per entity with _CHART_CHANGE_SYNC_TTL. Use force=True to bypass.
     """
-    base = (getattr(settings, "FLASK_APP_URL", "") or "").rstrip("/")
+    base = (getattr(settings, "PETTY_CASH_URL", "") or "").rstrip("/")
     if not base:
         logger.error(
-            "FLASK_APP_URL not set; chart change sync skipped entity=%s — "
+            "PETTY_CASH_URL not set; chart change sync skipped entity=%s — "
             "accounts list may be empty or stale",
             entity_id,
         )
@@ -190,9 +190,9 @@ def trigger_flask_contact_sync(request, entity_id: str, *, force: bool = False) 
     Debounced per entity via Django cache (_CONTACT_SYNC_TTL). Use force=True
     to bypass debounce (e.g. after a Xero reconnect).
     """
-    base = (getattr(settings, "FLASK_APP_URL", "") or "").rstrip("/")
+    base = (getattr(settings, "PETTY_CASH_URL", "") or "").rstrip("/")
     if not base:
-        logger.warning("FLASK_APP_URL not set; contact sync skipped")
+        logger.warning("PETTY_CASH_URL not set; contact sync skipped")
         return
 
     auth = request.headers.get("Authorization", "")

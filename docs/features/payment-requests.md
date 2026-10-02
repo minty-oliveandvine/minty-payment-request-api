@@ -70,4 +70,4 @@ returns them and the frontend's Activity history renders them (`bills/api_audit.
 `bills/tests/test_bill_crud.py`, `test_validation_messages.py`, `test_bill_immutability.py`,
 `test_void_transitions.py`, `test_bill_permissions.py`, `test_openapi_snapshot.py` (the
 API shape is snapshotted — regenerate the snapshot deliberately when it changes);
-end to end, `billing-frontend/e2e/02_bill_lifecycle.spec.ts` and `04_xero_publish.spec.ts`.
+end to end, `minty-payment-request-web/e2e/02_bill_lifecycle.spec.ts` and `04_xero_publish.spec.ts`.

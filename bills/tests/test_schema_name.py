@@ -1,17 +1,17 @@
-"""The schema name is a setting: ``config.settings.DB_SCHEMA`` (env ``MINTY_DB_SCHEMA``, the
-same variable Minty reads). No application string may carry it; ``search_path`` and the raw
-queries read the setting. Comments and docstrings are free to say it."""
+"""The schema name is a setting: ``config.settings.DB_SCHEMA``, read from ``?schema=`` on
+``DATABASE_URL`` (Minty reads its own URL the same way). No application string may carry it;
+``search_path`` and the raw queries read the setting. Comments and docstrings are free to say it."""
 
 from __future__ import annotations
 
 import ast
 from pathlib import Path
 
-from django.conf import settings
+from config.dburl import parse_database_url
 
 ROOT = Path(__file__).resolve().parents[2]
 NAME = "pettycashv3"
-ALLOWED = {"config/settings.py"}
+ALLOWED = {"config/settings.py", "config/dburl.py"}
 SKIP = ("tests/", "bills/tests/", "migrations/")
 
 
@@ -42,5 +42,7 @@ def test_no_application_string_carries_the_schema_name():
     assert hits == [], "read settings.DB_SCHEMA instead of spelling the schema"
 
 
-def test_search_path_follows_the_setting():
-    assert settings.DB_SCHEMA in settings.DATABASES["default"]["OPTIONS"]["options"]
+def test_search_path_follows_the_schema_in_the_url():
+    db, schema = parse_database_url("postgresql://u:p@db:5432/minty?schema=pettycash_alt")
+    assert schema == "pettycash_alt"
+    assert db["OPTIONS"]["options"] == "-c search_path=pettycash_alt,public"

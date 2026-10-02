@@ -17,7 +17,6 @@ Mirrors Module 1 (Petty Cash) behaviour:
 """
 
 import logging
-import os
 import uuid
 
 import requests
@@ -29,9 +28,12 @@ from shared_models.models import Entity, XeroContactSync
 
 logger = logging.getLogger("minty-api")
 
-XERO_API_BASE_URL = os.environ.get(
-    "XERO_API_BASE_URL", "https://api.xero.com/api.xro/2.0"
-)
+
+def _xero_api_base() -> str:
+    # Imported lazily: xero_publish_service imports this module at load time.
+    from bills.services.xero_publish_service import XERO_API_BASE
+
+    return XERO_API_BASE
 
 
 def _fetch_contacts_from_xero(access_token: str, xero_org_id: str) -> list[dict]:
@@ -41,7 +43,7 @@ def _fetch_contacts_from_xero(access_token: str, xero_org_id: str) -> list[dict]
 
     while True:
         url = (
-            f"{XERO_API_BASE_URL}/Contacts"
+            f"{_xero_api_base()}/Contacts"
             f"?page={page}&pageSize=1000&order=Name%20ASC"
         )
         headers = {
@@ -296,7 +298,7 @@ def create_entity_bill_contact_in_xero(
         raise BillValidationError("The Xero connection needs reconnecting before I can do that.")
 
     xero_org_id = str(entity.xero_org_id)
-    url = f"{XERO_API_BASE_URL}/Contacts"
+    url = f"{_xero_api_base()}/Contacts"
     headers = {
         "Authorization": f"Bearer {access_token}",
         "Xero-Tenant-Id": xero_org_id,

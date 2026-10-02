@@ -1,8 +1,8 @@
 # Attachments
 
 The invoice a payment request is for, and any supporting document, live in the shared
-Backblaze B2 bucket (S3 API; `S3_KEY` / `S3_SECRET` / `S3_REGION` / `S3_BUCKET` /
-`S3_ENDPOINT_URL` in `config/settings.py`) with one `attachment` row each and
+Backblaze B2 bucket (S3 API; one `S3_URL`, parsed by `config/s3url.py` into the `S3_*`
+settings in `config/settings.py`) with one `attachment` row each and
 a `bill_attachment` link (role `invoice` / `supporting_document` / `receipt`); a payment's
 bank slips are `payment_attachment` rows ([payments.md](payments.md)). Code:
 `bills/services/attachment_service.py`, `file_downsize.py`, the attachment routers in
@@ -24,10 +24,10 @@ the bytes actually stored (a PNG may have been re-encoded). `storage_provider` i
 ## What Confirm needs
 
 Submitting a request (`POST /api/bills/submit/`) requires at least one attachment — the
-dialog in billing-frontend uploads them right after the bill is created, and the API
+dialog in minty-payment-request-web uploads them right after the bill is created, and the API
 tests cover the upload with the storage stubbed (`bills/tests/test_attachment.py`,
 `test_attachment_types.py`, `test_payment_attachment_upload.py`). Against a real bucket
-the browser does it in `billing-frontend/e2e/04_xero_publish.spec.ts` (`E2E_XERO=1`).
+the browser does it in `minty-payment-request-web/e2e/04_xero_publish.spec.ts` (`E2E_XERO=1`).
 
 ## To Xero
 

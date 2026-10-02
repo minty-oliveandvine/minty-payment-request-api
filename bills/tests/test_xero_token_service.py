@@ -245,11 +245,11 @@ class TestResolveAccessTokenForEntity:
     def test_tc_xero_013_never_calls_xero_identity(
         self, settings, test_entity, test_user, test_user_entity
     ):
-        """TC-XERO-013: Even with client credentials present, billing must not POST to
-        identity.xero.com. Xero's refresh tokens are single-use; a second refresher would
+        """TC-XERO-013: Billing must never POST to identity.xero.com (it has no Xero client
+        credentials at all). Xero's refresh tokens are single-use; a second refresher would
         brick the connection. Billing goes through the Flask token service or fails."""
-        settings.XERO_CLIENT_ID = "should-never-be-used"
-        settings.XERO_CLIENT_SECRET = "should-never-be-used"
+        assert not hasattr(settings, "XERO_CLIENT_ID")
+        assert not hasattr(settings, "XERO_CLIENT_SECRET")
 
         test_entity.xero_org_id = "org-tc013"
         test_entity.save()
@@ -279,9 +279,6 @@ class TestResolveAccessTokenForEntity:
     ):
         """TC-XERO-014: With no client credentials and a still-valid token, billing returns it
         without contacting Xero. This is the normal production path."""
-        settings.XERO_CLIENT_ID = ""
-        settings.XERO_CLIENT_SECRET = ""
-
         test_entity.xero_org_id = "org-tc014"
         test_entity.save()
 
