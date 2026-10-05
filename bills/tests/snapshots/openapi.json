@@ -3595,6 +3595,54 @@
         ]
       }
     },
+    "/api/v1/bills/by-reference/{reference}": {
+      "get": {
+        "description": "The company's bill whose reference is ``reference`` (trimmed, case-insensitive).\n\nA reference is unique per company only among bills that are not void (an app check, no\nconstraint), so a void bill can share one: a live bill wins, then the newest.",
+        "operationId": "bills_api_get_bill_by_reference",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "reference",
+            "required": true,
+            "schema": {
+              "title": "Reference",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BillOut"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            },
+            "description": "Not Found"
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "summary": "Get bill detail by its Payment No. (reference) - the web app's address uses it",
+        "tags": [
+          "Bills"
+        ]
+      }
+    },
     "/api/v1/bills/draft/": {
       "post": {
         "operationId": "bills_api_save_draft_endpoint",

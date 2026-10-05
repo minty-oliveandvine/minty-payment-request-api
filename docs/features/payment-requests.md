@@ -26,6 +26,10 @@ Published), `published`, `failed`.
   `validate_for_submission`: a contact, an amount above zero, an invoice date, a due date
   and **at least one attachment** are required; the errors come back together (422) in
   the words the dialog shows.
+- **Find by Payment No.** — `GET /api/bills/by-reference/{reference}` (2026-10-05): the company's bill
+  with that reference, trimmed and case-insensitive; a reference is unique only among bills that
+  are not void, so a live bill wins over a void one, then the newest. The web app's details address
+  carries the Payment No. and looks it up here (`bills/tests/test_bill_by_reference.py`).
 - **Edit** — `PUT /api/bills/{id}`; the response carries the payment-synced status and
   `amount_due`. A paid or partially-paid bill needs an elevated role to be edited.
 - **Return / un-return / void** — `POST /api/bills/{id}/return/` with `status:

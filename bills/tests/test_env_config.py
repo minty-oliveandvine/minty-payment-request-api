@@ -102,6 +102,9 @@ def test_s3_url_unset():
 # --- settings.py (fresh interpreter: settings are read once at import) --------------------
 
 
+PLACEHOLDER_S3_URL = "https://k:s@s3.us-east-1.example.invalid/placeholder"
+
+
 def _settings(env: dict) -> subprocess.CompletedProcess:
     code = (
         "import json, config.settings as s; print(json.dumps({k: getattr(s, k) for k in "
@@ -115,7 +118,7 @@ def _settings(env: dict) -> subprocess.CompletedProcess:
     # cwd outside the repo so load_dotenv() cannot pick up a developer's .env
     return subprocess.run(
         [sys.executable, "-c", code],
-        env={**clean, "PYTHONPATH": str(ROOT), **env},
+        env={**clean, "PYTHONPATH": str(ROOT), "S3_URL": PLACEHOLDER_S3_URL, **env},
         cwd="/",
         capture_output=True,
         text=True,
@@ -134,6 +137,14 @@ def test_production_refuses_the_placeholder_secret_key():
     assert proc.returncode != 0
     assert "ImproperlyConfigured" in proc.stderr and "SECRET_KEY" in proc.stderr
     assert _settings({"APP_ENV": "staging"}).returncode != 0  # unknown -> production
+
+
+@pytest.mark.parametrize("app_env", ["development", "production"])
+def test_no_s3_url_refuses_to_start_in_every_environment(app_env):
+    # an unset S3_URL used to start fine and answer 500 on every upload (2026-10-05)
+    proc = _settings({"APP_ENV": app_env, "SECRET_KEY": "real", "S3_URL": ""})
+    assert proc.returncode != 0
+    assert "ImproperlyConfigured" in proc.stderr and "S3_URL" in proc.stderr
 
 
 def test_app_env_drives_debug():

@@ -21,7 +21,7 @@ All of it is in [`.env.example`](.env.example); `config/settings.py` reads it.
 | `SECRET_KEY` | placeholder | Shared with Petty Cash (Minty): verifies its tokens and signs calls to its Xero token endpoint. |
 | `ALLOWED_HOSTS` | `*` | Comma-separated. |
 | `DATABASE_URL` | `postgresql://postgres@localhost:5432/postgres` | `postgresql://user:pass@host:5432/db?schema=pettycashv3[&sslmode=require]`. `?schema=` (default `pettycashv3`) becomes `search_path` / `settings.DB_SCHEMA`; other query params go to the driver. Parsed by `config/dburl.py`. In `.env`, `DB_SCHEMA=pettycashv3` + `?schema=${DB_SCHEMA}` keeps the name on its own line. |
-| `S3_URL` | unset | `https://KEY:SECRET@s3.<region>.backblazeb2.com/<bucket>` (`?region=` overrides). Parsed by `config/s3url.py`. |
+| `S3_URL` | **required** (the API refuses to start without a bucket) | `https://KEY:SECRET@s3.<region>.backblazeb2.com/<bucket>` (`?region=` overrides). Parsed by `config/s3url.py`; replaces the old `S3_BUCKET`/`S3_KEY`/`S3_SECRET`/`S3_REGION`/`S3_ENDPOINT_URL`. |
 | `PETTY_CASH_URL` | `http://localhost:8010` | Flask app: chart/contact sync, and the Xero token service at `/api/internal/xero/token`. |
 | `PAYMENT_REQUEST_WEB_URL` | `http://localhost:3020` | Landing redirect target; CORS. |
 | `ONBOARDING_WEB_URL` | `http://localhost:3030` | CORS. |

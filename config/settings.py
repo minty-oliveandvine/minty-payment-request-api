@@ -129,6 +129,15 @@ S3_SECRET = _S3["secret"]
 S3_REGION = _S3["region"]
 S3_ENDPOINT_URL = _S3["endpoint_url"]
 
+# REFUSE TO BOOT WITHOUT A BUCKET, in every environment. An unset S3_URL used to leave the
+# bucket empty: the API started, and every invoice and bank-slip upload then answered 500
+# ("Invalid bucket name") - a .env still carrying the pre-2026-10-02 S3_* names did exactly that.
+if not S3_BUCKET:
+    raise ImproperlyConfigured(
+        "S3_URL is not set (https://KEY:SECRET@s3.<region>.backblazeb2.com/<bucket>) - every "
+        "attachment upload and download would fail. Refusing to start."
+    )
+
 # ---------------------------------------------------------------------------
 # Xero
 #

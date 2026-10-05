@@ -2,6 +2,8 @@ import os
 
 # Development mode before settings import, so the placeholder-SECRET_KEY guard does not trip.
 os.environ.setdefault("APP_ENV", "development")
+# A bucket name for the S3_URL guard; tests never reach a real bucket (they patch the client).
+os.environ.setdefault("S3_URL", "https://test-key:test-secret@s3.us-east-1.example.invalid/test-bucket")
 
 from config.dburl import parse_database_url  # noqa: E402
 from config.settings import *  # noqa: F401, F403, E402

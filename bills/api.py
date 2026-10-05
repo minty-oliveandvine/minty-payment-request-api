@@ -3,7 +3,7 @@ import re
 
 from botocore.exceptions import ClientError
 from django.conf import settings
-from django.db.models import OuterRef, Q, Subquery
+from django.db.models import Case, IntegerField, OuterRef, Q, Subquery, Value, When
 from django.core.exceptions import ValidationError
 from django.http import Http404, StreamingHttpResponse
 from ninja import File, Query, Router
@@ -273,6 +273,32 @@ def suggested_bill_reference_endpoint(request):
     check_create_bill(request.entity_role)
     ref = generate_unique_bill_reference(request.entity_id, request.auth_user)
     return {"reference": ref}
+
+
+@bills_router.get(
+    "/by-reference/{reference}",
+    response={200: BillOut, 404: ErrorOut},
+    summary="Get bill detail by its Payment No. (reference) - the web app's address uses it",
+)
+def get_bill_by_reference(request, reference: str):
+    """The company's bill whose reference is ``reference`` (trimmed, case-insensitive).
+
+    A reference is unique per company only among bills that are not void (an app check, no
+    constraint), so a void bill can share one: a live bill wins, then the newest.
+    """
+    ref = reference.strip()
+    bill = (
+        Bill.objects.filter(entity_id=request.entity_id, reference__iexact=ref)
+        .annotate(is_void=Case(When(status=Bill.Status.VOID, then=Value(1)), default=Value(0),
+                               output_field=IntegerField()))
+        .order_by("is_void", "-created_at")
+        .first()
+        if ref
+        else None
+    )
+    if bill is None:
+        raise Http404("Bill not found")
+    return _bill_to_out(bill)
 
 
 @bills_router.get(
