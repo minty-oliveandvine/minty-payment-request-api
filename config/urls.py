@@ -4,7 +4,6 @@ from ninja import NinjaAPI
 from core.api_session import session_router
 from core.auth import BearerAuth
 from core.exceptions import register_exception_handlers
-from core.views import landing
 
 api = NinjaAPI(
     title="Minty Billing API",
@@ -59,6 +58,5 @@ api.add_router(
 )
 
 urlpatterns = [
-    path("landing", landing, name="auth_landing"),
     path("api/v1/", api.urls),
 ]
