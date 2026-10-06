@@ -15,6 +15,7 @@ are its own, everything else is `managed = False` and owned by Minty.
 | Publishing an ACCPAY invoice, republish, org switch, lock dates | [xero-publish.md](xero-publish.md) |
 | Modules, account codes, contacts, currencies, the sync triggers | [entity-configuration.md](entity-configuration.md) |
 | User-facing error copy | [../ERROR_COPY.md](../ERROR_COPY.md) |
+| Manual QA checklist for this service, alongside the automated suites above | [qa-checklist.md](qa-checklist.md) |
 
 Running it: `manage.py runserver 8020` with `.env` (see `.env.example` and the README:
 `APP_ENV`, `SECRET_KEY` shared with Minty, `DATABASE_URL`, `S3_URL`, `PETTY_CASH_URL`,
