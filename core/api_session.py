@@ -186,27 +186,19 @@ def entitlements(request):
 
 @session_router.get(
     "/xero-status",
-    auth=SelfBearerAuth(),
     response={200: XeroStatusOut},
-    summary="Check whether the current user's Xero credentials are still valid",
+    summary="Whether the current entity has a live Xero connection",
 )
 def xero_status(request):
-    """Return whether the authenticated user has a live Xero refresh_token.
+    """Return whether the token's company is live on Xero (``xero_connection_live``).
 
-    The frontend uses this to display the Xero connection status indicator
-    without making a live call to the Xero API.
+    The company's connection, not the person's: the default ``BearerAuth`` requires a role
+    on the entity. The frontend hides the Xero-fed settings (the account codes) when it is
+    not live. Read from the database - no live call to the Xero API.
     """
-    try:
-        from shared_models.models import User
+    from bills.services.xero_token_service import xero_connection_live
 
-        user = (
-            User.objects.filter(id=str(request.auth_user.id))
-            .values("refresh_token")
-            .first()
-        )
-        connected = bool(user and user.get("refresh_token"))
-    except Exception:
-        connected = False
+    connected = xero_connection_live(str(request.entity_id), str(request.auth_user.id))
     return XeroStatusOut(connected=connected)
 
 

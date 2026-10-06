@@ -3326,7 +3326,7 @@
     },
     "/api/v1/auth/xero-status": {
       "get": {
-        "description": "Return whether the authenticated user has a live Xero refresh_token.\n\nThe frontend uses this to display the Xero connection status indicator\nwithout making a live call to the Xero API.",
+        "description": "Return whether the token's company is live on Xero (``xero_connection_live``).\n\nThe company's connection, not the person's: the default ``BearerAuth`` requires a role\non the entity. The frontend hides the Xero-fed settings (the account codes) when it is\nnot live. Read from the database - no live call to the Xero API.",
         "operationId": "core_api_session_xero_status",
         "parameters": [],
         "responses": {
@@ -3343,10 +3343,10 @@
         },
         "security": [
           {
-            "SelfBearerAuth": []
+            "BearerAuth": []
           }
         ],
-        "summary": "Check whether the current user's Xero credentials are still valid",
+        "summary": "Whether the current entity has a live Xero connection",
         "tags": [
           "Session"
         ]

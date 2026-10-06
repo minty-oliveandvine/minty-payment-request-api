@@ -28,6 +28,7 @@ from django.conf import settings
 from django.utils import timezone as django_tz
 
 from core.exceptions import BillValidationError
+from shared_models.enums import EntityStatus
 from shared_models.models import Entity, UserToken
 
 logger = logging.getLogger("minty-api")
@@ -56,6 +57,35 @@ def _token_expired(token: UserToken) -> bool:
         return True
 
 
+def _token_user_candidates(entity: Entity, jwt_user_id: str | None) -> list[str]:
+    """Whose ``user_token`` may carry the company's Xero bundle: the connector, then the JWT user."""
+    candidates: list[str] = []
+    if entity.connected_by_user_id:
+        candidates.append(str(entity.connected_by_user_id))
+    if jwt_user_id and str(jwt_user_id) not in candidates:
+        candidates.append(str(jwt_user_id))
+    return candidates
+
+
+def xero_connection_live(entity_id: str, jwt_user_id: str | None) -> bool:
+    """Whether the company has a live Xero connection, read from the database only (no Xero call).
+
+    Live = a Xero org is linked, the entity is not marked ``disconnected`` (Minty's live
+    ``/connections`` check sets that when the connection was revoked in Xero), and the
+    connector - or the JWT user - holds a refresh token, so a fresh access token can be had.
+    Minty's Petty Cash Settings (``_xero_live``) asks the same question with a live check.
+    """
+    entity = Entity.objects.filter(id=entity_id).first()
+    if entity is None or not entity.xero_org_id or entity.status == EntityStatus.DISCONNECTED:
+        return False
+    return (
+        UserToken.objects.filter(user_id__in=_token_user_candidates(entity, jwt_user_id))
+        .exclude(refresh_token__isnull=True)
+        .exclude(refresh_token="")
+        .exists()
+    )
+
+
 def _resolve_token(
     entity_id: str, jwt_user_id: str
 ) -> tuple[UserToken | None, str | None]:
@@ -70,13 +100,7 @@ def _resolve_token(
         logger.warning("Xero: entity %s has no Xero org linked", entity_id)
         return None, "no_org"
 
-    candidates: list[str] = []
-    if entity.connected_by_user_id:
-        candidates.append(str(entity.connected_by_user_id))
-    if jwt_user_id and str(jwt_user_id) not in candidates:
-        candidates.append(str(jwt_user_id))
-
-    for user_id in candidates:
+    for user_id in _token_user_candidates(entity, jwt_user_id):
         token = (
             UserToken.objects.filter(user_id=user_id)
             .exclude(access_token__isnull=True)

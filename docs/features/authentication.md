@@ -18,8 +18,9 @@ For each request the class:
 1. decodes the token and loads the `user` row (an unknown user is a 401);
 2. resolves the **entity**: the `X-Entity-Id` header first, else the token's `entity_id`;
    with neither, the request is *unscoped* — authenticated as a person with no role
-   (`_attach_unscoped`), which only the `/api/auth/*` and `/api/profile/*` endpoints
-   accept (`SelfBearerAuth`, `require_entity_role = False`);
+   (`_attach_unscoped`), which only the endpoints that opt into `SelfBearerAuth`
+   (`require_entity_role = False`) accept: `/api/profile/*` and the person-level `/api/auth/*`
+   ones (`/entitlements`, `/token/refresh` - not `/xero-status`, which is the company's);
 3. reads the person's **role on that entity from the database** (`user_entity.role`) —
    never from the claim — and attaches `request.auth_user`, `request.entity_id`,
    `request.entity_role`, `request.is_entity_member`, `request.is_system_superuser`,
@@ -37,7 +38,7 @@ A system superuser (`system_role = superadmin`) with no row on the entity gets a
 | `GET /session` | the role and entity of the current token, from the DB |
 | `POST /token/refresh` | re-mints the billing JWT (8 hours, `BILLING_TOKEN_HOURS`) from a still-valid one — the frontend's cookie lives 8 hours too |
 | `GET /entitlements` | `petty_cash_enabled` / `billing_enabled` read **live** from `entity_function_map` (`core/entitlements.py`) — the JWT's claims are hints only |
-| `GET /xero-status` | whether the entity's Xero token bearer still holds a usable bundle |
+| `GET /xero-status` | whether the **company** is live on Xero (`xero_connection_live`, database only): a Xero org linked, `status` not `disconnected`, and a refresh token on the connector (`connected_by_user_id`) or the caller. `BearerAuth` - a role on the entity is required (2026-10-06; it used to read the person's own `user.refresh_token`, a column that had moved to `user_token`, swallowed the error and always said `false`) |
 | `GET /entity-currency` | the entity's ISO currency code |
 | `POST /logout` | clears the presence stamps Minty keeps (`signed_in_at`, `last_seen_at`), so leaving from here counts as leaving |
 
