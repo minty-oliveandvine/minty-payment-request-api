@@ -1,3 +1,4 @@
+from django.http import JsonResponse
 from django.urls import path
 from ninja import NinjaAPI
 
@@ -57,6 +58,17 @@ api.add_router(
     tags=["Entity Bill Currencies"],
 )
 
+def healthz(request):
+    """Liveness only - does not touch the database, and needs no token.
+
+    Deliberately not a readiness check: the container entrypoint already waits for the
+    database before starting, so a health endpoint that also queried would report
+    unhealthy for a transient database blip and get the container killed mid-request.
+    """
+    return JsonResponse({"status": "ok", "service": "minty-payment-request-api"})
+
+
 urlpatterns = [
+    path("healthz", healthz, name="healthz"),
     path("api/v1/", api.urls),
 ]

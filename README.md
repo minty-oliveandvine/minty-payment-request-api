@@ -32,6 +32,8 @@ All of it is in [`.env.example`](.env.example); `config/settings.py` reads it.
 There are deliberately no Xero OAuth credentials here: Xero refresh tokens are single-use and
 the Flask app is the only service that refreshes them.
 
+`GET /healthz` is the host's liveness probe: public, no database, `{"status": "ok", ...}`.
+
 Tests run on SQLite by default; `MINTY_TEST_PG_URI` (may carry `?schema=`) switches to a
 Postgres database built from Minty's schema file.
 
