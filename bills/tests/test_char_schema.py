@@ -18,7 +18,6 @@ column is what changes.
 
 from __future__ import annotations
 
-import datetime
 import json
 import uuid
 from decimal import Decimal
@@ -116,8 +115,8 @@ def test_a_bill_with_lines_is_stored_with_its_lines_and_shown_with_its_people(ap
     assert body["contact"] == "Acme Supplies" and body["xero_contact_id"] == XERO_CONTACT
     assert body["currency_code"] == "HKD"
     assert Decimal(str(body["amount"])) == Decimal("250.10")
-    assert [l["description"] for l in body["line_items"]] == ["Toner", "Paper"]
-    assert sum(Decimal(str(l["line_amount"])) for l in body["line_items"]) == Decimal("250.10")
+    assert [line["description"] for line in body["line_items"]] == ["Toner", "Paper"]
+    assert sum(Decimal(str(line["line_amount"])) for line in body["line_items"]) == Decimal("250.10")
 
     detail = api_client.get(f"/api/v1/bills/{body['id']}", **headers)
     assert detail.status_code == 200, detail.content[:300]

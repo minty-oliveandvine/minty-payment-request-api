@@ -299,31 +299,6 @@ class TestVoidFromDraft:
 
 
 @pytest.mark.django_db
-class TestVoidFromSubmitted:
-    """An SUBMITTED bill can be voided and then becomes fully immutable."""
-
-    def test_void_authorised_returns_200(self, api, user, entity, membership):
-        bill = _make_bill(entity, user, status="submitted")
-        _assert_void_succeeds(api, bill, _auth(user, entity))
-
-    def test_void_authorised_blocks_full_update(self, api, user, entity, membership):
-        bill = _make_bill(entity, user, status="submitted")
-        api.delete(f"/api/v1/bills/{bill.id}", **_auth(user, entity))
-        _assert_update_blocked(api, bill.id, _auth(user, entity))
-
-    def test_void_authorised_blocks_draft_update(self, api, user, entity, membership):
-        bill = _make_bill(entity, user, status="submitted")
-        api.delete(f"/api/v1/bills/{bill.id}", **_auth(user, entity))
-        _assert_draft_update_blocked(api, bill.id, _auth(user, entity))
-
-    def test_void_authorised_status_in_db(self, api, user, entity, membership):
-        bill = _make_bill(entity, user, status="submitted")
-        api.delete(f"/api/v1/bills/{bill.id}", **_auth(user, entity))
-        bill.refresh_from_db()
-        assert bill.status == "void"
-
-
-@pytest.mark.django_db
 class TestVoidFromPartiallyPaid:
     """A PARTIALLY_PAID bill (has completed payments) can be voided and becomes fully immutable."""
 

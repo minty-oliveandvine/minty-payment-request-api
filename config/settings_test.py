@@ -43,8 +43,8 @@ else:
 
 PASSWORD_HASHERS = ["django.contrib.auth.hashers.MD5PasswordHasher"]
 
-LOGGING["handlers"]["file_core"] = {"class": "logging.NullHandler"}
-LOGGING["handlers"]["file_api"] = {"class": "logging.NullHandler"}
+LOGGING["handlers"]["file_core"] = {"class": "logging.NullHandler"}  # noqa: F405
+LOGGING["handlers"]["file_api"] = {"class": "logging.NullHandler"}  # noqa: F405
 
 # Force shared_models tables to be created in the test database.
 # In production these are managed by the Flask app's Alembic migrations.

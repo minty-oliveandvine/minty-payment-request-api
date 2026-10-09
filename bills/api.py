@@ -1,5 +1,4 @@
 import logging
-import re
 
 from botocore.exceptions import ClientError
 from django.conf import settings

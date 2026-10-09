@@ -9,7 +9,6 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from bills.tests.conftest import give_xero_token
-from django.utils import timezone as django_tz
 
 from shared_models.models import User, XeroContactSync, UserToken
 
