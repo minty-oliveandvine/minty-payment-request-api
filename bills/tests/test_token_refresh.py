@@ -7,7 +7,7 @@ already-expired token cannot.
 
 from __future__ import annotations
 
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 import jwt as pyjwt
 import pytest
@@ -60,8 +60,8 @@ def _make_token(user_id, entity_id, *, hours_from_now=4):
             "user_id": user_id,
             "entity_id": entity_id,
             "module": "billing",
-            "exp": datetime.now(timezone.utc) + timedelta(hours=hours_from_now),
-            "iat": datetime.now(timezone.utc),
+            "exp": datetime.now(UTC) + timedelta(hours=hours_from_now),
+            "iat": datetime.now(UTC),
         },
         settings.SECRET_KEY,
         algorithm="HS256",
@@ -102,8 +102,8 @@ def test_refreshed_token_has_8_hour_lifetime(client, user, entity, membership):
     new_token = response.json()["token"]
     payload = pyjwt.decode(new_token, settings.SECRET_KEY, algorithms=["HS256"])
 
-    exp = datetime.fromtimestamp(payload["exp"], tz=timezone.utc)
-    remaining_hours = (exp - datetime.now(timezone.utc)).total_seconds() / 3600
+    exp = datetime.fromtimestamp(payload["exp"], tz=UTC)
+    remaining_hours = (exp - datetime.now(UTC)).total_seconds() / 3600
 
     assert remaining_hours >= BILLING_TOKEN_HOURS - (
         60 / 3600
@@ -131,7 +131,7 @@ def test_expired_token_cannot_be_refreshed(client, user, entity, membership):
             "user_id": user.id,
             "entity_id": entity.id,
             "module": "billing",
-            "exp": datetime.now(timezone.utc) - timedelta(seconds=1),
+            "exp": datetime.now(UTC) - timedelta(seconds=1),
         },
         settings.SECRET_KEY,
         algorithm="HS256",
@@ -162,8 +162,8 @@ def _make_unscoped_token(user_id, *, hours_from_now=4):
             "user_id": user_id,
             "entity_id": "",
             "module": "billing",
-            "exp": datetime.now(timezone.utc) + timedelta(hours=hours_from_now),
-            "iat": datetime.now(timezone.utc),
+            "exp": datetime.now(UTC) + timedelta(hours=hours_from_now),
+            "iat": datetime.now(UTC),
         },
         settings.SECRET_KEY,
         algorithm="HS256",

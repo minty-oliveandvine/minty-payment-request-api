@@ -1,8 +1,7 @@
 from datetime import date, datetime
 from decimal import Decimal
-from uuid import UUID
-
 from typing import Annotated
+from uuid import UUID
 
 from ninja import Schema
 from pydantic import BeforeValidator

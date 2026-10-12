@@ -20,7 +20,7 @@ token columns left ``user``, and billing has no business writing ``user_token``.
 from __future__ import annotations
 
 import logging
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 import jwt
 import requests
@@ -49,7 +49,7 @@ def _token_expired(token: UserToken) -> bool:
     try:
         obtained = token.access_token_obtained_at
         if not django_tz.is_aware(obtained):
-            obtained = obtained.replace(tzinfo=timezone.utc)
+            obtained = obtained.replace(tzinfo=UTC)
         elapsed = (django_tz.now() - obtained).total_seconds()
         return elapsed > int(token.access_token_expires_in) - EXPIRY_MARGIN_SECONDS
     except Exception as exc:
@@ -138,7 +138,7 @@ def _request_token_from_flask(entity_id: str) -> str | None:
         )
         return None
 
-    now = datetime.now(tz=timezone.utc)
+    now = datetime.now(tz=UTC)
     assertion = jwt.encode(
         {
             "scope": _TOKEN_SERVICE_SCOPE,

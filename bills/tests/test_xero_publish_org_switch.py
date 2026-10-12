@@ -196,10 +196,10 @@ def _make_sync(bill, invoice_id, org_id, *, when_hour=10, with_payload=True):
         request_status="AUTHORISED",
         response_invoice_id=invoice_id,
         response_invoice_number="INV-0042",
-        idempotency_key="prior-key-%s-%s" % (org_id, when_hour),
+        idempotency_key=f"prior-key-{org_id}-{when_hour}",
         requested_by=USER_ID,
         requested_at=datetime.datetime(
-            2026, 4, 1, when_hour, 0, 0, tzinfo=datetime.timezone.utc
+            2026, 4, 1, when_hour, 0, 0, tzinfo=datetime.UTC
         ),
     )
     if with_payload:

@@ -111,7 +111,7 @@ def published_bill(db, entity, user) -> Bill:
         idempotency_key="prior-key-bs",
         requested_by=FAKE_USER_ID,
         requested_at=datetime.datetime(
-            2026, 4, 1, 10, 0, 0, tzinfo=datetime.timezone.utc
+            2026, 4, 1, 10, 0, 0, tzinfo=datetime.UTC
         ),
     )
     return bill

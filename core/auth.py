@@ -1,8 +1,8 @@
 import logging
 
 import jwt
-from django.core.exceptions import ValidationError
 from django.conf import settings
+from django.core.exceptions import ValidationError
 from ninja.security import HttpBearer
 
 from shared_models.enums import EntityRole, SystemRole, is_superadmin

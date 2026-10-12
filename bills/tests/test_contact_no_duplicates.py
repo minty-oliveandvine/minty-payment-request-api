@@ -30,12 +30,11 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from bills.tests.conftest import give_xero_token
-
 from bills.services.contact_service import (
     _merge_db_contacts_missing_from_live,
     get_entity_bill_contacts,
 )
+from bills.tests.conftest import give_xero_token
 from shared_models.models import XeroContactSync
 
 
