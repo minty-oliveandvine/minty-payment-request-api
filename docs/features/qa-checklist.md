@@ -52,7 +52,11 @@ endpoint needs a real `user_entity` row before it answers anything.
       (`BILLING_TOKEN_HOURS`).
 - [ ] `GET /entitlements` reflects `entity_function_map` live — toggle a module in the DB
       and confirm the answer changes without minting a new token.
-- [ ] `GET /entity-currency` returns the entity's ISO currency code.
+- [ ] `GET /entity-currency` returns the entity's ISO currency code ("" when none is set).
+- [ ] With the entity's currency cleared, `POST /bills/`, `/bills/draft/` and `/bills/submit/`
+      → 422 "Your company has no currency set…"; a sent `currency_code` never overrides the
+      entity's.
+- [ ] A payment posted or updated with another `currency_code` keeps its bill's currency.
 - [ ] `POST /logout` clears `signed_in_at` / `last_seen_at`.
 - [ ] `GET /auth/me`, `PUT /profile/me`, `DELETE /profile/me` are gone (removed 2026-10-01)
       → 404. `GET /profile/me` still answers (`is_view_only`, `member_entity_ids`).

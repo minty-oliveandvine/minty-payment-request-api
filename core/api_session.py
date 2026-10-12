@@ -139,25 +139,12 @@ def entity_currency(request):
     """Resolve the JWT entity's selected currency to its ISO code.
 
     entities.currency_id is a uuid FK into pettycashv3.currency_info(id); the
-    UI renders money amounts with the currency_code. Raw SQL because entities
-    is Flask-managed and only mirrored read-only here.
+    UI renders money amounts with the currency_code; "" means none is set.
     """
-    from django.db import connection
+    from core.entity_currency import entity_currency_code
 
-    code = ""
     entity_id = str(getattr(request, "entity_id", "") or "")
-    if entity_id:
-        with connection.cursor() as cur:
-            cur.execute(
-                f"SELECT ci.currency_code FROM {settings.DB_SCHEMA}.entities e "
-                f"JOIN {settings.DB_SCHEMA}.currency_info ci ON ci.id = e.currency_id "
-                "WHERE e.id = %s",
-                [entity_id],
-            )
-            row = cur.fetchone()
-            if row and row[0]:
-                code = row[0]
-    return EntityCurrencyOut(currency_code=code)
+    return EntityCurrencyOut(currency_code=entity_currency_code(entity_id))
 
 
 @session_router.get(

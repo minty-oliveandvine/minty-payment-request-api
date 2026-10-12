@@ -49,6 +49,17 @@ exact-match rules: `bills/tests/test_contact_*.py`.
 a company's allowed list; every amount the frontend shows uses the entity's currency
 (`GET /api/auth/entity-currency`), never the bill's stored code.
 
+A bill's currency is set by the server from `entities.currency_id`
+(`core/entity_currency.py`); the `currency_code` a client sends is ignored. An entity
+with no currency cannot create a bill (create, draft and submit → 422 "Your company has no
+currency set…"). An update fills a bill saved without one from the entity, and refuses a
+submission only when neither has a currency, so older currency-less bills can still be
+edited and voided.
+
+A payment is in its bill's currency (the entity's when the bill has none; neither → 422),
+set on create and never changed by an update; the client's `currency_code` is ignored here
+too.
+
 ## Keeping the caches fresh
 
 `flask_billing_sync.py` asks Minty to refresh — `trigger_flask_bill_chart_sync`,

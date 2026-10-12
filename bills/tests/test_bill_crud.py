@@ -270,10 +270,10 @@ class TestUpdateBill:
         assert resp.status_code == 200
         assert len(resp.json()["line_items"]) == 1
 
-    def test_update_reference_and_currency(
+    def test_update_reference_keeps_entity_currency(
         self, api_client, auth_headers, draft_bill, test_user_entity
     ):
-        # bill.currency_id points at currency_info since C8: the code must be a real currency
+        # The currency is the entity's (HKD), never the client's: a sent USD is ignored
         from bills.models import CurrencyInfo
 
         CurrencyInfo.objects.get_or_create(
@@ -293,7 +293,7 @@ class TestUpdateBill:
         assert resp.status_code == 200
         body = resp.json()
         assert body["reference"] == "INV-2026-001"
-        assert body["currency_code"] == "USD"
+        assert body["currency_code"] == "HKD"
 
     def test_update_rejects_duplicate_reference(
         self, api_client, auth_headers, draft_bill, test_user_entity, test_user
