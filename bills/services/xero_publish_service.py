@@ -6,9 +6,9 @@ import logging
 import re
 import threading
 import uuid
-from datetime import datetime, timezone
-from zoneinfo import ZoneInfo
+from datetime import UTC, datetime
 from decimal import Decimal
+from zoneinfo import ZoneInfo
 
 import requests
 from botocore.exceptions import ClientError
@@ -379,7 +379,7 @@ def _parse_xero_ms_date(raw):
     if not m:
         return None
     ms = int(m.group(1))
-    return datetime.fromtimestamp(ms / 1000, tz=timezone.utc).astimezone(_HK_TZ).date()
+    return datetime.fromtimestamp(ms / 1000, tz=UTC).astimezone(_HK_TZ).date()
 
 
 def fetch_lock_dates(access_token: str, xero_org_id: str) -> tuple:
@@ -506,7 +506,7 @@ def _create_sync_record(
             request_due_date=bill.due_date,
             idempotency_key=idempotency_key,
             requested_by=user_id,
-            requested_at=datetime.now(timezone.utc),
+            requested_at=datetime.now(UTC),
         )
 
         for li in bill.line_items.all().order_by("sort_order"):
@@ -531,7 +531,7 @@ def _handle_request_exception(sync, bill, user_id, payload, request_headers, exc
     sync.sync_status = XeroBillSync.SyncStatus.FAILED
     sync.has_errors = True
     sync.error_message = str(exc)[:1000]
-    sync.responded_at = datetime.now(timezone.utc)
+    sync.responded_at = datetime.now(UTC)
     sync.save()
 
     XeroBillSyncPayload.objects.create(
@@ -549,7 +549,7 @@ def _handle_request_exception(sync, bill, user_id, payload, request_headers, exc
 def _update_sync_with_response(sync, response, request_payload, request_headers):
     """Parse the Xero response, update sync record, create payload + response-line rows."""
 
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     response_headers_dict = dict(response.headers) if response.headers else {}
 
     try:
@@ -1285,7 +1285,7 @@ def _create_bankslip_sync_record(bill, user_id, idempotency_key, parent_sync):
         response_invoice_number=parent_sync.response_invoice_number,
         idempotency_key=idempotency_key,
         requested_by=user_id,
-        requested_at=datetime.now(timezone.utc),
+        requested_at=datetime.now(UTC),
     )
     return sync
 
@@ -1293,7 +1293,7 @@ def _create_bankslip_sync_record(bill, user_id, idempotency_key, parent_sync):
 def _finalise_bankslip_sync(sync, uploaded_count, bill, user_id):
     """Update the bankslip sync record with the result."""
 
-    sync.responded_at = datetime.now(timezone.utc)
+    sync.responded_at = datetime.now(UTC)
 
     if uploaded_count > 0:
         sync.sync_status = XeroBillSync.SyncStatus.SUCCESS

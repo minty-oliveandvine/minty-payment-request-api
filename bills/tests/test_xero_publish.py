@@ -39,7 +39,6 @@ from bills.services.xero_publish_service import publish_bill_to_xero
 from core.exceptions import BillValidationError
 from shared_models.models import Entity, User, UserEntity
 
-
 # ═══════════════════════════════════════════════════════════════════════════
 # HELPERS / SHARED FIXTURES
 # ═══════════════════════════════════════════════════════════════════════════
@@ -208,7 +207,7 @@ def _make_successful_sync(bill: Bill, invoice_id: str = FAKE_INVOICE_ID) -> Xero
         response_invoice_number=FAKE_INVOICE_NUMBER,
         idempotency_key="prior-key-001",
         requested_by=FAKE_USER_ID,
-        requested_at=datetime.datetime(2026, 4, 1, 10, 0, 0, tzinfo=datetime.timezone.utc),
+        requested_at=datetime.datetime(2026, 4, 1, 10, 0, 0, tzinfo=datetime.UTC),
     )
 
 
@@ -549,7 +548,7 @@ class TestPriorSyncEdgeCases:
             response_invoice_number="",
             idempotency_key="empty-id-key",
             requested_by=FAKE_USER_ID,
-            requested_at=datetime.datetime(2026, 4, 1, tzinfo=datetime.timezone.utc),
+            requested_at=datetime.datetime(2026, 4, 1, tzinfo=datetime.UTC),
         )
 
         with (
@@ -584,7 +583,7 @@ class TestPriorSyncEdgeCases:
             response_invoice_number="",
             idempotency_key="failed-key",
             requested_by=FAKE_USER_ID,
-            requested_at=datetime.datetime(2026, 4, 1, tzinfo=datetime.timezone.utc),
+            requested_at=datetime.datetime(2026, 4, 1, tzinfo=datetime.UTC),
         )
 
         with (
@@ -626,7 +625,7 @@ class TestPriorSyncEdgeCases:
             response_invoice_number="INV-0043",
             idempotency_key="newer-key",
             requested_by=FAKE_USER_ID,
-            requested_at=datetime.datetime(2026, 4, 2, tzinfo=datetime.timezone.utc),
+            requested_at=datetime.datetime(2026, 4, 2, tzinfo=datetime.UTC),
         )
 
         with (
@@ -1031,7 +1030,7 @@ class TestUploadBillAttachmentsToXero:
             response_invoice_number=invoice_number,
             idempotency_key="k",
             requested_by=FAKE_USER_ID,
-            requested_at=datetime.datetime(2026, 4, 1, tzinfo=datetime.timezone.utc),
+            requested_at=datetime.datetime(2026, 4, 1, tzinfo=datetime.UTC),
         )
 
     def _make_attachment(self, bill, user, *, xero_attachment_id="", xero_filename="",

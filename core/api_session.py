@@ -1,7 +1,7 @@
 """Session and token endpoints for the billing module."""
 
 import logging
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 import jwt
 from django.conf import settings
@@ -98,7 +98,7 @@ def token_refresh(request):
         raise HttpError(401, "Your session has expired. Sign in again to keep going.")
 
     expires_in = BILLING_TOKEN_HOURS * 3600
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
 
     # Re-resolve module entitlements from DB so the refreshed token reflects
     # any changes (e.g. an admin flipped BILL on after the initial handoff).

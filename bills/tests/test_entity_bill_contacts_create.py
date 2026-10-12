@@ -5,7 +5,6 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from bills.tests.conftest import give_xero_token
-
 from shared_models.models import XeroContactSync
 
 

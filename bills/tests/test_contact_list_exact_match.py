@@ -9,15 +9,13 @@ Simulates both modules under every scenario:
 For each scenario we compare the NAME SET produced by each module.
 """
 
-from unittest.mock import MagicMock, patch
-
 import uuid
+from unittest.mock import MagicMock, patch
 
 import pytest
 
-from bills.tests.conftest import give_xero_token
-
 from bills.services.contact_service import get_entity_bill_contacts
+from bills.tests.conftest import give_xero_token
 from shared_models.models import XeroContactSync
 
 
