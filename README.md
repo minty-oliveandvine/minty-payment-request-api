@@ -26,6 +26,7 @@ All of it is in [`.env.example`](.env.example); `config/settings.py` reads it.
 | `PAYMENT_REQUEST_WEB_URL` | `http://localhost:3020` | CORS. |
 | `ONBOARDING_WEB_URL` | `http://localhost:3030` | CORS. |
 | `CORS_ALLOWED_ORIGINS` | the two web URLs | Optional comma-separated override. |
+| `PREVIEW_ORIGIN_REGEX` | unset (off) | Optional: a branch's preview-set origins, added to CORS. A value that could let in any other origin refuses to boot. |
 | `LOG_LEVEL` | `INFO` | Optional. |
 | `RUN_MIGRATIONS`, `DB_WAIT_SECONDS` | `true`, `180` | Optional; `docker/entrypoint.sh` only. The container listens on `PORT` (default 8020). |
 
