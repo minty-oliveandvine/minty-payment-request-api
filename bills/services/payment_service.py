@@ -6,6 +6,7 @@ from django.db.models import Sum
 
 from bills.models import Audit, Bill, Payment
 from bills.services.audit_service import log_audit
+from core.entity_currency import require_entity_currency_code
 from core.exceptions import BillValidationError
 
 logger = logging.getLogger("minty-api")
@@ -114,6 +115,8 @@ def get_amount_due(bill: Bill) -> Decimal:
 
 
 def create_payment(bill: Bill, data, user_id: str) -> Payment:
+    # A payment is in its bill's currency (the company's when the bill has none), never the client's.
+    currency_code = bill.currency_code or require_entity_currency_code(bill.entity_id)
     with transaction.atomic():
         if _status_counts_toward_bill_cap(data.payment_status):
             _check_payment_within_bill_total(bill, data.amount)
@@ -121,7 +124,7 @@ def create_payment(bill: Bill, data, user_id: str) -> Payment:
             bill=bill,
             payment_date=data.payment_date,
             amount=data.amount,
-            currency_code=data.currency_code,
+            currency_code=currency_code,
             payment_method=data.payment_method,
             payment_status=data.payment_status,
             reference_no=data.reference_no,
@@ -144,7 +147,6 @@ def update_payment(payment: Payment, data, user_id: str) -> Payment:
     updatable_fields = (
         "payment_date",
         "amount",
-        "currency_code",
         "payment_method",
         "payment_status",
         "reference_no",

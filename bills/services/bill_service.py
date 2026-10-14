@@ -7,6 +7,7 @@ from bills.models import Audit, Bill, BillLineItem
 from bills.services.audit_service import log_audit
 from bills.services.bill_reference_generator import generate_unique_bill_reference
 from bills.services.payment_service import sync_bill_status_from_payments
+from core.entity_currency import entity_currency_code, require_entity_currency_code
 from core.exceptions import BillValidationError
 from shared_models.models import User
 
@@ -162,7 +163,21 @@ def validate_for_submission(data, bill=None):
         raise BillValidationError("; ".join(errors))
 
 
+def _fill_missing_currency(bill: Bill, *, required: bool) -> None:
+    """A bill's currency is the entity's, never the client's. Give a bill saved
+    without one the entity's code; refuse when ``required`` and neither has one."""
+    if bill.currency_id:
+        return
+    if required:
+        bill.currency_code = require_entity_currency_code(bill.entity_id)
+    else:
+        code = entity_currency_code(bill.entity_id)
+        if code:
+            bill.currency_code = code
+
+
 def save_bill_draft(data, user_id: str, entity_id: str) -> Bill:
+    currency_code = require_entity_currency_code(entity_id)
     ref = _final_reference_for_create(
         entity_id, user_id, getattr(data, "reference", None)
     )
@@ -176,7 +191,7 @@ def save_bill_draft(data, user_id: str, entity_id: str) -> Bill:
             due_date=data.due_date,
             invoice_date=data.invoice_date,
             reference=ref,
-            currency_code=data.currency_code or "",
+            currency_code=currency_code,
             xero_account_code=getattr(data, "xero_account_code", None) or "",
             uploaded_by=user_id,
             status=Bill.Status.DRAFT,
@@ -212,7 +227,6 @@ def update_bill_draft(bill: Bill, data, user_id: str) -> Bill:
         "due_date",
         "invoice_date",
         "reference",
-        "currency_code",
         "xero_account_code",
     )
     if getattr(
@@ -231,6 +245,7 @@ def update_bill_draft(bill: Bill, data, user_id: str) -> Bill:
                 setattr(bill, field, new_val)
 
         bill.status = Bill.Status.DRAFT
+        _fill_missing_currency(bill, required=False)
 
         if data.line_items is not None:
             bill.line_items.all().delete()
@@ -261,6 +276,7 @@ def update_bill_draft(bill: Bill, data, user_id: str) -> Bill:
 
 
 def create_bill(data, user_id: str, entity_id: str) -> Bill:
+    currency_code = require_entity_currency_code(entity_id)
     ref = _final_reference_for_create(
         entity_id, user_id, getattr(data, "reference", None)
     )
@@ -274,7 +290,7 @@ def create_bill(data, user_id: str, entity_id: str) -> Bill:
             due_date=data.due_date,
             invoice_date=data.invoice_date,
             reference=ref,
-            currency_code=data.currency_code,
+            currency_code=currency_code,
             xero_account_code=getattr(data, "xero_account_code", "") or "",
             uploaded_by=user_id,
             status=Bill.Status.DRAFT,
@@ -301,6 +317,7 @@ def create_bill(data, user_id: str, entity_id: str) -> Bill:
 
 def submit_bill(data, user_id: str, entity_id: str) -> Bill:
     validate_for_submission(data)
+    currency_code = require_entity_currency_code(entity_id)
     ref = _final_reference_for_create(
         entity_id, user_id, getattr(data, "reference", None)
     )
@@ -314,7 +331,7 @@ def submit_bill(data, user_id: str, entity_id: str) -> Bill:
             due_date=data.due_date,
             invoice_date=data.invoice_date,
             reference=ref,
-            currency_code=data.currency_code,
+            currency_code=currency_code,
             xero_account_code=getattr(data, "xero_account_code", "") or "",
             uploaded_by=user_id,
             status=Bill.Status.SUBMITTED,
@@ -351,7 +368,6 @@ def update_bill(bill: Bill, data, user_id: str) -> Bill:
         "due_date",
         "invoice_date",
         "reference",
-        "currency_code",
         "xero_account_code",
     )
     if getattr(data, "status", None) == "submitted" and bill.status != "submitted":
@@ -390,6 +406,7 @@ def update_bill(bill: Bill, data, user_id: str) -> Bill:
                     note=item.note,
                 )
 
+        _fill_missing_currency(bill, required=bill.status == Bill.Status.SUBMITTED)
         bill.save()
         # Paid / partially_paid must stay aligned with completed payments when
         # amount changes (e.g. paid bill total increased → partially_paid).

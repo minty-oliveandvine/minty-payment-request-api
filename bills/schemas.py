@@ -107,7 +107,7 @@ class BillCreateIn(Schema):
     due_date: date | None = None
     invoice_date: date | None = None
     reference: str = ""
-    currency_code: str = ""
+    currency_code: str = ""  # ignored: the server uses the entity's currency
     xero_account_code: str = ""
     line_items: list[LineItemIn] = []
 
@@ -120,7 +120,7 @@ class BillDraftIn(Schema):
     due_date: date | None = None
     invoice_date: date | None = None
     reference: str | None = None
-    currency_code: str | None = None
+    currency_code: str | None = None  # ignored: the server uses the entity's currency
     xero_account_code: str | None = None
     line_items: list[LineItemIn] | None = None
 
@@ -138,7 +138,7 @@ class BillUpdateIn(Schema):
     due_date: date | None = None
     invoice_date: date | None = None
     reference: str | None = None
-    currency_code: str | None = None
+    currency_code: str | None = None  # ignored: the server uses the entity's currency
     xero_account_code: str | None = None
     line_items: list[LineItemIn] | None = None
 
@@ -206,7 +206,7 @@ class BillFilterQuery(Schema):
 class PaymentCreateIn(Schema):
     payment_date: date | None = None
     amount: Decimal = Decimal("0")
-    currency_code: str = ""
+    currency_code: str = ""  # ignored: the server uses the bill's currency
     payment_method: str = ""
     payment_status: str = "completed"
     reference_no: str = ""
@@ -217,7 +217,7 @@ class PaymentCreateIn(Schema):
 class PaymentUpdateIn(Schema):
     payment_date: date | None = None
     amount: Decimal | None = None
-    currency_code: str | None = None
+    currency_code: str | None = None  # ignored: the server uses the bill's currency
     payment_method: str | None = None
     payment_status: str | None = None
     reference_no: str | None = None

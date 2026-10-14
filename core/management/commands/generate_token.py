@@ -48,7 +48,7 @@ class Command(BaseCommand):
         else:
             user, entity, ue = self._auto_resolve()
 
-        payload = {"user_id": user.id, "entity_id": entity.id}
+        payload = {"user_id": str(user.id), "entity_id": str(entity.id)}
         token = jwt.encode(payload, settings.SECRET_KEY, algorithm="HS256")
 
         self.stdout.write("")
