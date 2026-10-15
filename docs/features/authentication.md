@@ -85,6 +85,7 @@ would make it a second refresher and brick the connection.
 `SECRET_KEY` (shared), `PETTY_CASH_URL` (→ `XERO_TOKEN_SERVICE_URL`; `XERO_TOKEN_SERVICE_TIMEOUT`
 is a 15-second constant), `PAYMENT_REQUEST_WEB_URL` / `ONBOARDING_WEB_URL` (CORS default;
 `CORS_ALLOWED_ORIGINS` overrides), `?schema=` on `DATABASE_URL` → `DB_SCHEMA` (the `search_path`).
+`PREVIEW_ORIGIN_REGEX` (optional, unset = off) adds a branch's preview-set origins (`https://pr-<slug>-<app>.dailyminty.com`) to CORS; minty-infra sets it on one environment only, and a value that could let in any other origin refuses to boot (`config/preview_origin.py`, the same file in all three APIs).
 
 ## Tests
 

@@ -109,11 +109,12 @@ def _settings(env: dict) -> subprocess.CompletedProcess:
     code = (
         "import json, config.settings as s; print(json.dumps({k: getattr(s, k) for k in "
         "('DEBUG', 'DB_SCHEMA', 'DATABASES', 'S3_BUCKET', 'S3_REGION', 'PETTY_CASH_URL', "
-        "'XERO_TOKEN_SERVICE_URL', 'CORS_ALLOWED_ORIGINS', 'PAYMENT_REQUEST_WEB_URL')}))"
+        "'XERO_TOKEN_SERVICE_URL', 'CORS_ALLOWED_ORIGINS', 'CORS_ALLOWED_ORIGIN_REGEXES', "
+        "'PAYMENT_REQUEST_WEB_URL')}))"
     )
     clean = {k: v for k, v in os.environ.items() if k not in {
         "APP_ENV", "SECRET_KEY", "DATABASE_URL", "S3_URL", "PETTY_CASH_URL",
-        "PAYMENT_REQUEST_WEB_URL", "ONBOARDING_WEB_URL", "CORS_ALLOWED_ORIGINS",
+        "PAYMENT_REQUEST_WEB_URL", "ONBOARDING_WEB_URL", "CORS_ALLOWED_ORIGINS", "PREVIEW_ORIGIN_REGEX",
     }}
     # cwd outside the repo so load_dotenv() cannot pick up a developer's .env
     return subprocess.run(
@@ -173,3 +174,16 @@ def test_derived_urls_and_cors_default():
     assert s["CORS_ALLOWED_ORIGINS"] == ["http://localhost:3020", "http://localhost:3030"]
     s = _ok({"APP_ENV": "development", "CORS_ALLOWED_ORIGINS": "https://a.example, https://b.example/"})
     assert s["CORS_ALLOWED_ORIGINS"] == ["https://a.example", "https://b.example"]
+
+
+def test_preview_origins_are_off_unless_set():
+    assert _ok({"APP_ENV": "development"})["CORS_ALLOWED_ORIGIN_REGEXES"] == []
+    regex = r"^https://pr-[a-z0-9-]+-(?:payment-request|onboarding)\.dailyminty\.com$"
+    s = _ok({"APP_ENV": "production", "SECRET_KEY": "real", "PREVIEW_ORIGIN_REGEX": regex})
+    assert s["CORS_ALLOWED_ORIGIN_REGEXES"] == [regex]
+
+
+def test_a_loose_preview_regex_refuses_to_start():
+    proc = _settings({"APP_ENV": "development", "PREVIEW_ORIGIN_REGEX": ".*"})
+    assert proc.returncode != 0
+    assert "ImproperlyConfigured" in proc.stderr and "PREVIEW_ORIGIN_REGEX" in proc.stderr
