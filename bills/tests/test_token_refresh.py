@@ -53,8 +53,8 @@ def membership(db, user, entity):
     return UserEntity.objects.create(user=user, entity=entity, role="admin")
 
 
-def _make_token(user_id, entity_id, *, hours_from_now=4):
-    """Issue a billing-scoped JWT with a configurable expiry."""
+def _make_token(user_id, entity_id, *, hours_from_now=4, **extra):
+    """Issue a billing-scoped JWT with a configurable expiry (``extra`` adds claims)."""
     return pyjwt.encode(
         {
             "user_id": user_id,
@@ -62,6 +62,7 @@ def _make_token(user_id, entity_id, *, hours_from_now=4):
             "module": "billing",
             "exp": datetime.now(UTC) + timedelta(hours=hours_from_now),
             "iat": datetime.now(UTC),
+            **extra,
         },
         settings.SECRET_KEY,
         algorithm="HS256",
@@ -122,6 +123,72 @@ def test_refreshed_token_carries_correct_claims(client, user, entity, membership
     assert payload["entity_id"] == entity.id
     assert payload["module"] == "billing"
     assert "role" in payload
+
+
+@pytest.fixture
+def superadmin(db):
+    return User.objects.create(
+        id="3d0c2b1e-5f4a-5b6c-8d7e-9f0a1b2c3d4e",
+        email="refresh-super@minty.com",
+        password="hashed_pw",
+        first_name="Super",
+        last_name="Refresh",
+        username="refreshsuper",
+        system_role="superadmin",
+    )
+
+
+def _refreshed_payload(client, token, entity_id):
+    response = client.post(REFRESH_URL, **_auth(token, entity_id))
+    assert response.status_code == 200, response.content
+    return pyjwt.decode(response.json()["token"], settings.SECRET_KEY, algorithms=["HS256"])
+
+
+def test_refresh_keeps_a_non_member_superadmin_view_only(client, superadmin, entity):
+    """A super admin on a company they don't belong to stays superadmin + view-only."""
+    token = _make_token(superadmin.id, entity.id, system_role="superadmin", is_view_only=True)
+    payload = _refreshed_payload(client, token, entity.id)
+
+    assert payload["system_role"] == "superadmin"
+    assert payload["is_view_only"] is True
+
+
+def test_refresh_of_a_member_superadmin_is_not_view_only(client, superadmin, entity):
+    UserEntity.objects.create(user=superadmin, entity=entity, role="admin")
+    token = _make_token(superadmin.id, entity.id, system_role="superadmin")
+    payload = _refreshed_payload(client, token, entity.id)
+
+    assert payload["system_role"] == "superadmin"
+    assert payload["is_view_only"] is False
+
+
+def test_refresh_of_a_normal_user_has_no_system_role(client, user, entity, membership):
+    token = _make_token(user.id, entity.id)
+    payload = _refreshed_payload(client, token, entity.id)
+
+    assert payload["system_role"] == ""
+    assert payload["is_view_only"] is False
+
+
+def test_refresh_turns_the_legacy_superuser_word_into_superadmin(client, superadmin, entity):
+    token = _make_token(superadmin.id, entity.id, system_role="superuser")
+    payload = _refreshed_payload(client, token, entity.id)
+
+    assert payload["system_role"] == "superadmin"
+    assert payload["is_view_only"] is True
+
+
+def test_refresh_carries_the_sid_over(client, user, entity, membership):
+    token = _make_token(user.id, entity.id, sid="sess-123")
+    payload = _refreshed_payload(client, token, entity.id)
+
+    assert payload["sid"] == "sess-123"
+
+
+def test_refresh_adds_no_sid_when_the_old_token_had_none(client, user, entity, membership):
+    payload = _refreshed_payload(client, _make_token(user.id, entity.id), entity.id)
+
+    assert "sid" not in payload
 
 
 def test_expired_token_cannot_be_refreshed(client, user, entity, membership):

@@ -49,7 +49,8 @@ endpoint needs a real `user_entity` row before it answers anything.
 
 - [ ] `GET /session` returns the role and entity read from the DB for the current token.
 - [ ] `POST /token/refresh` re-mints an 8-hour billing JWT from a still-valid one
-      (`BILLING_TOKEN_HOURS`).
+      (`BILLING_TOKEN_HOURS`), keeping `system_role`, `is_view_only` (super admin on a company
+      they are not a member of) and `sid`.
 - [ ] `GET /entitlements` reflects `entity_function_map` live — toggle a module in the DB
       and confirm the answer changes without minting a new token.
 - [ ] `GET /entity-currency` returns the entity's ISO currency code ("" when none is set).
@@ -59,7 +60,8 @@ endpoint needs a real `user_entity` row before it answers anything.
 - [ ] A payment posted or updated with another `currency_code` keeps its bill's currency.
 - [ ] `POST /logout` clears `signed_in_at` / `last_seen_at`.
 - [ ] `GET /auth/me`, `PUT /profile/me`, `DELETE /profile/me` are gone (removed 2026-10-01)
-      → 404. `GET /profile/me` still answers (`is_view_only`, `member_entity_ids`).
+      → 404. `GET /profile/me` still answers (`is_view_only`, `member_entity_ids`);
+      `is_view_only` is true only for a system super admin who is not a member of the company.
 
 ## Payment requests — bills ([payment-requests.md](payment-requests.md))
 
@@ -69,7 +71,7 @@ endpoint needs a real `user_entity` row before it answers anything.
       missing field together, in the dialog's wording.
 - [ ] `GET /api/bills/by-reference/{reference}` matches trimmed and case-insensitive; if a
       live bill and a void bill share a reference, the live one wins; otherwise the newest
-      wins.
+      wins. A reference with '/' (`INV/2026/001`, URL-encoded) is found, not 404.
 - [ ] Editing a Paid or Partially-paid bill needs an elevated role; the response carries the
       payment-synced status and `amount_due`.
 - [ ] `POST /api/bills/{id}/return/` moves submitted → returned, returned → submitted, and

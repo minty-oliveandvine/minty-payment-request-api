@@ -275,7 +275,7 @@ def suggested_bill_reference_endpoint(request):
 
 
 @bills_router.get(
-    "/by-reference/{reference}",
+    "/by-reference/{path:reference}",
     response={200: BillOut, 404: ErrorOut},
     summary="Get bill detail by its Payment No. (reference) - the web app's address uses it",
 )

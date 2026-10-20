@@ -309,3 +309,16 @@ class TestProfileMemberEntityIds:
         assert resp.status_code == 200
         data = resp.json()
         assert member_entity.id in data["member_entity_ids"]
+
+    def test_superuser_without_membership_is_view_only(self, api, superuser, foreign_entity):
+        resp = api.get("/api/v1/profile/me", **_auth(superuser, foreign_entity))
+        assert resp.status_code == 200
+        assert resp.json()["is_view_only"] is True
+
+    def test_superuser_with_membership_is_not_view_only(
+        self, api, superuser, member_entity, superuser_membership
+    ):
+        # Same rule as Flask's is_superuser_readonly: superadmin AND not a member.
+        resp = api.get("/api/v1/profile/me", **_auth(superuser, member_entity))
+        assert resp.status_code == 200
+        assert resp.json()["is_view_only"] is False

@@ -36,7 +36,7 @@ A system superuser (`system_role = superadmin`) with no row on the entity gets a
 | Endpoint | What |
 |---|---|
 | `GET /session` | the role and entity of the current token, from the DB |
-| `POST /token/refresh` | re-mints the billing JWT (8 hours, `BILLING_TOKEN_HOURS`) from a still-valid one — the frontend's cookie lives 8 hours too |
+| `POST /token/refresh` | re-mints the billing JWT (8 hours, `BILLING_TOKEN_HOURS`) from a still-valid one — the frontend's cookie lives 8 hours too. `system_role` (`superadmin` or "") and `is_view_only` are re-derived from the request, `sid` is carried over (2026-10-20; they used to be dropped, so a non-member super admin saw write controls the API then refused) |
 | `GET /entitlements` | `petty_cash_enabled` / `billing_enabled` read **live** from `entity_function_map` (`core/entitlements.py`) — the JWT's claims are hints only |
 | `GET /xero-status` | whether the **company** is live on Xero (`xero_connection_live`, database only): a Xero org linked, `status` not `disconnected`, and a refresh token on the connector (`connected_by_user_id`) or the caller. `BearerAuth` - a role on the entity is required (2026-10-06; it used to read the person's own `user.refresh_token`, a column that had moved to `user_token`, swallowed the error and always said `false`) |
 | `GET /entity-currency` | the entity's ISO currency code |
@@ -46,7 +46,9 @@ A system superuser (`system_role = superadmin`) with no row on the entity gets a
 `DELETE /profile/me` (deactivation): their only caller was minty-payment-request-web's My Profile page,
 which moved to minty-web - that page reads and saves the profile through Minty's
 `/api/me/profile`. `GET /profile/me` (`bills/api_profile.py`) stays: the frontend's
-`lib/useUserRole.ts` reads `is_view_only` and `member_entity_ids` from it. Deactivating an
+`lib/useUserRole.ts` reads `is_view_only` and `member_entity_ids` from it. `is_view_only` is
+Flask's `is_superuser_readonly`: a system super admin who is NOT a member of the company (it
+ignored membership until 2026-10-20). Deactivating an
 account is Minty's `DELETE /minty/api/users/me`.
 
 ## The permission matrix (`core/permissions.py`)

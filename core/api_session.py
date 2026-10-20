@@ -8,6 +8,7 @@ from django.conf import settings
 from ninja import Router, Schema
 
 from core.auth import SelfBearerAuth
+from shared_models.enums import SystemRole
 
 logger = logging.getLogger("minty-api")
 
@@ -108,19 +109,30 @@ def token_refresh(request):
 
     module_claims = get_module_claims(str(request.entity_id or ""))
 
-    new_token = jwt.encode(
-        {
-            "user_id": str(request.auth_user.id),
-            "entity_id": str(request.entity_id or ""),
-            "role": request.entity_role or "",
-            "module": "billing",
-            **module_claims,
-            "exp": now + timedelta(seconds=expires_in),
-            "iat": now,
-        },
-        settings.SECRET_KEY,
-        algorithm="HS256",
-    )
+    # The person's standing is re-derived from the authenticated request, never copied:
+    # dropping these made a non-member super admin's refreshed token look like an
+    # ordinary member's, so the web showed write controls the API then refused (403).
+    # View-only is Flask's is_superuser_readonly: a super admin who is NOT a member.
+    is_system_superuser = bool(getattr(request, "is_system_superuser", False))
+    is_entity_member = bool(getattr(request, "is_entity_member", False))
+    claims = {
+        "user_id": str(request.auth_user.id),
+        "entity_id": str(request.entity_id or ""),
+        "role": request.entity_role or "",
+        "system_role": SystemRole.SUPERADMIN.value if is_system_superuser else "",
+        "is_view_only": is_system_superuser and not is_entity_member,
+        "module": "billing",
+        **module_claims,
+        "exp": now + timedelta(seconds=expires_in),
+        "iat": now,
+    }
+    # The session id (the subscription notice keys on it) is the only claim carried over:
+    # it names the sign-in, which a refresh continues. The token was verified just above.
+    sid = jwt.decode(raw_token, settings.SECRET_KEY, algorithms=["HS256"]).get("sid")
+    if sid:
+        claims["sid"] = sid
+
+    new_token = jwt.encode(claims, settings.SECRET_KEY, algorithm="HS256")
 
     logger.info(
         "Token refreshed user_id=%s entity_id=%s",

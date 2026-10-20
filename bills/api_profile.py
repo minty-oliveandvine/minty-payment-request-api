@@ -41,6 +41,10 @@ def get_profile_endpoint(request):
         "first_name": user.first_name,
         "last_name": user.last_name,
         "username": user.username,
-        "is_view_only": getattr(request, "is_system_superuser", False),
+        # Flask's is_superuser_readonly: a system super admin who is NOT a member of the company.
+        "is_view_only": bool(
+            getattr(request, "is_system_superuser", False)
+            and not getattr(request, "is_entity_member", False)
+        ),
         "member_entity_ids": member_entity_ids,
     }

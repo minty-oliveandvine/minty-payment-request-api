@@ -1,6 +1,8 @@
 """``GET /api/v1/bills/by-reference/{reference}`` - the web app's details address carries the
 Payment No. (the bill's reference) since 2026-10-05, so the page finds the bill by it."""
 
+from urllib.parse import quote
+
 import pytest
 
 from bills.models import Bill
@@ -46,3 +48,12 @@ class TestBillByReference:
 
         assert _get(api_client, auth_headers, "MBI-OTHER").status_code == 404
         assert _get(api_client, auth_headers, "NOPE").status_code == 404
+
+    def test_a_payment_no_with_a_slash_is_found(self, api_client, auth_headers, test_user_entity,
+                                                test_user, test_entity):
+        # Django decodes %2F before routing, so the route must accept '/' in the reference.
+        bill = _bill(test_entity.id, test_user.id, "INV/2026/001")
+
+        resp = _get(api_client, auth_headers, quote("INV/2026/001", safe=""))
+        assert resp.status_code == 200, resp.content
+        assert resp.json()["id"] == str(bill.id)
