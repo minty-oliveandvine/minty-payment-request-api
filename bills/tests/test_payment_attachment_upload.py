@@ -116,4 +116,4 @@ class TestPaymentAttachmentBankSlipUpload:
             **auth_headers,
         )
         assert resp.status_code == 422
-        assert "attachment_role" in resp.json().get("detail", "").lower()
+        assert "attachment_role" in resp.json().get("error", "").lower()

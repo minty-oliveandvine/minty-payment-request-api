@@ -63,7 +63,7 @@ class TestEntityCurrencyRequired:
         before = Bill.objects.count()
         resp = _post(api_client, auth_headers, path, {**SUBMITTABLE, "currency_code": "HKD"})
         assert resp.status_code == 422
-        assert resp.json()["detail"] == NO_CURRENCY
+        assert resp.json()["error"] == NO_CURRENCY
         assert Bill.objects.count() == before
 
     def test_draft_update_fills_missing_currency(
@@ -146,4 +146,4 @@ class TestPaymentCurrency:
         resp = self._pay(api_client, auth_headers, draft_bill.id,
                          {"amount": "10.00", "currency_code": "HKD", "payment_status": "pending"})
         assert resp.status_code == 422
-        assert resp.json()["detail"] == NO_CURRENCY
+        assert resp.json()["error"] == NO_CURRENCY

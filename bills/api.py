@@ -369,14 +369,14 @@ def return_bill(request, bill_id: str, payload: ReturnBillIn):
     if action == "void":
         if bill.status != Bill.Status.RETURNED:
             return 422, {
-                "detail": "Only bills in 'Returned' status can be voided via this action."
+                "error": "Only bills in 'Returned' status can be voided via this action."
             }
         bill.status = Bill.Status.VOIDED
 
     elif action == "payment_requested":
         if bill.status != Bill.Status.SUBMITTED:
             return 422, {
-                "detail": (
+                "error": (
                     "This action only applies to bills in 'Payment Requested' status. "
                     f"Current status: '{bill.status}'."
                 )
@@ -386,7 +386,7 @@ def return_bill(request, bill_id: str, payload: ReturnBillIn):
     elif action == "returned":
         if bill.status != Bill.Status.RETURNED:
             return 422, {
-                "detail": (
+                "error": (
                     "This action only applies to bills in 'Returned' status. "
                     f"Current status: '{bill.status}'."
                 )
@@ -395,7 +395,7 @@ def return_bill(request, bill_id: str, payload: ReturnBillIn):
 
     else:
         return 422, {
-            "detail": (
+            "error": (
                 "Invalid status value. Accepted values: "
                 "'payment_requested', 'returned', 'void'."
             )

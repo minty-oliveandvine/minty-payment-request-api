@@ -5,6 +5,8 @@ from datetime import UTC, datetime, timedelta
 
 import jwt
 from django.conf import settings
+from minty_shared import tokens
+from minty_shared.time import DEFAULT_ENTITY_TIMEZONE
 from ninja import Router, Schema
 
 from core.auth import SelfBearerAuth
@@ -127,8 +129,10 @@ def token_refresh(request):
         "iat": now,
     }
     # The session id (the subscription notice keys on it) is the only claim carried over:
-    # it names the sign-in, which a refresh continues. The token was verified just above.
-    sid = jwt.decode(raw_token, settings.SECRET_KEY, algorithms=["HS256"]).get("sid")
+    # it names the sign-in, which a refresh continues. The token was verified just above, with
+    # the same clock skew (minty_shared.tokens) - a stricter decode here refused, as a 500, the
+    # token auth had just accepted.
+    sid = tokens.decode_bearer(raw_token, settings.SECRET_KEY).get("sid")
     if sid:
         claims["sid"] = sid
 
@@ -241,7 +245,7 @@ def logout(request):
             # (models/db.py `tz`), while this project runs USE_TZ=True on UTC —
             # so timezone.now() would land eight hours behind everything Minty
             # wrote, in the same column. Mirrors user_presence.now() exactly.
-            stamp = datetime.now(ZoneInfo("Asia/Hong_Kong")).replace(tzinfo=None)
+            stamp = datetime.now(ZoneInfo(DEFAULT_ENTITY_TIMEZONE)).replace(tzinfo=None)
             User.objects.filter(id=str(user_id)).update(
                 signed_in_at=None, last_seen_at=stamp
             )

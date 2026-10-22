@@ -193,7 +193,7 @@ class TestSuperuserWriteBlockedOnNonMemberEntity:
         assert resp.status_code == 403
         body = resp.json()
         # The message should communicate read-only / view-only restriction.
-        detail = (body.get("detail") or body.get("message") or "").lower()
+        detail = (body.get("error") or body.get("message") or "").lower()
         assert "view" in detail or "superuser" in detail or "read" in detail
 
 

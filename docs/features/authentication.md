@@ -9,8 +9,10 @@ what happens once a request reaches `/api/*` here.
 
 Every endpoint under `/api/` (Django Ninja, `config/urls.py`) is guarded by
 `core/auth.BearerAuth`: `Authorization: Bearer <jwt>`, HS256 over the **shared
-`SECRET_KEY`** (the same value as Minty's — a mismatch 401s everything and is logged with
-a hash prefix of the key, never the key). The claims Minty puts in
+`SECRET_KEY`** (the same value as Minty's — a mismatch 401s everything; nothing derived from
+the key is ever logged), decoded with the 60 s clock skew every Minty backend allows
+(`minty_shared.tokens.decode_bearer`; this service allowed none until 2026-10-22, and the
+token refresh decodes the same way). The claims Minty puts in
 (`_generate_module_token`): `user_id`, `entity_id`, `xero_org_id`, `role`, `system_role`,
 `module`, `sid`, `billing_enabled`, `petty_cash_enabled`, `iat`, `exp` (30 minutes).
 
@@ -87,7 +89,7 @@ would make it a second refresher and brick the connection.
 `SECRET_KEY` (shared), `PETTY_CASH_URL` (→ `XERO_TOKEN_SERVICE_URL`; `XERO_TOKEN_SERVICE_TIMEOUT`
 is a 15-second constant), `PAYMENT_REQUEST_WEB_URL` / `ONBOARDING_WEB_URL` (CORS default;
 `CORS_ALLOWED_ORIGINS` overrides), `?schema=` on `DATABASE_URL` → `DB_SCHEMA` (the `search_path`).
-`PREVIEW_ORIGIN_REGEX` (optional, unset = off) adds a branch's preview-set origins (`https://pr-<slug>-<app>.dailyminty.com`) to CORS; minty-infra sets it on one environment only, and a value that could let in any other origin refuses to boot (`config/preview_origin.py`, the same file in all three APIs).
+`PREVIEW_ORIGIN_REGEX` (optional, unset = off) adds a branch's preview-set origins (`https://pr-<slug>-<app>.dailyminty.com`) to CORS; minty-infra sets it on one environment only, and a value that could let in any other origin refuses to boot (`minty_shared.config`, the same file in all three APIs).
 
 ## Tests
 

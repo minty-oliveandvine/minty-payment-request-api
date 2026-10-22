@@ -4,8 +4,9 @@ What this API sends when something fails, and why. The copy standard is shared
 across Minty, minty-payment-request-api, minty-payment-request-web and the onboarding apps; the canonical
 write-up lives in the Minty repo as `docs/features/ERROR_MESSAGE_LEAKS.md`.
 
-Everything here reaches a payer's screen: minty-payment-request-web renders `detail`
-directly when it reads as a sentence.
+Everything here reaches a payer's screen: minty-payment-request-web renders `error` (every API's
+envelope, `minty_shared.django.errors`, since 2026-10-22; it was `detail`) directly when it reads
+as a sentence. A refusal of the input itself also carries `fields`, one sentence per field.
 
 ## The standard
 

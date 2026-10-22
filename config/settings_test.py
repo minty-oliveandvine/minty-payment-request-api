@@ -5,7 +5,8 @@ os.environ.setdefault("APP_ENV", "development")
 # A bucket name for the S3_URL guard; tests never reach a real bucket (they patch the client).
 os.environ.setdefault("S3_URL", "https://test-key:test-secret@s3.us-east-1.example.invalid/test-bucket")
 
-from config.dburl import parse_database_url  # noqa: E402
+from minty_shared.config import django_database  # noqa: E402
+
 from config.settings import *  # noqa: F401, F403, E402
 
 # Two test databases, chosen by MINTY_TEST_PG_URI:
@@ -17,10 +18,10 @@ from config.settings import *  # noqa: F401, F403, E402
 #             from the models; a mirror column the schema lacks fails on the SELECT, which is the
 #             point. Same knobs as Minty: MINTY_TEST_PG_DBNAME (minty_test), MINTY_TEST_PG_KEEP=1,
 #             PG_BIN, MINTY_REPO (C:\Github\Minty). The URI may carry ?schema= like
-#             DATABASE_URL (config/dburl.py); it then replaces DB_SCHEMA for the run.
+#             DATABASE_URL (minty_shared.config); it then replaces DB_SCHEMA for the run.
 _PG_URI = os.environ.get("MINTY_TEST_PG_URI")
 if _PG_URI:
-    _db, DB_SCHEMA = parse_database_url(_PG_URI)
+    _db, DB_SCHEMA = django_database(_PG_URI)
     _dbname = os.environ.get("MINTY_TEST_PG_DBNAME", "minty_test")
     DATABASES = {
         "default": {

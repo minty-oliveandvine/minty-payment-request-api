@@ -1841,14 +1841,15 @@
         "type": "object"
       },
       "ErrorOut": {
+        "description": "Every API's refusal (minty_shared.django.errors): the sentence to show. (A refusal of the\ninput itself also carries ``fields``, written by the shared handler, not through this schema.)",
         "properties": {
-          "detail": {
-            "title": "Detail",
+          "error": {
+            "title": "Error",
             "type": "string"
           }
         },
         "required": [
-          "detail"
+          "error"
         ],
         "title": "ErrorOut",
         "type": "object"

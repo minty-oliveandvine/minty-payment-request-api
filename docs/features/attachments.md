@@ -1,7 +1,7 @@
 # Attachments
 
 The invoice a payment request is for, and any supporting document, live in the shared
-Backblaze B2 bucket (S3 API; one `S3_URL`, parsed by `config/s3url.py` into the `S3_*`
+Backblaze B2 bucket (S3 API; one `S3_URL`, parsed by `minty_shared.config.parse_s3_url` into the `S3_*`
 settings in `config/settings.py`; **the API refuses to start without it** since 2026-10-05 - an
 unset `S3_URL` used to start fine and answer 500 "Invalid bucket name" on every invoice and
 bank-slip upload, which a `.env` still on the old `S3_BUCKET`/`S3_KEY`/... names did) with one

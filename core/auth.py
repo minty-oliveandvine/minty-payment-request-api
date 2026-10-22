@@ -3,7 +3,7 @@ import logging
 import jwt
 from django.conf import settings
 from django.core.exceptions import ValidationError
-from minty_shared import logctx
+from minty_shared import logctx, tokens
 from ninja.security import HttpBearer
 
 from shared_models.enums import EntityRole, SystemRole, is_superadmin
@@ -90,7 +90,9 @@ class BearerAuth(HttpBearer):
     def authenticate(self, request, token):
         try:
             key = settings.SECRET_KEY
-            payload = jwt.decode(token, key, algorithms=["HS256"])
+            # HS256 with the 60 s clock skew every Minty backend allows (minty_shared.tokens);
+            # this service used to allow none, so a token minted a second ahead was refused.
+            payload = tokens.decode_bearer(token, key)
             user = User.objects.get(id=payload["user_id"])
             user_id = payload["user_id"]
             token_entity_id = (payload.get("entity_id") or "").strip()

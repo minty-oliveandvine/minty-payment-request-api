@@ -90,7 +90,7 @@ class TestCreateBill:
             **auth_headers,
         )
         assert r2.status_code == 422
-        assert "invoice number" in r2.json()["detail"].lower()
+        assert "invoice number" in r2.json()["error"].lower()
 
     def test_create_duplicate_reference_case_insensitive(
         self, api_client, auth_headers, test_user_entity

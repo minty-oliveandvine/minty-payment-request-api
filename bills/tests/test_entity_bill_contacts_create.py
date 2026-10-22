@@ -36,7 +36,7 @@ class TestEntityBillContactsCreate:
             **auth_headers,
         )
         assert resp.status_code == 422
-        assert "contact name" in resp.json()["detail"].lower()
+        assert "contact name" in resp.json()["error"].lower()
 
     def test_requires_xero_connected_entity(
         self,
@@ -55,7 +55,7 @@ class TestEntityBillContactsCreate:
             **auth_headers,
         )
         assert resp.status_code == 422
-        assert "connected" in resp.json()["detail"].lower()
+        assert "connected" in resp.json()["error"].lower()
 
     def test_creates_contact_and_db_row(
         self,
@@ -136,4 +136,4 @@ class TestEntityBillContactsCreate:
             )
 
         assert resp.status_code == 422
-        assert "already in use" in resp.json()["detail"]
+        assert "already in use" in resp.json()["error"]

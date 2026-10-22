@@ -117,7 +117,7 @@ def test_unticking_the_last_ticked_code_is_refused(api, entity, auth_headers):
     resp = _put(api, auth_headers, last, {"is_active": False, "account_name": "Renamed"})
 
     assert resp.status_code == 409
-    assert json.loads(resp.content) == {"detail": "Keep at least one account code ticked."}
+    assert json.loads(resp.content) == {"error": "Keep at least one account code ticked."}
     last.refresh_from_db()
     assert last.is_active is True
     assert last.account_name == "Account 600"  # nothing written

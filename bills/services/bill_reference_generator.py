@@ -7,12 +7,14 @@ import secrets
 from datetime import datetime
 from zoneinfo import ZoneInfo
 
+from minty_shared.time import DEFAULT_ENTITY_TIMEZONE
+
 from bills.models import Bill
 from shared_models.models import User
 
 logger = logging.getLogger("minty-api")
 
-HK_TZ = ZoneInfo("Asia/Hong_Kong")
+HK_TZ = ZoneInfo(DEFAULT_ENTITY_TIMEZONE)
 
 _STATUSES_EXCLUDED_FROM_UNIQUENESS = (Bill.Status.VOID,)
 

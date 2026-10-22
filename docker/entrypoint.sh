@@ -3,7 +3,7 @@
 #
 # Django here is a *tenant* of the schema Flask owns: settings.py pins
 # search_path to the ?schema= on DATABASE_URL (default `pettycashv3`, see
-# config/dburl.py), and shared_models maps tables Flask's Alembic
+# minty_shared.config), and shared_models maps tables Flask's Alembic
 # migrations create. So before migrating we wait for both the database and that
 # schema — rather than creating the schema ourselves, which would race Alembic
 # and let Django win the tables it is only supposed to read.
@@ -15,9 +15,9 @@ import time
 
 import psycopg2
 
-from config.dburl import database_url, parse_database_url
+from minty_shared.config import DEFAULT_LOCAL_DATABASE_URL, database_url_from_env, django_database
 
-db, schema = parse_database_url(database_url())
+db, schema = django_database(database_url_from_env(DEFAULT_LOCAL_DATABASE_URL))
 # Driver options from the URL (sslmode, ...) minus search_path, which only matters to Django.
 extra = {k: v for k, v in db["OPTIONS"].items() if k != "options"}
 

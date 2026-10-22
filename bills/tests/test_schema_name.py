@@ -4,48 +4,20 @@
 
 from __future__ import annotations
 
-import ast
 from pathlib import Path
 
-from config.dburl import parse_database_url
+from minty_shared.config import django_database
+from minty_shared.testing import guards
 
 ROOT = Path(__file__).resolve().parents[2]
-NAME = "pettycashv3"
-ALLOWED = {"config/settings.py", "config/dburl.py"}
-SKIP = ("tests/", "bills/tests/", "migrations/")
-
-
-def _docstrings(tree):
-    ids = set()
-    for node in ast.walk(tree):
-        if isinstance(node, (ast.Module, ast.ClassDef, ast.FunctionDef, ast.AsyncFunctionDef)):
-            body = node.body
-            if body and isinstance(body[0], ast.Expr) and isinstance(body[0].value, ast.Constant):
-                ids.add(id(body[0].value))
-    return ids
 
 
 def test_no_application_string_carries_the_schema_name():
-    hits = []
-    for path in sorted(ROOT.rglob("*.py")):
-        rel = path.relative_to(ROOT).as_posix()
-        # Minty/ is the harness checkout CI puts beside the code (its env.py names the default).
-        if rel.startswith("Minty/"):
-            continue
-        if rel in ALLOWED or any(s in rel for s in SKIP) or ".venv" in rel or "node_modules" in rel:
-            continue
-        source = path.read_text(encoding="utf-8-sig")
-        if NAME not in source:
-            continue
-        tree = ast.parse(source)
-        docs = _docstrings(tree)
-        for node in ast.walk(tree):
-            if isinstance(node, ast.Constant) and isinstance(node.value, str) and NAME in node.value and id(node) not in docs:
-                hits.append(f"{rel}:{node.lineno}")
+    hits = guards.string_literals(ROOT, "pettycashv3", skip=("tests/", "bills/tests/", "migrations/"))
     assert hits == [], "read settings.DB_SCHEMA instead of spelling the schema"
 
 
 def test_search_path_follows_the_schema_in_the_url():
-    db, schema = parse_database_url("postgresql://u:p@db:5432/minty?schema=pettycash_alt")
+    db, schema = django_database("postgresql://u:p@db:5432/minty?schema=pettycash_alt")
     assert schema == "pettycash_alt"
     assert db["OPTIONS"]["options"] == "-c search_path=pettycash_alt,public"

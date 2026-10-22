@@ -411,7 +411,7 @@ def update_entity_bill_account(
                 "EntityBillAccountXero untick refused (last ticked code) id=%s",
                 account.id,
             )
-            return 409, {"detail": LAST_TICKED_CODE_MESSAGE}
+            return 409, {"error": LAST_TICKED_CODE_MESSAGE}
 
         _apply_partial_update(account, update_data)
         account.save()

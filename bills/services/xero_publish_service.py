@@ -16,6 +16,7 @@ from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.db import connection, transaction
 from minty_shared import logctx
+from minty_shared.time import DEFAULT_ENTITY_TIMEZONE
 
 from bills.models import (
     Audit,
@@ -369,7 +370,7 @@ def _load_entity(entity_id: str) -> Entity:
         raise BillValidationError("I couldn't find that company.")
 
 
-_HK_TZ = ZoneInfo("Asia/Hong_Kong")
+_HK_TZ = ZoneInfo(DEFAULT_ENTITY_TIMEZONE)
 _MS_DATE_RE = re.compile(r"/Date\((-?\d+)[+-]\d+\)/")
 
 

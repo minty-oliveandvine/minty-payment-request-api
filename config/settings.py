@@ -3,31 +3,36 @@ from pathlib import Path
 
 from django.core.exceptions import ImproperlyConfigured
 from dotenv import load_dotenv
+from minty_shared.config import (
+    DEFAULT_LOCAL_DATABASE_URL,
+    app_env,
+    database_url_from_env,
+    django_database,
+    parse_s3_url,
+    preview_origin_regexes,
+    require_secret_key,
+)
 from minty_shared.logctx import logging_config
-
-from config.dburl import database_url, parse_database_url
-from config.preview_origin import preview_origin_regexes
-from config.s3url import parse_s3_url
 
 load_dotenv()
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-# APP_ENV: "development" or "production" (the default; anything unrecognised counts as production).
-APP_ENV = os.environ.get("APP_ENV", "production").strip().lower()
+# APP_ENV: "development" or "production"; anything else is production (minty_shared.config).
+APP_ENV = app_env()
 DEBUG = APP_ENV == "development"
 
 _DEFAULT_SECRET_KEY = "change-me-in-production"
-SECRET_KEY = os.environ.get("SECRET_KEY", _DEFAULT_SECRET_KEY)
 
-# REFUSE TO BOOT WITH THE PLACEHOLDER KEY OUTSIDE DEVELOPMENT. Without the shared key every
-# authenticated call answers 401 while public endpoints keep working, and the placeholder is
-# in the repo, so tokens signed with it are forgeable. A crash at startup is the loud failure.
-if not DEBUG and SECRET_KEY == _DEFAULT_SECRET_KEY:
-    raise ImproperlyConfigured(
-        "SECRET_KEY is not set. It must be the same value the Flask app mints tokens "
-        "with; without it every request is refused with 401. Refusing to start."
+# REFUSE TO BOOT WITH THE PLACEHOLDER KEY OUTSIDE DEVELOPMENT (minty_shared.config). Without the
+# shared key every authenticated call answers 401 while public endpoints keep working, and the
+# placeholder is in the repo, so tokens signed with it are forgeable.
+try:
+    SECRET_KEY = require_secret_key(
+        os.environ.get("SECRET_KEY"), placeholder=_DEFAULT_SECRET_KEY, development=DEBUG
     )
+except RuntimeError as exc:
+    raise ImproperlyConfigured(str(exc)) from None
 ALLOWED_HOSTS = os.environ.get("ALLOWED_HOSTS", "*").split(",")
 
 # Deliberately no django.contrib.contenttypes / django.contrib.auth.
@@ -47,7 +52,7 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     "corsheaders.middleware.CorsMiddleware",
-    "core.middleware.RequestLoggingMiddleware",
+    "minty_shared.django.middleware.RequestLoggingMiddleware",
     "django.middleware.common.CommonMiddleware",
 ]
 
@@ -69,8 +74,11 @@ CORS_ALLOWED_ORIGINS = [
     ).split(",")
     if origin.strip()
 ]
-# A branch's preview set (config/preview_origin.py); unset = off.
-CORS_ALLOWED_ORIGIN_REGEXES = preview_origin_regexes(os.environ.get("PREVIEW_ORIGIN_REGEX"))
+# A branch's preview set (minty_shared.config); unset = off, a loose pattern refuses to boot.
+try:
+    CORS_ALLOWED_ORIGIN_REGEXES = preview_origin_regexes(os.environ.get("PREVIEW_ORIGIN_REGEX"))
+except ValueError as exc:
+    raise ImproperlyConfigured(str(exc)) from None
 CORS_ALLOW_HEADERS = [
     "authorization",
     "content-type",
@@ -99,12 +107,12 @@ TEMPLATES = [
 # Database — shared with Module 1 Flask app (pettycashv3 schema)
 # ---------------------------------------------------------------------------
 # DATABASE_URL = postgresql://user:pass@host:5432/dbname?schema=pettycashv3[&sslmode=...]
-# (config/dburl.py). DB_SCHEMA is the schema every model lives in, shared with Minty, which
+# (minty_shared.config). DB_SCHEMA is the schema every model lives in, shared with Minty, which
 # reads ?schema= from its own DATABASE_URL the same way. pettycashv3 is the permanent
 # production name; it is a setting, not a literal - every db_table is unqualified and
 # resolves through search_path, and the raw queries read this. The test settings and the
 # root conftest read it too, so `?schema=pettycash_alt` on the test URL proves it.
-_DEFAULT_DB, DB_SCHEMA = parse_database_url(database_url())
+_DEFAULT_DB, DB_SCHEMA = django_database(database_url_from_env(DEFAULT_LOCAL_DATABASE_URL))
 DATABASES = {"default": _DEFAULT_DB}
 
 # LocMem debounce for Flask chart sync (single-process; replace for multi-worker).
@@ -125,22 +133,26 @@ USE_TZ = True
 # ---------------------------------------------------------------------------
 # S3 / Backblaze — for attachment uploads
 # ---------------------------------------------------------------------------
-# S3_URL = https://KEY:SECRET@s3.<region>.backblazeb2.com/<bucket> (config/s3url.py)
-_S3 = parse_s3_url(os.environ.get("S3_URL", "").strip())
-S3_BUCKET = _S3["bucket"]
-S3_KEY = _S3["key"]
-S3_SECRET = _S3["secret"]
-S3_REGION = _S3["region"]
-S3_ENDPOINT_URL = _S3["endpoint_url"]
-
-# REFUSE TO BOOT WITHOUT A BUCKET, in every environment. An unset S3_URL used to leave the
+# S3_URL = https://KEY:SECRET@s3.<region>.backblazeb2.com/<bucket> (minty_shared.config).
+#
+# REFUSE TO BOOT WITHOUT A WHOLE S3_URL, in every environment. An unset S3_URL used to leave the
 # bucket empty: the API started, and every invoice and bank-slip upload then answered 500
 # ("Invalid bucket name") - a .env still carrying the pre-2026-10-02 S3_* names did exactly that.
-if not S3_BUCKET:
+_S3_URL = (os.environ.get("S3_URL") or "").strip()
+if not _S3_URL:
     raise ImproperlyConfigured(
         "S3_URL is not set (https://KEY:SECRET@s3.<region>.backblazeb2.com/<bucket>) - every "
         "attachment upload and download would fail. Refusing to start."
     )
+try:
+    _S3 = parse_s3_url(_S3_URL)
+except ValueError as exc:
+    raise ImproperlyConfigured(str(exc)) from None
+S3_BUCKET = _S3.bucket
+S3_KEY = _S3.key
+S3_SECRET = _S3.secret
+S3_REGION = _S3.region
+S3_ENDPOINT_URL = _S3.endpoint_url
 
 # ---------------------------------------------------------------------------
 # Xero
@@ -166,3 +178,5 @@ LOGGING = logging_config(
     no_propagate=["minty-api.http"],
     level=LOG_LEVEL,
 )
+# The access line's logger (minty_shared.django.middleware.RequestLoggingMiddleware).
+MINTY_HTTP_LOGGER = "minty-api.http"

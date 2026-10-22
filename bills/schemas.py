@@ -21,7 +21,10 @@ class MessageOut(Schema):
 
 
 class ErrorOut(Schema):
-    detail: str
+    """Every API's refusal (minty_shared.django.errors): the sentence to show. (A refusal of the
+    input itself also carries ``fields``, written by the shared handler, not through this schema.)"""
+
+    error: str
 
 
 class SuggestedReferenceOut(Schema):

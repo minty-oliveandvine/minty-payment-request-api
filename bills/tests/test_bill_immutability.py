@@ -178,7 +178,7 @@ class TestAutoStatusCalculation:
             **_auth(user, entity),
         )
         assert resp.status_code == 422
-        assert "exceeds" in resp.json()["detail"].lower()
+        assert "exceeds" in resp.json()["error"].lower()
         bill.refresh_from_db()
         assert bill.status == "submitted"
 
@@ -217,7 +217,7 @@ class TestAutoStatusCalculation:
             **_auth(user, entity),
         )
         assert resp.status_code == 422
-        assert "exceeds" in resp.json()["detail"].lower()
+        assert "exceeds" in resp.json()["error"].lower()
 
     def test_sum_of_pending_payments_cannot_exceed_bill_total(
         self, api, user, entity, membership
@@ -248,7 +248,7 @@ class TestAutoStatusCalculation:
             **headers,
         )
         assert resp.status_code == 422
-        assert "exceeds" in resp.json()["detail"].lower()
+        assert "exceeds" in resp.json()["error"].lower()
 
     def test_updating_payment_to_completed_recalculates(
         self, api, user, entity, membership
@@ -331,7 +331,7 @@ class TestAutoStatusCalculation:
             **headers,
         )
         assert resp.status_code == 422
-        assert "exceeds" in resp.json()["detail"].lower()
+        assert "exceeds" in resp.json()["error"].lower()
 
     def test_exact_remaining_amount_accepted(self, api, user, entity, membership):
         bill = _make_bill(entity, user, amount=100)
@@ -442,7 +442,7 @@ class TestAutoStatusCalculation:
             **headers,
         )
         assert resp.status_code == 422
-        assert "exceeds" in resp.json()["detail"].lower()
+        assert "exceeds" in resp.json()["error"].lower()
 
     def test_update_own_amount_within_limit_accepted(
         self, api, user, entity, membership
@@ -536,7 +536,7 @@ class TestPaidBillImmutability:
             **_auth(user, entity),
         )
         assert resp.status_code == 403
-        assert "paid" in resp.json()["detail"].lower()
+        assert "paid" in resp.json()["error"].lower()
 
     def test_cannot_delete_paid_bill(self, api, user, entity, membership_cashier):
         bill = self._make_paid_bill(entity, user)
@@ -545,7 +545,7 @@ class TestPaidBillImmutability:
             **_auth(user, entity),
         )
         assert resp.status_code == 403
-        assert "paid" in resp.json()["detail"].lower()
+        assert "paid" in resp.json()["error"].lower()
 
     def test_cannot_create_payment_on_paid_bill(
         self, api, user, entity, membership_cashier
@@ -558,7 +558,7 @@ class TestPaidBillImmutability:
             **_auth(user, entity),
         )
         assert resp.status_code == 403
-        assert "immutable" in resp.json()["detail"].lower()
+        assert "immutable" in resp.json()["error"].lower()
 
     def test_cannot_edit_payment_on_paid_bill(
         self, api, user, entity, membership_cashier
@@ -572,7 +572,7 @@ class TestPaidBillImmutability:
             **_auth(user, entity),
         )
         assert resp.status_code == 403
-        assert "immutable" in resp.json()["detail"].lower()
+        assert "immutable" in resp.json()["error"].lower()
 
     def test_cannot_delete_payment_on_paid_bill(
         self, api, user, entity, membership_cashier
@@ -584,7 +584,7 @@ class TestPaidBillImmutability:
             **_auth(user, entity),
         )
         assert resp.status_code == 403
-        detail = resp.json()["detail"].lower()
+        detail = resp.json()["error"].lower()
         assert "accountant" in detail or "paid" in detail
 
     def test_accountant_can_delete_payment_on_paid_bill(

@@ -192,8 +192,26 @@ def test_refresh_adds_no_sid_when_the_old_token_had_none(client, user, entity, m
 
 
 def test_expired_token_cannot_be_refreshed(client, user, entity, membership):
-    """An already-expired billing JWT returns 401 — cannot bootstrap from nothing."""
+    """A billing JWT expired past the 60 s clock skew every API allows (minty_shared.tokens)
+    returns 401 - cannot bootstrap from nothing."""
     expired_token = pyjwt.encode(
+        {
+            "user_id": user.id,
+            "entity_id": entity.id,
+            "module": "billing",
+            "exp": datetime.now(UTC) - timedelta(seconds=120),
+        },
+        settings.SECRET_KEY,
+        algorithm="HS256",
+    )
+    response = client.post(REFRESH_URL, **_auth(expired_token, entity.id))
+    assert response.status_code == 401
+
+
+def test_a_token_just_inside_the_clock_skew_refreshes(client, user, entity, membership):
+    """Expired a second ago is within the skew: auth accepts it, and the refresh must not then
+    refuse it with a stricter decode of its own (it answered 500)."""
+    token = pyjwt.encode(
         {
             "user_id": user.id,
             "entity_id": entity.id,
@@ -203,8 +221,8 @@ def test_expired_token_cannot_be_refreshed(client, user, entity, membership):
         settings.SECRET_KEY,
         algorithm="HS256",
     )
-    response = client.post(REFRESH_URL, **_auth(expired_token, entity.id))
-    assert response.status_code == 401
+    response = client.post(REFRESH_URL, **_auth(token, entity.id))
+    assert response.status_code == 200
 
 
 def test_missing_token_returns_401(client, user, entity, membership):
