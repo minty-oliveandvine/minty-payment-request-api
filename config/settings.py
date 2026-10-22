@@ -3,6 +3,7 @@ from pathlib import Path
 
 from django.core.exceptions import ImproperlyConfigured
 from dotenv import load_dotenv
+from minty_shared.logctx import logging_config
 
 from config.dburl import database_url, parse_database_url
 from config.preview_origin import preview_origin_regexes
@@ -153,48 +154,15 @@ XERO_TOKEN_SERVICE_URL = f"{PETTY_CASH_URL}/api/internal/xero/token"
 XERO_TOKEN_SERVICE_TIMEOUT = 15  # seconds
 
 # ---------------------------------------------------------------------------
-# Logging — core + API formatters
+# Logging - one line format for every Minty backend (minty_shared.logctx):
+#   <UTC>Z LEVEL [trace=…] [user=…|entity=…|step=…] message
 # ---------------------------------------------------------------------------
 LOG_LEVEL = os.environ.get("LOG_LEVEL", "INFO").upper()
 LOG_DIR = BASE_DIR / "logs"
-LOG_DIR.mkdir(exist_ok=True)
 
-LOGGING = {
-    "version": 1,
-    "disable_existing_loggers": False,
-    "formatters": {
-        "core": {"()": "core.log_formatters.CoreFormatter"},
-        "api": {"()": "core.log_formatters.ApiFormatter"},
-    },
-    "handlers": {
-        "console_core": {
-            "class": "logging.StreamHandler",
-            "formatter": "core",
-        },
-        "console_api": {
-            "class": "logging.StreamHandler",
-            "formatter": "api",
-        },
-        "file_core": {
-            "class": "logging.FileHandler",
-            "filename": str(LOG_DIR / "core.log"),
-            "formatter": "core",
-        },
-        "file_api": {
-            "class": "logging.FileHandler",
-            "filename": str(LOG_DIR / "api.log"),
-            "formatter": "api",
-        },
-    },
-    "loggers": {
-        "minty-api": {
-            "handlers": ["console_core", "file_core"],
-            "level": LOG_LEVEL,
-        },
-        "minty-api.http": {
-            "handlers": ["console_api", "file_api"],
-            "level": LOG_LEVEL,
-            "propagate": False,
-        },
-    },
-}
+LOGGING = logging_config(
+    {"minty-api": "core.log", "minty-api.http": "api.log"},
+    log_dir=LOG_DIR,
+    no_propagate=["minty-api.http"],
+    level=LOG_LEVEL,
+)

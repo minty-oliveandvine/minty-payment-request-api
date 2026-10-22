@@ -26,6 +26,7 @@ import jwt
 import requests
 from django.conf import settings
 from django.utils import timezone as django_tz
+from minty_shared import logctx
 
 from core.exceptions import BillValidationError
 from shared_models.enums import EntityStatus
@@ -153,7 +154,7 @@ def _request_token_from_flask(entity_id: str) -> str | None:
     try:
         resp = requests.post(
             url,
-            headers={"Authorization": f"Bearer {assertion}"},
+            headers={"Authorization": f"Bearer {assertion}", **logctx.outgoing_headers()},
             timeout=getattr(settings, "XERO_TOKEN_SERVICE_TIMEOUT", 15),
         )
     except requests.RequestException as exc:

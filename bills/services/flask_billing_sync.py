@@ -11,6 +11,7 @@ import logging
 import requests
 from django.conf import settings
 from django.core.cache import cache
+from minty_shared import logctx
 
 logger = logging.getLogger("minty-api")
 
@@ -57,6 +58,7 @@ def trigger_flask_bill_chart_sync(
             headers={
                 "Authorization": auth,
                 "X-Entity-Id": entity_id,
+                **logctx.outgoing_headers(),
             },
             timeout=30,
         )
@@ -142,7 +144,7 @@ def trigger_chart_sync_if_changed(
     try:
         resp = requests.post(
             url,
-            headers={"Authorization": auth, "X-Entity-Id": entity_id},
+            headers={"Authorization": auth, "X-Entity-Id": entity_id, **logctx.outgoing_headers()},
             timeout=30,
         )
         if resp.status_code >= 400:
@@ -211,6 +213,7 @@ def trigger_flask_contact_sync(request, entity_id: str, *, force: bool = False) 
             headers={
                 "Authorization": auth,
                 "X-Entity-Id": entity_id,
+                **logctx.outgoing_headers(),
             },
             timeout=30,
         )

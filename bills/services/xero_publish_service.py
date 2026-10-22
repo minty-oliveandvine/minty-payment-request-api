@@ -15,6 +15,7 @@ from botocore.exceptions import ClientError
 from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.db import connection, transaction
+from minty_shared import logctx
 
 from bills.models import (
     Audit,
@@ -102,6 +103,7 @@ def _resolve_xero_content_type(mime_type: str, ext: str) -> str:
     return _EXT_TO_MIME.get((ext or "").lower(), "application/octet-stream")
 
 
+@logctx.log_step("xero.publish_bill")
 def publish_bill_to_xero(bill_id: str, entity_id: str, user_id: str, access_token: str) -> dict:
     """Publish a bill to Xero, log sync data, and upload attachments."""
 
@@ -641,6 +643,7 @@ def _sanitise_headers(headers: dict) -> dict:
 # ─── Attachment upload / sync (Xero Files API) ───────────────────────────
 
 
+@logctx.log_step("xero.upload_attachments")
 def _upload_bill_attachments_to_xero(bill, sync, entity_id, user_id, xero_org_id):
     """Authoritative full-replace sync of bill attachments to the Xero invoice.
 
@@ -1102,6 +1105,7 @@ def _assert_account_codes_exist(bill: Bill) -> None:
         )
 
 
+@logctx.log_step("xero.upload_bankslip")
 def upload_bankslip_to_xero(
     bill_id: str, payment_id: str, entity_id: str, user_id: str, access_token: str,
 ) -> dict:
@@ -1366,7 +1370,8 @@ def upload_bankslip_background(bill_id, payment_id, entity_id, user_id, access_t
         finally:
             connection.close()
 
-    thread = threading.Thread(target=_run, daemon=True)
+    # The copy of the request's context keeps its trace on the thread's lines.
+    thread = threading.Thread(target=logctx.carry_context(_run), daemon=True)
     thread.start()
     logger.info(
         "upload_bankslip_background: spawned thread bill=%s payment=%s",
