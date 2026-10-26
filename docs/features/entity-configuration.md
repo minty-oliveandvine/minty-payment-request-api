@@ -40,14 +40,18 @@ swap never trips it.
 `GET` returns the entity's suppliers from `xero_contact_sync` scoped to the entity's
 **current** Xero organisation (`xero_org_scope`; no org → no scoping, so the cached list
 still works when Xero is down), matched the way Minty matches; `POST` creates the contact
-in Xero and upserts the cache row (`create_entity_bill_contact_in_xero`). Duplicates and
+in Xero and upserts the cache row (`create_entity_bill_contact_in_xero`); a name over 100
+characters is refused (422 "Keep the supplier's name to 100 characters or fewer.", because
+`Bill.contact_name` holds 100) before Xero is called. Duplicates and
 exact-match rules: `bills/tests/test_contact_*.py`.
 
 ## Currencies
 
 `currency_info` is the registry (ISO code, symbol, decimals) and `entity_bill_currency`
 a company's allowed list; every amount the frontend shows uses the entity's currency
-(`GET /api/auth/entity-currency`), never the bill's stored code.
+(`GET /api/auth/entity-currency` → `currency_code` and `decimal_places`, from
+`currency_info`; `""` and 2 when none is set), never the bill's stored code. The frontend
+sizes its amount inputs to `decimal_places` (JPY 0).
 
 A bill's currency is set by the server from `entities.currency_id`
 (`core/entity_currency.py`); the `currency_code` a client sends is ignored. An entity

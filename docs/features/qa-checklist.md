@@ -53,7 +53,8 @@ endpoint needs a real `user_entity` row before it answers anything.
       they are not a member of) and `sid`.
 - [ ] `GET /entitlements` reflects `entity_function_map` live — toggle a module in the DB
       and confirm the answer changes without minting a new token.
-- [ ] `GET /entity-currency` returns the entity's ISO currency code ("" when none is set).
+- [ ] `GET /entity-currency` returns the entity's ISO currency code and `decimal_places` ("" and 2
+      when none is set; JPY → 0).
 - [ ] With the entity's currency cleared, `POST /bills/`, `/bills/draft/` and `/bills/submit/`
       → 422 "Your company has no currency set…"; a sent `currency_code` never overrides the
       entity's.
@@ -152,7 +153,8 @@ endpoint needs a real `user_entity` row before it answers anything.
 - [ ] `GET /api/entity-bill-contacts/` is scoped to the entity's **current** Xero org; with
       no org linked the scoping is skipped and the cached list still answers.
 - [ ] `POST /api/entity-bill-contacts/` creates the contact in Xero and upserts the cache
-      row; a duplicate/near-duplicate name follows the documented exact-match rule.
+      row; a duplicate/near-duplicate name follows the documented exact-match rule; a name over
+      100 characters → 422 "Keep the supplier's name to 100 characters or fewer.".
 - [ ] Every amount shown anywhere reads `GET /api/auth/entity-currency`'s code — never the
       bill's own stored `currency_code`.
 
