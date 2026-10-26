@@ -94,14 +94,26 @@ class TestEntityCurrencyRequired:
     def test_entity_currency_endpoint(self, api_client, auth_headers, test_user_entity):
         resp = api_client.get("/api/v1/auth/entity-currency", **auth_headers)
         assert resp.status_code == 200
-        assert resp.json() == {"currency_code": "HKD"}
+        assert resp.json() == {"currency_code": "HKD", "decimal_places": 2}
 
     def test_entity_currency_endpoint_unset(
         self, api_client, auth_headers, test_user_entity, no_currency
     ):
         resp = api_client.get("/api/v1/auth/entity-currency", **auth_headers)
         assert resp.status_code == 200
-        assert resp.json() == {"currency_code": ""}
+        assert resp.json() == {"currency_code": "", "decimal_places": 2}
+
+    def test_entity_currency_endpoint_zero_places(
+        self, api_client, auth_headers, test_entity, test_user_entity
+    ):
+        jpy, _ = CurrencyInfo.objects.get_or_create(
+            currency_code="JPY",
+            defaults={"currency_name": "Japanese Yen", "symbol": "¥", "decimal_places": 0},
+        )
+        Entity.objects.filter(id=test_entity.id).update(currency_id=jpy.id)
+        resp = api_client.get("/api/v1/auth/entity-currency", **auth_headers)
+        assert resp.status_code == 200
+        assert resp.json() == {"currency_code": "JPY", "decimal_places": 0}
 
 
 @pytest.mark.django_db

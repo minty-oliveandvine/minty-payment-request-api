@@ -38,6 +38,18 @@ class TestEntityBillContactsCreate:
         assert resp.status_code == 422
         assert "contact name" in resp.json()["detail"].lower()
 
+    @pytest.mark.parametrize("length", [101, 150])
+    def test_rejects_name_over_100(self, api_client, auth_headers, test_user_entity, length):
+        """Bill.contact_name holds 100, so a longer new supplier is refused before Xero."""
+        resp = api_client.post(
+            "/api/v1/entity-bill-contacts/",
+            data={"name": "A" * length},
+            content_type="application/json",
+            **auth_headers,
+        )
+        assert resp.status_code == 422
+        assert resp.json()["detail"] == "Keep the supplier's name to 100 characters or fewer."
+
     def test_requires_xero_connected_entity(
         self,
         api_client,

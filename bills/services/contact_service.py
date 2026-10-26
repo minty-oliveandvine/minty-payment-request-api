@@ -284,8 +284,8 @@ def create_entity_bill_contact_in_xero(
     cleaned = (name or "").strip()
     if not cleaned:
         raise BillValidationError("I'll need a contact name here.")
-    if len(cleaned) > 150:
-        raise BillValidationError("Contact names need to be 150 characters or fewer.")
+    if len(cleaned) > 100:  # Bill.contact_name is CharField(max_length=100)
+        raise BillValidationError("Keep the supplier's name to 100 characters or fewer.")
 
     entity = Entity.objects.filter(id=entity_id).first()
     if not entity:

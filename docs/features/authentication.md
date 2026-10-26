@@ -39,7 +39,7 @@ A system superuser (`system_role = superadmin`) with no row on the entity gets a
 | `POST /token/refresh` | re-mints the billing JWT (8 hours, `BILLING_TOKEN_HOURS`) from a still-valid one — the frontend's cookie lives 8 hours too. `system_role` (`superadmin` or "") and `is_view_only` are re-derived from the request, `sid` is carried over (2026-10-20; they used to be dropped, so a non-member super admin saw write controls the API then refused) |
 | `GET /entitlements` | `petty_cash_enabled` / `billing_enabled` read **live** from `entity_function_map` (`core/entitlements.py`) — the JWT's claims are hints only |
 | `GET /xero-status` | whether the **company** is live on Xero (`xero_connection_live`, database only): a Xero org linked, `status` not `disconnected`, and a refresh token on the connector (`connected_by_user_id`) or the caller. `BearerAuth` - a role on the entity is required (2026-10-06; it used to read the person's own `user.refresh_token`, a column that had moved to `user_token`, swallowed the error and always said `false`) |
-| `GET /entity-currency` | the entity's ISO currency code |
+| `GET /entity-currency` | the entity's ISO currency code and its decimal places |
 | `POST /logout` | clears the presence stamps Minty keeps (`signed_in_at`, `last_seen_at`), so leaving from here counts as leaving |
 
 `GET /auth/me` was removed on 2026-10-01 together with `PUT /profile/me` (profile update) and

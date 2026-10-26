@@ -43,6 +43,8 @@ class LogoutOut(Schema):
 class EntityCurrencyOut(Schema):
     # ISO 4217 code of the entity's selected currency ("" when unset).
     currency_code: str
+    # Its currency_info.decimal_places (JPY 0); 2 when no currency is set.
+    decimal_places: int
 
 
 @session_router.get(
@@ -145,18 +147,20 @@ def token_refresh(request):
 @session_router.get(
     "/entity-currency",
     response={200: EntityCurrencyOut},
-    summary="ISO currency code of the current entity (entities.currency_id)",
+    summary="ISO currency code and decimal places of the current entity (entities.currency_id)",
 )
 def entity_currency(request):
-    """Resolve the JWT entity's selected currency to its ISO code.
+    """Resolve the JWT entity's selected currency to its ISO code and decimal places.
 
     entities.currency_id is a uuid FK into pettycashv3.currency_info(id); the
-    UI renders money amounts with the currency_code; "" means none is set.
+    UI renders money amounts with the currency_code and sizes amount inputs to
+    decimal_places; "" means none is set (decimal_places is then 2).
     """
-    from core.entity_currency import entity_currency_code
+    from core.entity_currency import entity_currency as resolve
 
     entity_id = str(getattr(request, "entity_id", "") or "")
-    return EntityCurrencyOut(currency_code=entity_currency_code(entity_id))
+    code, places = resolve(entity_id)
+    return EntityCurrencyOut(currency_code=code, decimal_places=places)
 
 
 @session_router.get(
