@@ -140,22 +140,27 @@ def draft_bill(db, test_user, test_entity):
     )
 
 
-@pytest.fixture
-def draft_bill_with_attachment(db, draft_bill):
+def attach_invoice(bill, name="invoice.pdf"):
+    """Give ``bill`` one invoice attachment - a bill can't be published without one."""
     attachment = Attachment.objects.create(
-        original_name="invoice.pdf",
+        original_name=name,
         stored_name="stored.pdf",
         file_path="attachments/test/stored.pdf",
         mime_type="application/pdf",
         file_size=1024,
         file_extension="pdf",
         storage_provider="s3",
-        uploaded_by=draft_bill.uploaded_by,
+        uploaded_by=bill.uploaded_by,
     )
-    BillAttachment.objects.create(
-        bill=draft_bill,
+    return BillAttachment.objects.create(
+        bill=bill,
         attachment=attachment,
         attachment_role="invoice",
-        created_by=draft_bill.uploaded_by,
+        created_by=bill.uploaded_by,
     )
+
+
+@pytest.fixture
+def draft_bill_with_attachment(db, draft_bill):
+    attach_invoice(draft_bill)
     return draft_bill

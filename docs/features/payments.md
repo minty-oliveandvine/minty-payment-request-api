@@ -18,9 +18,15 @@ Rules:
 - **No overpayment**: pending + completed payments may not exceed `bill.amount`
   (`_check_payment_within_bill_total`, a 422 that says so).
 - The bill's status follows its **completed** payments: their sum ≥ `amount` → `paid`,
-  above zero → `partially_paid`, otherwise back to `submitted`
-  (`sync_bill_status_from_payments`, run after every create / update / delete, with a
-  `status_changed` audit line). `get_amount_due` is what the detail page shows.
+  above zero → `partially_paid` (`_update_bill_status`, run after every create / update /
+  delete, with a `status_changed` audit line). When an edited or deleted payment leaves a
+  paid / partially paid bill with nothing completed, it goes back to `submitted` (owner,
+  2026-10-27). A bill edit re-runs the same check (`sync_bill_status_from_payments`) but
+  never reopens: an elevated role may mark a bill paid by hand with no payment recorded.
+- `bill.amount_paid` is the sum of completed payments, rewritten on every payment change
+  (pending payments are not paid money). `get_amount_due` is what the detail page shows.
+- Payments are recorded in Minty only - nothing is posted to Xero's Payments API (owner,
+  2026-10-27); a payment's bank slips go onto the Xero invoice (below).
 - Every payment action is audited (`payment_created` / `payment_updated` /
   `payment_deleted`, `marked_paid`).
 

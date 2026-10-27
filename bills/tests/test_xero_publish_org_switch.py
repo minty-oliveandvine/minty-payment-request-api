@@ -48,6 +48,7 @@ from bills.services.xero_publish_service import (
     publish_bill_to_xero,
     upload_bankslip_to_xero,
 )
+from bills.tests.conftest import attach_invoice
 from core.exceptions import BillValidationError
 from shared_models.models import Entity, User, UserEntity, XeroContactSync
 
@@ -142,7 +143,7 @@ def switched_bill(db, entity_on_org_b, switch_user) -> Bill:
         entity_id=entity_on_org_b.id, xero_contact_id="contact-from-org-a",
         defaults={"id": _uid("contact-row-org-a"), "xero_org_id": ORG_A, "name": "Acme Corp"},
     )
-    return Bill.objects.create(
+    bill = Bill.objects.create(
         entity_id=entity_on_org_b.id,
         contact="Acme Corp",
         xero_contact_id="contact-from-org-a",
@@ -156,6 +157,8 @@ def switched_bill(db, entity_on_org_b, switch_user) -> Bill:
         xero_account_code="200",
         uploaded_by=switch_user.id,
     )
+    attach_invoice(bill)
+    return bill
 
 
 @pytest.fixture

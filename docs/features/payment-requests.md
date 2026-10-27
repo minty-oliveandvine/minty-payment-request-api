@@ -23,9 +23,12 @@ Published), `published`, `failed`.
 - **Draft** — `POST /api/bills/draft/` and `PUT /api/bills/{id}/draft` save without
   validation (anything may be missing).
 - **Submit** — `POST /api/bills/submit/` (create-and-submit) or `POST /api/bills/` runs
-  `validate_for_submission`: a contact, an amount above zero, an invoice date, a due date
-  and **at least one attachment** are required; the errors come back together (422) in
-  the words the dialog shows.
+  `validate_for_submission`: a contact, an amount above zero, an invoice date and a due date
+  are required, plus a line item **or** an attachment; the errors come back together (422)
+  in the words the dialog shows. The dialog demands an attachment, but it uploads the files
+  *after* the bill exists, so submit cannot insist - **publish** does: a bill with no
+  (undeleted) attachment is refused, "Add the invoice attachment to publish this payment
+  request." (owner, 2026-10-27).
 - **Find by Payment No.** — `GET /api/bills/by-reference/{reference}` (2026-10-05): the company's bill
   with that reference, trimmed and case-insensitive; a reference is unique only among bills that
   are not void, so a live bill wins over a void one, then the newest. The web app's details address
@@ -52,7 +55,8 @@ Published), `published`, `failed`.
   (`xero_contact_sync`; `GET /api/entity-bill-contacts/` lists them, `POST` creates one in
   Xero and caches it); `xero_account_code` — from the entity's bill account list
   (`entity_bill_account_xero`, synced by Minty); `currency_code` — the entity's currency;
-  `invoice_date`, `due_date`, `description`, `amount`, `amount_paid`.
+  `invoice_date`, `due_date`, `description`, `amount`, `amount_paid` (the completed
+  payments' sum, kept by `payment_service`; see payments.md).
 - Lines: one `bill_line` per bill today (description, quantity, unit amount, account code).
 
 ## Listing

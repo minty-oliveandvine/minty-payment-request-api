@@ -20,6 +20,7 @@ import pytest
 
 from bills.models import Bill
 from bills.services.xero_publish_service import publish_bill_to_xero
+from bills.tests.conftest import attach_invoice
 from core.exceptions import BillValidationError
 from shared_models.models import Entity, User, UserEntity, XeroContactSync
 
@@ -131,7 +132,7 @@ def fall_user_entity(db, fall_user, fall_entity) -> UserEntity:
 @pytest.fixture
 def bill_with_contact_id(db, fall_entity, fall_user) -> Bill:
     """AUTHORISED bill that already has a populated xero_contact_id."""
-    return Bill.objects.create(
+    bill = Bill.objects.create(
         entity_id=fall_entity.id,
         contact="24 Locks",
         xero_contact_id=FAKE_XERO_CONTACT_UUID,
@@ -145,12 +146,14 @@ def bill_with_contact_id(db, fall_entity, fall_user) -> Bill:
         xero_account_code="200",
         uploaded_by=fall_user.id,
     )
+    attach_invoice(bill)
+    return bill
 
 
 @pytest.fixture
 def bill_without_contact_id(db, fall_entity, fall_user) -> Bill:
     """AUTHORISED bill with xero_contact_id left blank (the pre-fix scenario)."""
-    return Bill.objects.create(
+    bill = Bill.objects.create(
         entity_id=fall_entity.id,
         contact="24 Locks",
         xero_contact_id="",
@@ -164,6 +167,8 @@ def bill_without_contact_id(db, fall_entity, fall_user) -> Bill:
         xero_account_code="200",
         uploaded_by=fall_user.id,
     )
+    attach_invoice(bill)
+    return bill
 
 
 @pytest.fixture
@@ -306,6 +311,7 @@ class TestContactFallbackSuccessCaseInsensitive:
             xero_account_code="200",
             uploaded_by=fall_user.id,
         )
+        attach_invoice(bill)
         # Sync row has title-case name
         XeroContactSync.objects.create(
             id=str(uuid.uuid4()),
@@ -515,6 +521,7 @@ class TestContactFallbackPersistsToDatabase:
             xero_account_code="200",
             uploaded_by=fall_user.id,
         )
+        attach_invoice(bill)
 
         with (
             patch(_PUT_PATH),

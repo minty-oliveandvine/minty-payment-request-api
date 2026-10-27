@@ -26,8 +26,11 @@ the bytes actually stored (a PNG may have been re-encoded). `storage_provider` i
 
 ## What Confirm needs
 
-Submitting a request (`POST /api/bills/submit/`) requires at least one attachment — the
-dialog in minty-payment-request-web uploads them right after the bill is created, and the API
+The dialog requires at least one attachment and uploads it right after the bill is created,
+so the API cannot require one at submit (it accepts a line item or an attachment); it is
+**publishing** that refuses a bill with no undeleted attachment (`publish_bill_to_xero`,
+owner 2026-10-27). If an upload fails after submit the dialog says so ("…sent, but X
+didn't upload") and the request stays submitted without it. The API
 tests cover the upload with the storage stubbed (`bills/tests/test_attachment.py`,
 `test_attachment_types.py`, `test_payment_attachment_upload.py`). Against a real bucket
 the browser does it in `minty-payment-request-web/e2e/04_xero_publish.spec.ts` (`E2E_XERO=1`).
