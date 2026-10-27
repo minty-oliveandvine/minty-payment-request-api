@@ -235,9 +235,11 @@ def _xero_200(invoice_id="xero-inv-0001"):
 def test_publishing_records_the_push_and_marks_the_bill_published(api_client, headers, clerk, company):
     from bills.models import XeroBillSync
     from bills.services.xero_publish_service import publish_bill_to_xero
+    from bills.tests.conftest import attach_invoice
 
     bill_id = create_bill(api_client, headers)["id"]
     put(api_client, f"/api/v1/bills/{bill_id}", {"status": "submitted"}, headers)
+    attach_invoice(Bill.objects.get(id=bill_id))
 
     with (
         patch("bills.services.xero_publish_service.requests.put", return_value=_xero_200()) as put_,

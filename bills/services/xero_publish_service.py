@@ -117,6 +117,10 @@ def publish_bill_to_xero(bill_id: str, entity_id: str, user_id: str, access_toke
         raise BillValidationError("This company isn't connected to Xero yet.")
     if not access_token:
         raise BillValidationError("The Xero connection needs reconnecting before I can publish.")
+    # A bill needs its invoice to be published (owner, 2026-10-27). Submit can't require
+    # it - the files upload after the bill exists - so this is where the rule holds.
+    if not any(not ba.attachment.is_deleted for ba in bill.bill_attachments.all()):
+        raise BillValidationError("Add the invoice attachment to publish this payment request.")
 
     # Was this bill previously published, and was that to THIS Xero org?
     #

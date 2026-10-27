@@ -36,6 +36,7 @@ import pytest
 
 from bills.models import Audit, Bill, BillLineItem, XeroBillSync, XeroBillSyncPayload
 from bills.services.xero_publish_service import publish_bill_to_xero
+from bills.tests.conftest import attach_invoice
 from core.exceptions import BillValidationError
 from shared_models.models import Entity, User, UserEntity
 
@@ -145,8 +146,8 @@ def xero_user_entity(db, xero_user, xero_entity) -> UserEntity:
 
 @pytest.fixture
 def authorised_bill(db, xero_entity, xero_user) -> Bill:
-    """A ready-to-publish AUTHORISED bill with a Xero contact linked."""
-    return Bill.objects.create(
+    """A ready-to-publish AUTHORISED bill with a Xero contact linked and its invoice attached."""
+    bill = Bill.objects.create(
         entity_id=xero_entity.id,
         contact="Acme Corp",
         xero_contact_id="xero-contact-abc",
@@ -160,6 +161,8 @@ def authorised_bill(db, xero_entity, xero_user) -> Bill:
         xero_account_code="200",
         uploaded_by=xero_user.id,
     )
+    attach_invoice(bill)
+    return bill
 
 
 @pytest.fixture
@@ -188,6 +191,7 @@ def bill_with_line_items(db, xero_entity, xero_user) -> Bill:
         tax_type="NONE",
         sort_order=0,
     )
+    attach_invoice(bill)
     return bill
 
 
@@ -974,6 +978,39 @@ class TestGuardRails:
         mock_put.assert_not_called()
         mock_post.assert_not_called()
 
+    def test_a_bill_without_an_attachment_is_not_published(
+        self, xero_entity, xero_user, xero_user_entity,
+    ):
+        """No invoice attachment -> refused before any HTTP call (owner, 2026-10-27)."""
+        bill = Bill.objects.create(
+            entity_id=xero_entity.id, contact="Acme Corp", xero_contact_id="xero-contact-abc",
+            status=Bill.Status.SUBMITTED, amount=Decimal("500.00"),
+            invoice_date=datetime.date(2026, 4, 1), due_date=datetime.date(2026, 4, 30),
+            currency_code="HKD", xero_account_code="200", uploaded_by=xero_user.id,
+        )
+        with (
+            patch(_PUT_PATH) as mock_put,
+            patch(_POST_PATH) as mock_post,
+        ):
+            with pytest.raises(BillValidationError) as exc_info:
+                publish_bill_to_xero(str(bill.id), xero_entity.id, FAKE_USER_ID, FAKE_ACCESS_TOKEN)
+
+        assert str(exc_info.value) == "Add the invoice attachment to publish this payment request."
+        mock_put.assert_not_called()
+        mock_post.assert_not_called()
+        bill.refresh_from_db()
+        assert bill.published != Bill.PublishStatus.PUBLISHED
+
+    def test_a_deleted_attachment_does_not_count(
+        self, authorised_bill, xero_entity, xero_user_entity,
+    ):
+        for ba in authorised_bill.bill_attachments.all():
+            ba.attachment.is_deleted = True
+            ba.attachment.save(update_fields=["is_deleted"])
+        with patch(_PUT_PATH) as mock_put, pytest.raises(BillValidationError):
+            publish_bill_to_xero(str(authorised_bill.id), xero_entity.id, FAKE_USER_ID, FAKE_ACCESS_TOKEN)
+        mock_put.assert_not_called()
+
     def test_bill_not_found_raises(self, xero_entity, xero_user_entity):
         """Passing a non-existent bill_id raises BillValidationError."""
         with pytest.raises(BillValidationError) as exc_info:
@@ -1013,6 +1050,14 @@ class TestUploadBillAttachmentsToXero:
     TC-ATT-009  invoice_id blank → returns immediately without any HTTP call
     TC-ATT-010  Bill has no attachments → Xero files are still cleared, no upload
     """
+
+    @pytest.fixture(autouse=True)
+    def _start_without_attachments(self, request):
+        """These tests count slots, so each starts from the attachments it makes itself,
+        not the invoice the shared ``authorised_bill`` fixture carries for publishing."""
+        if "authorised_bill" in request.fixturenames:
+            from bills.models import BillAttachment
+            BillAttachment.objects.filter(bill=request.getfixturevalue("authorised_bill")).delete()
 
     def _make_sync(self, bill, invoice_id="xero-inv-001", invoice_number="INV-001"):
         from bills.models import XeroBillSync

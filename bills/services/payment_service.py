@@ -69,14 +69,25 @@ def sync_bill_status_from_payments(bill: Bill, user_id: str = "") -> None:
     _update_bill_status(bill, user_id)
 
 
-def _update_bill_status(bill: Bill, user_id: str = "") -> None:
-    """Set bill status based on completed payments vs bill amount."""
+def _update_bill_status(bill: Bill, user_id: str = "", *, reopen_when_unpaid: bool = False) -> None:
+    """Set ``amount_paid`` and the status from completed payments vs bill amount.
+
+    ``amount_paid`` is always the completed total. ``reopen_when_unpaid`` (a payment was
+    edited or deleted): a paid / partially paid bill whose completed payments fall back
+    to zero is an open request again, ``submitted`` (owner, 2026-10-27). Without it a
+    bill nothing has paid keeps its status - an elevated role may mark one paid by hand."""
     completed_sum = _completed_total(bill)
+
+    if bill.amount_paid != completed_sum:
+        bill.amount_paid = completed_sum
+        bill.save(update_fields=["amount_paid", "updated_at"])
 
     if bill.amount > 0 and completed_sum >= bill.amount:
         new_status = Bill.Status.PAID
     elif completed_sum > 0:
         new_status = Bill.Status.PARTIALLY_PAID
+    elif reopen_when_unpaid and bill.status in (Bill.Status.PAID, Bill.Status.PARTIALLY_PAID):
+        new_status = Bill.Status.SUBMITTED
     else:
         return
 
@@ -176,7 +187,7 @@ def update_payment(payment: Payment, data, user_id: str) -> Payment:
             user_id,
             f"Payment {payment.id} updated",
         )
-        _update_bill_status(payment.bill, user_id)
+        _update_bill_status(payment.bill, user_id, reopen_when_unpaid=True)
     logger.info("Payment updated id=%s by user=%s", payment.id, user_id)
     return payment
 
@@ -193,5 +204,5 @@ def delete_payment(payment: Payment, user_id: str):
             user_id,
             f"Payment of {amount} deleted",
         )
-        _update_bill_status(bill, user_id)
+        _update_bill_status(bill, user_id, reopen_when_unpaid=True)
     logger.info("Payment deleted id=%s by user=%s", payment_id, user_id)

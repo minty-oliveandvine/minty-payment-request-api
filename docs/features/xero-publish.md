@@ -10,7 +10,9 @@ token side in [authentication.md](authentication.md).
 ## The flow (`publish_bill_to_xero`)
 
 1. **Token** — the connector's stored access token if unexpired, else Minty's internal
-   token service; without one the endpoint returns *reconnect required*.
+   token service; without one the endpoint returns *reconnect required*. A bill with no
+   undeleted attachment is refused here too, before any Xero call: "Add the invoice
+   attachment to publish this payment request." (owner, 2026-10-27).
 2. **Which sync to build on** — `_select_successful_sync(bill, xero_org_id)` picks the
    last successful sync **for this organisation**: the org is read from the stored request
    headers (`xero_bill_sync_payload.request_headers["Xero-Tenant-Id"]`; an unrecorded org

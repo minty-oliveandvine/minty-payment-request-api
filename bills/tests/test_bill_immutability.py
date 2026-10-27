@@ -308,7 +308,79 @@ class TestAutoStatusCalculation:
         )
         assert resp.status_code == 200
         bill.refresh_from_db()
+        # Nothing is paid any more: the request is open again (owner, 2026-10-27).
+        assert bill.status == "submitted"
+        assert bill.amount_paid == Decimal("0")
+
+    def test_deleting_one_of_two_payments_keeps_partially_paid(
+        self, api, user, entity, membership
+    ):
+        bill = _make_bill(entity, user, amount=200)
+        headers = _auth(user, entity)
+        ids = []
+        for amount in ("50.00", "30.00"):
+            resp = api.post(
+                f"/api/v1/bills/{bill.id}/payments",
+                data=json.dumps({"amount": amount, "payment_status": "completed"}),
+                content_type="application/json",
+                **headers,
+            )
+            ids.append(resp.json()["id"])
+
+        api.delete(f"/api/v1/bills/{bill.id}/payments/{ids[0]}", **headers)
+        bill.refresh_from_db()
         assert bill.status == "partially_paid"
+        assert bill.amount_paid == Decimal("30.00")
+
+    def test_amount_paid_follows_completed_payments(
+        self, api, user, entity, membership
+    ):
+        bill = _make_bill(entity, user, amount=200)
+        headers = _auth(user, entity)
+
+        api.post(
+            f"/api/v1/bills/{bill.id}/payments",
+            data=json.dumps({"amount": "80.00", "payment_status": "completed"}),
+            content_type="application/json",
+            **headers,
+        )
+        bill.refresh_from_db()
+        assert bill.amount_paid == Decimal("80.00")
+
+        # A pending payment is not paid money.
+        pending = api.post(
+            f"/api/v1/bills/{bill.id}/payments",
+            data=json.dumps({"amount": "120.00", "payment_status": "pending"}),
+            content_type="application/json",
+            **headers,
+        ).json()["id"]
+        bill.refresh_from_db()
+        assert bill.amount_paid == Decimal("80.00")
+        assert bill.status == "partially_paid"
+
+        api.put(
+            f"/api/v1/bills/{bill.id}/payments/{pending}",
+            data=json.dumps({"amount": "120.00", "payment_status": "completed"}),
+            content_type="application/json",
+            **headers,
+        )
+        bill.refresh_from_db()
+        assert bill.amount_paid == Decimal("200.00")
+        assert bill.status == "paid"
+
+    def test_a_pending_payment_alone_leaves_a_submitted_bill_alone(
+        self, api, user, entity, membership
+    ):
+        bill = _make_bill(entity, user, amount=100)
+        api.post(
+            f"/api/v1/bills/{bill.id}/payments",
+            data=json.dumps({"amount": "40.00", "payment_status": "pending"}),
+            content_type="application/json",
+            **_auth(user, entity),
+        )
+        bill.refresh_from_db()
+        assert bill.status == "submitted"
+        assert bill.amount_paid == Decimal("0")
 
     def test_second_payment_exceeding_remainder_rejected(
         self, api, user, entity, membership
