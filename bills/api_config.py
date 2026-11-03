@@ -1,7 +1,7 @@
 import logging
 
 from django.core.exceptions import ValidationError
-from django.db import transaction
+from django.db import IntegrityError, transaction
 from django.http import Http404
 from minty_db.enums import SystemRole
 from minty_db.models import Entity, User, UserEntity
@@ -86,6 +86,7 @@ BILL_SETTINGS_ACCOUNT_TYPES = frozenset(
 )
 
 LAST_TICKED_CODE_MESSAGE = "Keep at least one account code ticked."
+DUPLICATE_XERO_ACCOUNT_MESSAGE = "That Xero account is already in your list of payment account codes."
 
 
 # ═══════════════════════════════════════════════════════════════════════════
@@ -289,17 +290,30 @@ entity_bill_accounts_router = Router()
 
 @entity_bill_accounts_router.post(
     "/",
-    response={201: EntityBillAccountXeroOut},
+    response={201: EntityBillAccountXeroOut, 409: ErrorOut},
     summary="Create an entity bill account",
 )
 def create_entity_bill_account(request, payload: EntityBillAccountXeroCreateIn):
     check_not_system_superuser(request, "modify configuration")
     check_edit_bill_settings(request.entity_role)
-    account = EntityBillAccountXero.objects.create(
-        entity_id=request.entity_id,
-        created_by=str(request.auth_user.id),
-        **payload.dict(),
-    )
+    data = payload.dict()
+    # One code per Xero account per company (uq_ebax_entity_xero_account, 2026-11-03). A code
+    # added by hand has no Xero id ("") and is not covered.
+    xero_account_id = (data.get("xero_account_id") or "").strip()
+    if xero_account_id and EntityBillAccountXero.objects.filter(
+        entity_id=request.entity_id, xero_account_id=xero_account_id
+    ).exists():
+        return 409, {"detail": DUPLICATE_XERO_ACCOUNT_MESSAGE}
+    try:
+        with transaction.atomic():
+            account = EntityBillAccountXero.objects.create(
+                entity_id=request.entity_id,
+                created_by=str(request.auth_user.id),
+                **data,
+            )
+    except IntegrityError:
+        # Flask's chart sync stored the same Xero account since the look-up.
+        return 409, {"detail": DUPLICATE_XERO_ACCOUNT_MESSAGE}
     logger.info(
         "EntityBillAccountXero created id=%s entity=%s",
         account.id,

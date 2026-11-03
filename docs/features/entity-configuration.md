@@ -35,6 +35,13 @@ one account code ticked." and writes nothing (the entity's rows are locked `FOR 
 order, so two parallel unticks cannot both pass). minty-payment-request-web sends ticks ON before OFF so a
 swap never trips it.
 
+**One code per Xero account (2026-11-03).** The table's partial unique index
+`uq_ebax_entity_xero_account` (`(entity_id, xero_account_id) WHERE xero_account_id <> ''`, minty-db
+v0.4) stops Minty's syncs writing a code twice. `POST /` with a `xero_account_id` the company already
+has answers **409** "That Xero account is already in your list of payment account codes." - also when
+a sync stores it between the look-up and the insert. Codes added by hand (`xero_account_id` `""`)
+are not covered. `bills/tests/test_xero_unique_keys.py`.
+
 ## Contacts (`/api/entity-bill-contacts/*`)
 
 `GET` returns the entity's suppliers from `xero_contact_sync` scoped to the entity's
@@ -43,7 +50,9 @@ still works when Xero is down), matched the way Minty matches; `POST` creates th
 in Xero and upserts the cache row (`create_entity_bill_contact_in_xero`); a name over 100
 characters is refused (422 "Keep the supplier's name to 100 characters or fewer.", because
 `Bill.contact_name` holds 100) before Xero is called. Duplicates and
-exact-match rules: `bills/tests/test_contact_*.py`.
+exact-match rules: `bills/tests/test_contact_*.py`. One cache row per Xero contact per company
+(`uq_xcs_entity_contact`, 2026-11-03): when Minty's sync stored the contact between the look-up
+and the insert, that row is the contact (`bills/tests/test_xero_unique_keys.py`).
 
 ## Currencies
 

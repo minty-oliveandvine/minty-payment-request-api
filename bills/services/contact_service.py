@@ -20,6 +20,7 @@ import logging
 import uuid
 
 import requests
+from django.db import IntegrityError, transaction
 from django.db.models import Q
 from minty_db.models import Entity, XeroContactSync
 
@@ -362,18 +363,24 @@ def create_entity_bill_contact_in_xero(
         entity_id=entity_id,
         xero_contact_id=contact_id,
     ).first()
-    if row:
+    if row is None:
+        try:
+            with transaction.atomic():
+                row = XeroContactSync.objects.create(
+                    id=str(uuid.uuid4()),
+                    entity_id=entity_id,
+                    xero_contact_id=contact_id,
+                    xero_org_id=xero_org_id,
+                    name=contact_name,
+                    category=None,
+                )
+        except IntegrityError:
+            # Flask's sync stored the same contact since the look-up (uq_xcs_entity_contact,
+            # 2026-11-03): that row is this contact.
+            row = XeroContactSync.objects.get(entity_id=entity_id, xero_contact_id=contact_id)
+    if (row.name, row.xero_org_id) != (contact_name, xero_org_id):
         row.name = contact_name
         row.xero_org_id = xero_org_id
         row.save(update_fields=["name", "xero_org_id"])
-    else:
-        row = XeroContactSync.objects.create(
-            id=str(uuid.uuid4()),
-            entity_id=entity_id,
-            xero_contact_id=contact_id,
-            xero_org_id=xero_org_id,
-            name=contact_name,
-            category=None,
-        )
 
     return _db_to_bill_contact(row)
