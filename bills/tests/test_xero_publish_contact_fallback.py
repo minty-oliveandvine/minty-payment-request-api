@@ -17,12 +17,12 @@ from decimal import Decimal
 from unittest.mock import MagicMock, patch
 
 import pytest
+from minty_db.models import Entity, User, UserEntity, XeroContactSync
 
 from bills.models import Bill
 from bills.services.xero_publish_service import publish_bill_to_xero
 from bills.tests.conftest import attach_invoice
 from core.exceptions import BillValidationError
-from shared_models.models import Entity, User, UserEntity, XeroContactSync
 
 # ═══════════════════════════════════════════════════════════════════════════
 # CONSTANTS
@@ -197,7 +197,7 @@ class TestContactFallbackSkippedWhenContactIdPresent:
     ):
         """The by-NAME heal must not run when the contact is set. (The contact's Xero id is
         read through its xero_contact_sync row since C8, so the table IS queried - by id.)"""
-        from shared_models.models import XeroContactSync
+        from minty_db.models import XeroContactSync
 
         real_filter = XeroContactSync.objects.filter
         calls = []

@@ -18,6 +18,9 @@ requests>=2.28,<3.0
 # is a new tag, bumped in all five backends. The tag's archive, not git+: the slim Docker images
 # have no git.
 minty-shared @ https://github.com/minty-oliveandvine/minty-shared-py/archive/refs/tags/v0.2.tar.gz
+# The schema's models (every table, generated from 01_schema_rebased.sql) and the test-database
+# builder. An immutable tag, pinned by archive like minty-shared.
+minty-db @ https://github.com/minty-oliveandvine/minty-db/archive/refs/tags/v0.3.tar.gz
 Pillow>=11.0,<12.0
 pikepdf>=9.4,<10.0
 

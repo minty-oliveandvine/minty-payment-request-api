@@ -54,7 +54,7 @@ account is Minty's `DELETE /minty/api/users/me`.
 ## The permission matrix (`core/permissions.py`)
 
 Roles come from `user_entity.role`: `cashier`, `shop_manager`, `accountant`, `admin`,
-`super_admin` (`shared_models/enums.EntityRole`). "Elevated" = accountant and up.
+`super_admin` (`minty_db.enums.EntityRole`). "Elevated" = accountant and up.
 
 | Action | Allowed |
 |---|---|

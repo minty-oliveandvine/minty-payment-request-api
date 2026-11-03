@@ -21,7 +21,7 @@ are its own, everything else is `managed = False` and owned by Minty.
 Running it: `manage.py runserver 8020` with `.env` (see `.env.example` and the README:
 `APP_ENV`, `SECRET_KEY` shared with Minty, `DATABASE_URL`, `S3_URL`, `PETTY_CASH_URL`,
 `PAYMENT_REQUEST_WEB_URL`, `ONBOARDING_WEB_URL`); the API docs are at `/api/docs`. Tests:
-`pytest` (SQLite by default; with `MINTY_TEST_PG_URI` set, the harness builds Minty's
-`docs/schema/01_schema_rebased.sql` — `conftest.py` needs `MINTY_REPO` pointing at a Minty
-checkout). The archive of the `pettycashv2`-era design is in `../archive/`, the
+`pytest` (SQLite by default; with `MINTY_TEST_PG_URI` set, minty-db's plugin builds a Postgres
+from its packaged `01_schema_rebased.sql`). The models are minty-db's (`minty_db.models`, since
+2026-10-30) except the bill tables', which stay this service's own in `bills/models.py`. The archive of the `pettycashv2`-era design is in `../archive/`, the
 cleanse log in `../code_cleanse/`.

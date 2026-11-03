@@ -7,8 +7,9 @@ import secrets
 from datetime import datetime
 from zoneinfo import ZoneInfo
 
+from minty_db.models import User
+
 from bills.models import Bill
-from shared_models.models import User
 
 logger = logging.getLogger("minty-api")
 

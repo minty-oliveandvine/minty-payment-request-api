@@ -7,8 +7,7 @@ import pytest
 from django.conf import settings
 from django.test import Client
 from django.utils import timezone
-
-from shared_models.models import Entity, User, UserEntity
+from minty_db.models import Entity, User, UserEntity
 
 LOGOUT_URL = "/api/v1/auth/logout"
 

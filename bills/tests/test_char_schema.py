@@ -25,9 +25,9 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 from django.core.files.uploadedfile import SimpleUploadedFile
+from minty_db.models import Entity, User, UserEntity, XeroContactSync
 
 from bills.models import Bill, Payment
-from shared_models.models import Entity, User, UserEntity, XeroContactSync
 
 pytestmark = pytest.mark.django_db
 

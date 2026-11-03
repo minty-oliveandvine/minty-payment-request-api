@@ -27,9 +27,9 @@ import jwt as pyjwt
 import pytest
 from django.conf import settings
 from django.test import Client
+from minty_db.models import Entity, User, UserEntity
 
 from bills.models import Bill, Payment
-from shared_models.models import Entity, User, UserEntity
 
 ALL_ROLES = ["cashier", "shop_manager", "accountant", "admin", "super_admin"]
 ELEVATED_ROLES = ["accountant", "admin", "super_admin"]

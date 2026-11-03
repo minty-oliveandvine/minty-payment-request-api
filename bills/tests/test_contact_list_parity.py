@@ -7,9 +7,9 @@ Verify the bill contacts endpoint now matches Module 1 behaviour:
 from unittest.mock import MagicMock, patch
 
 import pytest
+from minty_db.models import User, UserToken, XeroContactSync
 
 from bills.tests.conftest import give_xero_token
-from shared_models.models import User, UserToken, XeroContactSync
 
 
 def _uid(label):

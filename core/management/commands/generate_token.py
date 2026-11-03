@@ -17,8 +17,7 @@ import uuid
 import jwt
 from django.conf import settings
 from django.core.management.base import BaseCommand
-
-from shared_models.models import Entity, User, UserEntity
+from minty_db.models import Entity, User, UserEntity
 
 
 class Command(BaseCommand):

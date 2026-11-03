@@ -4,9 +4,9 @@ Payment No. (the bill's reference) since 2026-10-05, so the page finds the bill 
 from urllib.parse import quote
 
 import pytest
+from minty_db.models import Entity
 
 from bills.models import Bill
-from shared_models.models import Entity
 
 
 def _bill(entity_id, user_id, reference, status="submitted"):

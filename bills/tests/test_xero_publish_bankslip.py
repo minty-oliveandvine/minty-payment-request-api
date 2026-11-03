@@ -22,13 +22,13 @@ from decimal import Decimal
 from unittest.mock import MagicMock, patch
 
 import pytest
+from minty_db.models import Entity, User, UserEntity
 
 from bills.models import Attachment, Bill, Payment, PaymentAttachment, XeroBillSync
 from bills.services.xero_publish_service import (
     _is_bankslip_filename,
     upload_bankslip_to_xero,
 )
-from shared_models.models import Entity, User, UserEntity
 
 # ── Constants & helpers ─────────────────────────────────────────────────────
 

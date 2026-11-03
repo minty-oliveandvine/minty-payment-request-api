@@ -33,12 +33,12 @@ from decimal import Decimal
 from unittest.mock import MagicMock, patch
 
 import pytest
+from minty_db.models import Entity, User, UserEntity
 
 from bills.models import Audit, Bill, BillLineItem, XeroBillSync, XeroBillSyncPayload
 from bills.services.xero_publish_service import publish_bill_to_xero
 from bills.tests.conftest import attach_invoice
 from core.exceptions import BillValidationError
-from shared_models.models import Entity, User, UserEntity
 
 # ═══════════════════════════════════════════════════════════════════════════
 # HELPERS / SHARED FIXTURES

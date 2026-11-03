@@ -28,4 +28,4 @@ ignore = [
 ]
 
 [lint.isort]
-known-first-party = ["bills", "config", "core", "shared_models"]
+known-first-party = ["bills", "config", "core"]

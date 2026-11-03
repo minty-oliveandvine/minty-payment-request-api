@@ -5,6 +5,7 @@ from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.db.models import Case, IntegerField, OuterRef, Q, Subquery, Value, When
 from django.http import Http404, StreamingHttpResponse
+from minty_db.models import Entity
 from ninja import File, Query, Router
 from ninja.files import UploadedFile
 
@@ -52,7 +53,6 @@ from core.permissions import (
     check_publish_xero,
     check_return_bill,
 )
-from shared_models.models import Entity
 
 logger = logging.getLogger("minty-api")
 

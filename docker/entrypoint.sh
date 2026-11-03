@@ -3,8 +3,8 @@
 #
 # Django here is a *tenant* of the schema Flask owns: settings.py pins
 # search_path to the ?schema= on DATABASE_URL (default `pettycashv3`, see
-# config/dburl.py), and shared_models maps tables Flask's Alembic
-# migrations create. So before migrating we wait for both the database and that
+# config/dburl.py), and minty_db's models (the minty-db package) map tables whose
+# migrations are run by hand, never here. So before migrating we wait for both the database and that
 # schema — rather than creating the schema ourselves, which would race Alembic
 # and let Django win the tables it is only supposed to read.
 set -eu

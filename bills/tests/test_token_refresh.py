@@ -13,8 +13,7 @@ import jwt as pyjwt
 import pytest
 from django.conf import settings
 from django.test import Client
-
-from shared_models.models import Entity, User, UserEntity
+from minty_db.models import Entity, User, UserEntity
 
 BILLING_TOKEN_HOURS = 8
 

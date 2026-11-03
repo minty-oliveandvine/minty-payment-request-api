@@ -4,9 +4,9 @@ and an entity with no currency cannot create one (422)."""
 import json
 
 import pytest
+from minty_db.models import Entity
 
 from bills.models import Bill, CurrencyInfo
-from shared_models.models import Entity
 
 NO_CURRENCY = "Your company has no currency set. Choose one in Entity & Integration settings."
 

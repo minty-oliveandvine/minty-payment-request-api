@@ -29,13 +29,13 @@ These tests verify:
 from unittest.mock import MagicMock, patch
 
 import pytest
+from minty_db.models import XeroContactSync
 
 from bills.services.contact_service import (
     _merge_db_contacts_missing_from_live,
     get_entity_bill_contacts,
 )
 from bills.tests.conftest import give_xero_token
-from shared_models.models import XeroContactSync
 
 
 def _uid(label):
@@ -711,7 +711,7 @@ class TestMultiEntityIsolation:
         test_entity,
         db,
     ):
-        from shared_models.models import Entity
+        from minty_db.models import Entity
 
         entity_b = Entity.objects.create(
             id="abe3747e-3703-5d05-bc45-940b169693e2",

@@ -15,6 +15,7 @@ from botocore.exceptions import ClientError
 from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.db import connection, transaction
+from minty_db.models import Entity, XeroContactSync
 from minty_shared import logctx
 
 from bills.models import (
@@ -33,7 +34,6 @@ from bills.services.audit_service import log_audit
 from bills.services.contact_service import xero_org_scope
 from bills.services.xero_token_service import resolve_xero_access_token_for_entity
 from core.exceptions import BillValidationError
-from shared_models.models import Entity, XeroContactSync
 
 logger = logging.getLogger("minty-api")
 

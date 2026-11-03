@@ -21,10 +21,10 @@ import uuid
 
 import requests
 from django.db.models import Q
+from minty_db.models import Entity, XeroContactSync
 
 from bills.services.xero_token_service import resolve_xero_access_token_for_entity
 from core.exceptions import BillValidationError
-from shared_models.models import Entity, XeroContactSync
 
 logger = logging.getLogger("minty-api")
 

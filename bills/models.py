@@ -1,9 +1,8 @@
 import uuid
 
 from django.db import models
-
-from shared_models.enums import ModuleCode
-from shared_models.fields import CharNField, PgEnumField
+from minty_db.enums import ModuleCode
+from minty_db.fields import CharNField, PgEnumField
 
 # ═══════════════════════════════════════════════════════════════════════════
 # BILL
@@ -94,7 +93,7 @@ class Bill(models.Model):
         cached = getattr(self, "_xero_contact_id_cache", None)
         if cached and cached[0] == self.contact_id:
             return cached[1]
-        from shared_models.models import XeroContactSync
+        from minty_db.models import XeroContactSync
 
         row = XeroContactSync.objects.filter(id=self.contact_id).only("xero_contact_id").first()
         value = row.xero_contact_id if row else ""
@@ -117,7 +116,7 @@ class Bill(models.Model):
             return
         import uuid as _uuid
 
-        from shared_models.models import Entity, XeroContactSync
+        from minty_db.models import Entity, XeroContactSync
 
         row = (
             XeroContactSync.objects.filter(entity_id=self.entity_id, xero_contact_id=value)

@@ -8,9 +8,9 @@ account codes on that answer, so it must be the company's connection, read from 
 from __future__ import annotations
 
 import pytest
+from minty_db.models import User
 
 from bills.tests.conftest import give_xero_token
-from shared_models.models import User
 
 URL = "/api/v1/auth/xero-status"
 

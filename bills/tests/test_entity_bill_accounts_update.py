@@ -12,9 +12,9 @@ import jwt as pyjwt
 import pytest
 from django.conf import settings
 from django.test import Client
+from minty_db.models import AccountInfo, Entity, User, UserEntity
 
 from bills.models import EntityBillAccountXero, EntityFunction, EntityFunctionMap
-from shared_models.models import AccountInfo, Entity, User, UserEntity
 
 ENTITY_ID = "b77e2f34-b1c4-4a6e-9d21-0f1e2d3c4b5a"
 

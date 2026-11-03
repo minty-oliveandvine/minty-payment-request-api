@@ -5,10 +5,10 @@ from datetime import UTC, datetime, timedelta
 
 import jwt
 from django.conf import settings
+from minty_db.enums import SystemRole
 from ninja import Router, Schema
 
 from core.auth import SelfBearerAuth
-from shared_models.enums import SystemRole
 
 logger = logging.getLogger("minty-api")
 
@@ -238,7 +238,7 @@ def logout(request):
             from datetime import datetime
             from zoneinfo import ZoneInfo
 
-            from shared_models.models import User
+            from minty_db.models import User
 
             # Naive Hong Kong local, NOT django.utils.timezone.now(). These columns
             # are TIMESTAMP WITHOUT TIME ZONE and Minty writes HK local into them

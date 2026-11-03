@@ -3,6 +3,8 @@ import logging
 from django.core.exceptions import ValidationError
 from django.db import transaction
 from django.http import Http404
+from minty_db.enums import SystemRole
+from minty_db.models import Entity, User, UserEntity
 from ninja import Query, Router, Schema
 
 from bills.models import (
@@ -41,8 +43,6 @@ from core.permissions import (
     check_not_system_superuser,
     normalize_role,
 )
-from shared_models.enums import SystemRole
-from shared_models.models import Entity, User, UserEntity
 
 logger = logging.getLogger("minty-api")
 

@@ -3,9 +3,9 @@
 from unittest.mock import MagicMock, patch
 
 import pytest
+from minty_db.models import XeroContactSync
 
 from bills.tests.conftest import give_xero_token
-from shared_models.models import XeroContactSync
 
 
 @pytest.mark.django_db
@@ -106,7 +106,7 @@ class TestEntityBillContactsCreate:
         body = resp.json()
         assert body["xero_contact_id"] == "new-cid-001"
         assert body["name"] == "Fresh Supplier Co"
-        assert body["entity_id"] == test_entity.id
+        assert body["entity_id"] == str(test_entity.id)
         mock_post.assert_called_once()
 
         row = XeroContactSync.objects.get(

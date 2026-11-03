@@ -10,8 +10,9 @@ True (legacy entities that predate the gating table).
 
 from __future__ import annotations
 
+from minty_db.enums import ModuleCode
+
 from bills.models import EntityFunction, EntityFunctionMap
-from shared_models.enums import ModuleCode
 
 # Canonical codes — keep in sync with Flask's blueprints/entity/services/modules.py
 # and the catalog seeded by migration b8f3a2c1d4e5.

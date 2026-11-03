@@ -26,11 +26,11 @@ import jwt
 import requests
 from django.conf import settings
 from django.utils import timezone as django_tz
+from minty_db.enums import EntityStatus
+from minty_db.models import Entity, UserToken
 from minty_shared import logctx
 
 from core.exceptions import BillValidationError
-from shared_models.enums import EntityStatus
-from shared_models.models import Entity, UserToken
 
 logger = logging.getLogger("minty-api")
 

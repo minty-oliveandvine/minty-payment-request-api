@@ -2,6 +2,7 @@ import logging
 from decimal import Decimal
 
 from django.db import transaction
+from minty_db.models import User
 
 from bills.models import Audit, Bill, BillLineItem
 from bills.services.audit_service import log_audit
@@ -9,7 +10,6 @@ from bills.services.bill_reference_generator import generate_unique_bill_referen
 from bills.services.payment_service import sync_bill_status_from_payments
 from core.entity_currency import entity_currency_code, require_entity_currency_code
 from core.exceptions import BillValidationError
-from shared_models.models import User
 
 logger = logging.getLogger("minty-api")
 

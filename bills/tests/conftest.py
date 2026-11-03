@@ -6,9 +6,9 @@ import requests
 from django.conf import settings
 from django.test import Client
 from django.utils import timezone as django_tz
+from minty_db.models import CountryInfo, Entity, User, UserEntity, UserToken
 
 from bills.models import Attachment, Bill, BillAttachment, CurrencyInfo
-from shared_models.models import CountryInfo, Entity, User, UserEntity, UserToken
 
 
 @pytest.fixture(autouse=True)

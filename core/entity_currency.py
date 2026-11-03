@@ -14,8 +14,9 @@ DEFAULT_DECIMAL_PLACES = 2
 
 def entity_currency(entity_id: str) -> tuple[str, int]:
     """(ISO code, decimal places) of the entity's currency; ("", 2) when it has none."""
+    from minty_db.models import Entity
+
     from bills.models import CurrencyInfo
-    from shared_models.models import Entity
 
     if not entity_id:
         return "", DEFAULT_DECIMAL_PLACES

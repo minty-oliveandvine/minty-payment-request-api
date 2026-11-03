@@ -36,6 +36,7 @@ from decimal import Decimal
 from unittest.mock import MagicMock, patch
 
 import pytest
+from minty_db.models import Entity, User, UserEntity, XeroContactSync
 
 from bills.models import (
     Bill,
@@ -50,7 +51,6 @@ from bills.services.xero_publish_service import (
 )
 from bills.tests.conftest import attach_invoice
 from core.exceptions import BillValidationError
-from shared_models.models import Entity, User, UserEntity, XeroContactSync
 
 
 def _uid(label):

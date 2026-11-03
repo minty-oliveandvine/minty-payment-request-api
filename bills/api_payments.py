@@ -5,6 +5,7 @@ from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.db.models import Sum
 from django.http import Http404, StreamingHttpResponse
+from minty_db.models import User
 from ninja import File, Query, Router
 from ninja.files import UploadedFile
 
@@ -42,7 +43,6 @@ from core.permissions import (
     check_mark_paid,
     check_not_system_superuser,
 )
-from shared_models.models import User
 
 logger = logging.getLogger("minty-api")
 

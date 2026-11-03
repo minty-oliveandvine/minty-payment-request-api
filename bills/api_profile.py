@@ -1,9 +1,9 @@
 import logging
 
+from minty_db.models import UserEntity
 from ninja import Router
 
 from bills.schemas import ProfileOut
-from shared_models.models import UserEntity
 
 logger = logging.getLogger("minty-api")
 

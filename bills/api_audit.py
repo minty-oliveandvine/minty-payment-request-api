@@ -2,11 +2,11 @@ import logging
 
 from django.core.exceptions import ValidationError
 from django.http import Http404
+from minty_db.models import User
 from ninja import Router
 
 from bills.models import Audit, Bill
 from bills.schemas import AuditOut, ErrorOut
-from shared_models.models import User
 
 logger = logging.getLogger("minty-api")
 

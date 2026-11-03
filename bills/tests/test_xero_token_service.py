@@ -11,12 +11,12 @@ import jwt as pyjwt
 import pytest
 import requests
 from django.utils import timezone as django_tz
+from minty_db.models import User
 
 from bills.services.xero_publish_service import _upload_file_to_xero_files_api
 from bills.services.xero_token_service import resolve_xero_access_token_for_entity
 from bills.tests.conftest import give_xero_token
 from core.exceptions import BillValidationError
-from shared_models.models import User
 
 
 @pytest.mark.django_db
@@ -165,7 +165,7 @@ class TestResolveAccessTokenForEntity:
         header = mock_post.call_args.kwargs["headers"]["Authorization"]
         assert header.startswith("Bearer ")
         claims = pyjwt.decode(header[7:], settings.SECRET_KEY, algorithms=["HS256"])
-        assert claims["entity_id"] == test_entity.id
+        assert claims["entity_id"] == str(test_entity.id)
         assert claims["scope"] == "xero-access-token"
         assert "exp" in claims
 
