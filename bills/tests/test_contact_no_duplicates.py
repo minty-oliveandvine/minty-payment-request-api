@@ -599,7 +599,10 @@ class TestApiEndpointNoDuplicates:
         test_entity,
         test_user_entity,
     ):
-        """Two xero_contact_sync rows with the same xero_contact_id — one API row."""
+        """Two xero_contact_sync rows with the same xero_contact_id cannot exist any more: the
+        database refuses the second (uq_xcs_entity_contact, minty-db v0.4, 2026-11-03). One API row."""
+        from django.db import IntegrityError, transaction
+
         XeroContactSync.objects.create(
             id=_uid("dup-a"),
             entity_id=test_entity.id,
@@ -608,14 +611,15 @@ class TestApiEndpointNoDuplicates:
             name="First Row Name",
             category=None,
         )
-        XeroContactSync.objects.create(
-            id=_uid("dup-b"),
-            entity_id=test_entity.id,
-            xero_contact_id="xero-same",
-            xero_org_id=None,
-            name="Second Row Name",
-            category=None,
-        )
+        with pytest.raises(IntegrityError), transaction.atomic():
+            XeroContactSync.objects.create(
+                id=_uid("dup-b"),
+                entity_id=test_entity.id,
+                xero_contact_id="xero-same",
+                xero_org_id=None,
+                name="Second Row Name",
+                category=None,
+            )
         resp = api_client.get("/api/v1/entity-bill-contacts/", **auth_headers)
         assert resp.status_code == 200
         body = resp.json()
