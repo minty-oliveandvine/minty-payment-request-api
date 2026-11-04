@@ -12,6 +12,7 @@ are its own, everything else is `managed = False` and owned by Minty.
 | Bills: draft → submitted → paid, return / void, references, listing, the audit trail | [payment-requests.md](payment-requests.md) |
 | Payments, partial payments, the no-overpayment rule, bank slips to Xero | [payments.md](payments.md) |
 | Attachments in B2, preview proxy, limits | [attachments.md](attachments.md) |
+| Reading an attached invoice with Gemini to fill the new-bill form (`POST /bills/extract/`) | [invoice-reader.md](invoice-reader.md) |
 | Publishing an ACCPAY invoice, republish, org switch, lock dates | [xero-publish.md](xero-publish.md) |
 | Modules, account codes, contacts, currencies, the sync triggers | [entity-configuration.md](entity-configuration.md) |
 | The one log line (trace, user, entity, step), the two loggers, what is sent to Flask | [logging.md](logging.md) |

@@ -15,6 +15,7 @@ defined once in [`minty-shared-py`](https://github.com/minty-oliveandvine/minty-
 |---|---|---|
 | `minty-api` | everything the service logs | `logs/core.log` |
 | `minty-api.http` | one access line per request, `METHOD path status ms` (does not propagate) | `logs/api.log` |
+| `minty-shared` | minty-shared-py's own lines: the invoice reader's one line per read (`minty_shared.ai`: numbers only, never a value off the invoice) and storage's upload retries (`minty_shared.storage`). Added 2026-11-04 - without it their INFO lines were written nowhere | `logs/core.log` |
 
 Both also go to stderr, which is what Render keeps.
 

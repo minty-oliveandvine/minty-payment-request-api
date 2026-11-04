@@ -23,6 +23,7 @@ from bills.schemas import (
     ReturnBillIn,
     SuggestedReferenceOut,
 )
+from bills.services import invoice_reader
 from bills.services.attachment_service import (
     _get_s3_client,
     delete_attachment,
@@ -156,6 +157,24 @@ def save_draft_endpoint(request, payload: BillDraftIn):
     check_create_bill(request.entity_role)
     bill = save_bill_draft(payload, str(request.auth_user.id), request.entity_id)
     return 201, _bill_to_out(bill)
+
+
+@bills_router.post(
+    "/extract/",
+    response={200: dict, 403: ErrorOut, 422: ErrorOut},
+    summary="Read an invoice to suggest the new bill's fields",
+)
+def extract_invoice_endpoint(request, invoice: list[UploadedFile] = File(None)):
+    """Multipart ``invoice`` -> the model's suggestions for the new-bill form
+    (``services/invoice_reader.py``, on the engine shared with Petty Cash's receipt reader). Who
+    may ask (403) and the file (one PDF / JPEG / PNG of at most 10 MB, by its bytes; 422) are
+    refused; past those every outcome is 200 ``{suggestions, reason}`` - switched off, rate
+    limited, too large, no accounts or suppliers, or any failure of the model is ``suggestions:
+    null`` with a reason. Nothing is written."""
+    check_not_system_superuser(request, "read invoices")
+    check_create_bill(request.entity_role)
+    data, mime = invoice_reader.checked_invoice(invoice)
+    return invoice_reader.read_invoice(request.entity_id, str(request.auth_user.id), data, mime)
 
 
 @bills_router.put(

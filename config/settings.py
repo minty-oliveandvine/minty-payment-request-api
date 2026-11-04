@@ -166,7 +166,9 @@ LOG_LEVEL = os.environ.get("LOG_LEVEL", "INFO").upper()
 LOG_DIR = BASE_DIR / "logs"
 
 LOGGING = logging_config(
-    {"minty-api": "core.log", "minty-api.http": "api.log"},
+    # minty-shared: the invoice reader's one log line and storage's retries (minty_shared.ai,
+    # .storage) - unconfigured, their INFO lines were never written anywhere.
+    {"minty-api": "core.log", "minty-api.http": "api.log", "minty-shared": "core.log"},
     log_dir=LOG_DIR,
     no_propagate=["minty-api.http"],
     level=LOG_LEVEL,

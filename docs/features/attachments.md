@@ -8,14 +8,14 @@ bank-slip upload, which a `.env` still on the old `S3_BUCKET`/`S3_KEY`/... names
 `attachment` row each and
 a `bill_attachment` link (role `invoice` / `supporting_document` / `receipt`); a payment's
 bank slips are `payment_attachment` rows ([payments.md](payments.md)). Code:
-`bills/services/attachment_service.py`, `file_downsize.py`, the attachment routers in
+`bills/services/attachment_service.py` (it stores through `minty_shared.storage.put_file`), the attachment routers in
 `bills/api.py` and `bills/api_payments.py`.
 
 ## Endpoints (`/api/bills/{bill_id}/attachments`)
 
 | Verb | What |
 |---|---|
-| `POST` (multipart, one or more files, `attachment_role`) | upload; refused on a `void` bill; 10 MB per file (`MAX_FILE_SIZE`); images are downsized before storage; an audit line `attachment_uploaded` |
+| `POST` (multipart, one or more files, `attachment_role`) | upload; refused on a `void` bill; 10 MB per file (`MAX_FILE_SIZE`); stored exactly as uploaded - no downsizing, no conversion (owner, 2026-11-04), ContentType set, two retries; an audit line `attachment_uploaded` |
 | `GET` | the list, each with a presigned download URL |
 | `DELETE …/{attachment_id}` | removes the object and the row (`attachment_deleted`) |
 | `GET …/{attachment_id}/download` | a 15-minute presigned URL |

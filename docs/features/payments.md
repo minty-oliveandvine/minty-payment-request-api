@@ -46,7 +46,7 @@ A payment carries its own attachments (`payment_attachment`, role `bank_slip`):
 `…/preview/` (proxied through the service so the browser can show it inline without a
 cross-origin block). Keys are `attachments/payments/<bill>/<payment>/…` in the shared B2 bucket (bill
 attachments sit under `attachments/<entity>/<bill>/…`),
-images downsized on the way in (`file_downsize.py`), 10 MB cap.
+stored exactly as uploaded (no downsizing, owner 2026-11-04), 10 MB cap.
 
 `POST /api/xero/upload-bankslip` (`bills/api_xero_actions.py`) pushes a payment's slips to
 the Xero invoice as a **full replace** (`upload_bankslip_to_xero`): every FileId this

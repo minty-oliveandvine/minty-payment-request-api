@@ -96,7 +96,7 @@ endpoint needs a real `user_entity` row before it answers anything.
       paid; otherwise back to submitted. Each transition logs a `status_changed` audit line.
 - [ ] `PUT`/`DELETE …/payments/{id}` are elevated-only and re-run the status sync.
 - [ ] Bank-slip attachments (`…/payments/{payment}/attachments`) respect the 10 MB cap and
-      downsize images on the way in.
+      are stored exactly as uploaded (same bytes, same type).
 - [ ] `POST /api/xero/upload-bankslip` is a full replace: republishing after adding another
       slip does not pile duplicates onto the Xero invoice (every FileId this payment
       uploaded before, plus anything on the invoice named `*_BANKSLIP*`, is deleted first),
@@ -105,7 +105,7 @@ endpoint needs a real `user_entity` row before it answers anything.
 ## Attachments ([attachments.md](attachments.md))
 
 - [ ] Upload is refused on a `void` bill.
-- [ ] A file over 10 MB is refused; images are downsized before storage.
+- [ ] A file over 10 MB is refused; a file is stored exactly as uploaded (same bytes, same type).
 - [ ] `DELETE …/{attachment_id}` removes both the B2 object and the row.
 - [ ] `GET …/{attachment_id}/download` returns a 15-minute presigned URL.
 - [ ] `GET …/{attachment_id}/preview/` streams through this service (the preview iframe

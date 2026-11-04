@@ -1,13 +1,12 @@
-import io
 import logging
 import os
 import uuid
 
-import boto3
 from botocore.exceptions import ClientError
 from django.conf import settings
 from django.core.files.uploadedfile import UploadedFile
 from django.db import transaction
+from minty_shared.storage import StorageError, make_client, put_file
 
 from bills.models import (
     Attachment,
@@ -18,7 +17,6 @@ from bills.models import (
     PaymentAttachment,
 )
 from bills.services.audit_service import log_audit
-from bills.services.file_downsize import downsize_bytes
 from core.exceptions import BillValidationError
 
 logger = logging.getLogger("minty-api")
@@ -104,17 +102,16 @@ def _resolve_content_type(file: UploadedFile) -> str | None:
 
 
 def _get_s3_client():
-    return boto3.client(
-        "s3",
-        endpoint_url=settings.S3_ENDPOINT_URL or None,
-        aws_access_key_id=settings.S3_KEY,
-        aws_secret_access_key=settings.S3_SECRET,
-        region_name=settings.S3_REGION,
+    return make_client(
+        key=settings.S3_KEY,
+        secret=settings.S3_SECRET,
+        region=settings.S3_REGION,
+        endpoint_url=settings.S3_ENDPOINT_URL,
     )
 
 
 def _upload_file_to_s3(file: UploadedFile, s3_key_prefix: str) -> dict:
-    """Validate, downsize and push an uploaded file to S3.
+    """Validate and push an uploaded file to S3, stored exactly as uploaded (owner, 2026-11-04).
 
     Shared by the bill and payment upload paths, which differ only in the S3 key
     prefix (passed in) and in what they do afterwards. Performs no DB writes —
@@ -132,37 +129,23 @@ def _upload_file_to_s3(file: UploadedFile, s3_key_prefix: str) -> dict:
 
     file.seek(0)
     raw = file.read()
-    downsized = downsize_bytes(raw, resolved_content_type)
-    if len(downsized) < len(raw):
-        logger.info(
-            "Downsized %s: %d -> %d bytes",
-            file.name,
-            len(raw),
-            len(downsized),
-        )
-
     ext = os.path.splitext(file.name)[1] if file.name else ""
     stored_name = f"{uuid.uuid4().hex}{ext}"
     s3_key = f"{s3_key_prefix}/{stored_name}"
 
-    s3 = _get_s3_client()
     try:
-        s3.upload_fileobj(
-            io.BytesIO(downsized),
-            settings.S3_BUCKET,
-            s3_key,
-            ExtraArgs={"ContentType": resolved_content_type},
+        stored_size = put_file(
+            _get_s3_client(), settings.S3_BUCKET, s3_key, raw, content_type=resolved_content_type
         )
-    except ClientError as e:
-        logger.error("S3 upload failed: %s", e)
-        raise BillValidationError("I couldn't upload that file. Mind trying again?")
+    except StorageError:
+        raise BillValidationError("I couldn't upload that file. Mind trying again?") from None
 
     return {
         "original_name": file.name or "unnamed",
         "stored_name": stored_name,
         "file_path": s3_key,
         "mime_type": resolved_content_type,
-        "file_size": len(downsized),
+        "file_size": stored_size,
         "file_extension": ext.lstrip("."),
         "storage_provider": "s3",
     }

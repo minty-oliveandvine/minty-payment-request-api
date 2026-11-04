@@ -3534,6 +3534,77 @@
         ]
       }
     },
+    "/api/v1/bills/extract/": {
+      "post": {
+        "description": "Multipart ``invoice`` -> the model's suggestions for the new-bill form\n(``services/invoice_reader.py``, on the engine shared with Petty Cash's receipt reader). Who\nmay ask (403) and the file (one PDF / JPEG / PNG of at most 10 MB, by its bytes; 422) are\nrefused; past those every outcome is 200 ``{suggestions, reason}`` - switched off, rate\nlimited, too large, no accounts or suppliers, or any failure of the model is ``suggestions:\nnull`` with a reason. Nothing is written.",
+        "operationId": "bills_api_extract_invoice_endpoint",
+        "parameters": [],
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "properties": {
+                  "invoice": {
+                    "items": {
+                      "format": "binary",
+                      "type": "string"
+                    },
+                    "title": "Invoice",
+                    "type": "array"
+                  }
+                },
+                "title": "FileParams",
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "summary": "Read an invoice to suggest the new bill's fields",
+        "tags": [
+          "Bills"
+        ]
+      }
+    },
     "/api/v1/bills/submit/": {
       "post": {
         "operationId": "bills_api_submit_bill_endpoint",
