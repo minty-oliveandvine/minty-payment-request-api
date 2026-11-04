@@ -21,9 +21,8 @@ def _sync_to_out(sync: XeroBillSync) -> dict:
     sync_lines = [
         {
             "id": str(sl.id),
-            "bill_line_item_id": (
-                str(sl.bill_line_item_id) if sl.bill_line_item_id else None
-            ),
+            # The model's field is bill_line (bill_line_id); the API keeps its published name.
+            "bill_line_item_id": str(sl.bill_line_id) if sl.bill_line_id else None,
             "description": sl.description,
             "quantity": sl.quantity,
             "unit_amount": sl.unit_amount,

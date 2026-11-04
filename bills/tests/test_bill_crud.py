@@ -135,6 +135,29 @@ class TestCreateBill:
         ref = r.json()["reference"]
         assert re.match(r"^MBI[A-Z]{3}-\d{12}(-[0-9A-F]{4})?$", ref)
 
+    # Owner, 2026-11-03: the letters after MBI are the COMPANY's, not the person's. The fixture
+    # user ("Test User") and company ("Test Entity") both start TES, so the company is renamed.
+    @pytest.mark.parametrize(
+        ("company", "letters"),
+        [("Daily Minty Ltd", "DAI"), ("DB Test Co", "DBT"), ("O&V", "OVX"), ("88 Tea", "TEA")],
+    )
+    def test_the_letters_are_the_companys(
+        self, api_client, auth_headers, test_user_entity, test_entity, company, letters
+    ):
+        test_entity.name = company
+        test_entity.save(update_fields=["name"])
+
+        suggested = api_client.get("/api/v1/bills/suggested-reference/", **auth_headers)
+        created = api_client.post(
+            "/api/v1/bills/",
+            data=json.dumps({"contact": "X"}),
+            content_type="application/json",
+            **auth_headers,
+        )
+
+        assert suggested.json()["reference"].startswith(f"MBI{letters}-")
+        assert created.json()["reference"].startswith(f"MBI{letters}-")
+
 
 @pytest.mark.django_db
 class TestListBills:
@@ -352,6 +375,85 @@ class TestUpdateBill:
         assert resp.status_code == 200
         assert resp.json()["reference"] == "MY-INV-001"
 
+
+@pytest.mark.django_db
+class TestOneLineFollowsTheDescription:
+    """A request is one line on screen: the bill's description is the line's, and the line is
+    what reaches Xero. 2026-11-03: an edited description went to Xero with the old words,
+    because the edit sent the line's saved text back."""
+
+    def _one_line_bill(self, draft_bill):
+        from bills.models import BillLineItem
+
+        BillLineItem.objects.create(
+            bill=draft_bill,
+            description="Test bill",
+            quantity=1,
+            unit_amount=100,
+            line_amount=100,
+            account_code="429",
+            account_name="General Expenses",
+        )
+        return draft_bill
+
+    @pytest.mark.parametrize("path", ["", "/draft"])
+    def test_an_edited_description_reaches_the_line_even_when_the_line_is_sent_unchanged(
+        self, api_client, auth_headers, draft_bill, test_user_entity, path
+    ):
+        bill = self._one_line_bill(draft_bill)
+        resp = api_client.put(
+            f"/api/v1/bills/{bill.id}{path}",
+            data=json.dumps(
+                {
+                    "description": "Printer paper and toner",
+                    "line_items": [
+                        {
+                            "description": "Test bill",
+                            "quantity": "1",
+                            "unit_amount": "100.00",
+                            "line_amount": "100.00",
+                            "account_code": "429",
+                            "account_name": "General Expenses",
+                        }
+                    ],
+                }
+            ),
+            content_type="application/json",
+            **auth_headers,
+        )
+        assert resp.status_code == 200
+        assert [li.description for li in bill.line_items.all()] == ["Printer paper and toner"]
+
+    @pytest.mark.parametrize("path", ["", "/draft"])
+    def test_an_edited_description_reaches_the_line_when_no_line_is_sent(
+        self, api_client, auth_headers, draft_bill, test_user_entity, path
+    ):
+        bill = self._one_line_bill(draft_bill)
+        resp = api_client.put(
+            f"/api/v1/bills/{bill.id}{path}",
+            data=json.dumps({"description": "Printer paper and toner"}),
+            content_type="application/json",
+            **auth_headers,
+        )
+        assert resp.status_code == 200
+        assert [li.description for li in bill.line_items.all()] == ["Printer paper and toner"]
+        assert bill.line_items.get().account_name == "General Expenses"
+
+    def test_a_bill_of_several_lines_keeps_each_line_its_own(
+        self, api_client, auth_headers, draft_bill, test_user_entity
+    ):
+        lines = [
+            {"description": d, "quantity": "1", "unit_amount": "50.00", "line_amount": "50.00"}
+            for d in ("Paper", "Toner")
+        ]
+        resp = api_client.put(
+            f"/api/v1/bills/{draft_bill.id}",
+            data=json.dumps({"description": "Office supplies", "line_items": lines}),
+            content_type="application/json",
+            **auth_headers,
+        )
+        assert resp.status_code == 200
+        assert sorted(li.description for li in draft_bill.line_items.all()) == ["Paper", "Toner"]
 
 @pytest.mark.django_db
 class TestDeleteBill:

@@ -15,6 +15,12 @@ bank-slip half of `bills/services/xero_publish_service.py`.
 `GET …/payments/{id}` one.
 
 Rules:
+- **A payment is money paid**: a new one with an amount of 0 or less (or none) is refused,
+  422 "The payment amount is still zero. Add the amount that was paid to continue."
+  (`create_payment`, 2026-11-03). Until then the web's bank slip upload made a 0.00 payment
+  with no date to hold a slip when the bill had no payment yet; the web now keeps that slip
+  for the payment it records next. The existing ones are repaired by the load and a
+  minty-db patch (see Minty `docs/schema/README.md`).
 - **No overpayment**: pending + completed payments may not exceed `bill.amount`
   (`_check_payment_within_bill_total`, a 422 that says so).
 - The bill's status follows its **completed** payments: their sum ≥ `amount` → `paid`,
@@ -24,7 +30,9 @@ Rules:
   2026-10-27). A bill edit re-runs the same check (`sync_bill_status_from_payments`) but
   never reopens: an elevated role may mark a bill paid by hand with no payment recorded.
 - `bill.amount_paid` is the sum of completed payments, rewritten on every payment change
-  (pending payments are not paid money). `get_amount_due` is what the detail page shows.
+  (pending payments are not paid money). `get_amount_due` is what the list and the detail
+  page show: what is left, and **nothing on a voided bill** (2026-11-03; it used to show the
+  whole amount as still to pay).
 - Payments are recorded in Minty only - nothing is posted to Xero's Payments API (owner,
   2026-10-27); a payment's bank slips go onto the Xero invoice (below).
 - Every payment action is audited (`payment_created` / `payment_updated` /

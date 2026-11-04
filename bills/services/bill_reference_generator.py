@@ -1,4 +1,7 @@
-"""Auto-generate unique bill references: MBI + 3 name letters + HHMMSS + DDMMYY (Asia/Hong_Kong)."""
+"""Auto-generate unique bill references: MBI + 3 company-name letters + HHMMSS + DDMMYY (Asia/Hong_Kong).
+
+The letters are the company's (owner, 2026-11-03); they used to be the signed-in person's.
+"""
 
 from __future__ import annotations
 
@@ -7,7 +10,7 @@ import secrets
 from datetime import datetime
 from zoneinfo import ZoneInfo
 
-from minty_db.models import User
+from minty_db.models import Entity
 
 from bills.models import Bill
 
@@ -18,19 +21,14 @@ HK_TZ = ZoneInfo("Asia/Hong_Kong")
 _STATUSES_EXCLUDED_FROM_UNIQUENESS = (Bill.Status.VOID,)
 
 
-def _name_prefix_3(user: User) -> str:
-    """First 3 letters from first name (letters only); pad from last name, username, or X."""
-    first = "".join(c for c in (user.first_name or "").strip() if c.isalpha())
-    if len(first) >= 3:
-        return first[:3].upper()
-    rest = "".join(c for c in (user.last_name or "").strip() if c.isalpha())
-    combined = (first + rest)[:3]
-    if len(combined) < 3:
-        extra = "".join(c for c in (user.username or user.email or "") if c.isalpha())
-        combined = (combined + extra)[:3]
-    if len(combined) < 3:
-        combined = (combined + "XXX")[:3]
-    return combined.upper()
+def _name_prefix_3(company_name: str) -> str:
+    """The first 3 letters of the company's name (letters only, A-Z), padded with X."""
+    letters = "".join(c for c in (company_name or "") if c.isascii() and c.isalpha())
+    return (letters + "XXX")[:3].upper()
+
+
+def _company_name(entity_id: str) -> str:
+    return Entity.objects.only("name").get(id=entity_id).name or ""
 
 
 def _reference_taken(entity_id: str, ref: str) -> bool:
@@ -42,18 +40,19 @@ def _reference_taken(entity_id: str, ref: str) -> bool:
     )
 
 
-def build_bill_reference(user: User, at: datetime) -> str:
-    """MBI + 3 name letters + '-' + HHMMSS + DDMMYY in Hong Kong time."""
+def build_bill_reference(company_name: str, at: datetime) -> str:
+    """MBI + 3 company-name letters + '-' + HHMMSS + DDMMYY in Hong Kong time."""
     t = at.astimezone(HK_TZ)
     stamp = f"{t.strftime('%H%M%S')}{t.strftime('%d%m%y')}"
-    return f"MBI{_name_prefix_3(user)}-{stamp}"
+    return f"MBI{_name_prefix_3(company_name)}-{stamp}"
 
 
-def generate_unique_bill_reference(entity_id: str, user: User) -> str:
+def generate_unique_bill_reference(entity_id: str) -> str:
     """Return a reference not used by any non-voided/non-cancelled bill in the entity."""
+    company_name = _company_name(entity_id)
     for attempt in range(64):
         at = datetime.now(HK_TZ)
-        base = build_bill_reference(user, at)
+        base = build_bill_reference(company_name, at)
         ref = base if attempt == 0 else f"{base}-{secrets.token_hex(2).upper()}"
         if not _reference_taken(entity_id, ref):
             if attempt:
@@ -67,4 +66,4 @@ def generate_unique_bill_reference(entity_id: str, user: User) -> str:
         "Could not allocate unique bill reference after 64 attempts entity_id=%s",
         entity_id,
     )
-    return f"{build_bill_reference(user, datetime.now(HK_TZ))}-{secrets.token_hex(4).upper()}"
+    return f"{build_bill_reference(company_name, datetime.now(HK_TZ))}-{secrets.token_hex(4).upper()}"

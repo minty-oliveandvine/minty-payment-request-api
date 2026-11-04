@@ -14,8 +14,11 @@ edits the parts that belong to bills. Code: `bills/api_config.py`, `core/entitle
 `_is_module_enabled`: an explicit map row wins, else the catalogue row's `is_active`, else
 on (entities older than the gating table). `GET /api/auth/entitlements` is the live
 answer the frontend uses to decide what it shows; the routers
-`/api/entity-functions/*` and `/api/entity-function-maps/*` (CRUD, `/functions` = the
-names enabled for the entity) are the raw tables for tooling.
+`/api/entity-functions/*` and `/api/entity-function-maps/*` (`/functions` = the names
+enabled for the entity) are **read-only**: their create / update / delete routes were removed
+2026-11-03 (owner) - which modules a company has is the subscription service's to write, and
+any admin of a company could switch a module on or off, or change the catalogue for everyone,
+through them.
 
 ## Account codes (`/api/entity-bill-accounts/*`)
 

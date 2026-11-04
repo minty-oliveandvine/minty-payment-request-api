@@ -1513,64 +1513,6 @@
         "title": "EntityCurrencyOut",
         "type": "object"
       },
-      "EntityFunctionCreateIn": {
-        "properties": {
-          "description": {
-            "default": "",
-            "title": "Description",
-            "type": "string"
-          },
-          "function_code": {
-            "title": "Function Code",
-            "type": "string"
-          },
-          "function_name": {
-            "title": "Function Name",
-            "type": "string"
-          },
-          "is_active": {
-            "default": true,
-            "title": "Is Active",
-            "type": "boolean"
-          }
-        },
-        "required": [
-          "function_code",
-          "function_name"
-        ],
-        "title": "EntityFunctionCreateIn",
-        "type": "object"
-      },
-      "EntityFunctionMapCreateIn": {
-        "properties": {
-          "entity_function_id": {
-            "title": "Entity Function Id",
-            "type": "string"
-          },
-          "is_enabled": {
-            "default": true,
-            "title": "Is Enabled",
-            "type": "boolean"
-          },
-          "settings_json": {
-            "anyOf": [
-              {
-                "additionalProperties": true,
-                "type": "object"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Settings Json"
-          }
-        },
-        "required": [
-          "entity_function_id"
-        ],
-        "title": "EntityFunctionMapCreateIn",
-        "type": "object"
-      },
       "EntityFunctionMapOut": {
         "properties": {
           "created_at": {
@@ -1660,59 +1602,6 @@
         "title": "EntityFunctionMapOut",
         "type": "object"
       },
-      "EntityFunctionMapUpdateIn": {
-        "properties": {
-          "disabled_at": {
-            "anyOf": [
-              {
-                "format": "date-time",
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Disabled At"
-          },
-          "enabled_at": {
-            "anyOf": [
-              {
-                "format": "date-time",
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Enabled At"
-          },
-          "is_enabled": {
-            "anyOf": [
-              {
-                "type": "boolean"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Is Enabled"
-          },
-          "settings_json": {
-            "anyOf": [
-              {
-                "additionalProperties": true,
-                "type": "object"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Settings Json"
-          }
-        },
-        "title": "EntityFunctionMapUpdateIn",
-        "type": "object"
-      },
       "EntityFunctionNameOut": {
         "properties": {
           "function_name": {
@@ -1770,56 +1659,6 @@
           "updated_at"
         ],
         "title": "EntityFunctionOut",
-        "type": "object"
-      },
-      "EntityFunctionUpdateIn": {
-        "properties": {
-          "description": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Description"
-          },
-          "function_code": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Function Code"
-          },
-          "function_name": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Function Name"
-          },
-          "is_active": {
-            "anyOf": [
-              {
-                "type": "boolean"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Is Active"
-          }
-        },
-        "title": "EntityFunctionUpdateIn",
         "type": "object"
       },
       "EntityListItemOut": {
@@ -3763,7 +3602,7 @@
             "BearerAuth": []
           }
         ],
-        "summary": "Suggested bill number (MBI + 3 name letters + HK time/date, unique in entity)",
+        "summary": "Suggested bill number (MBI + 3 company-name letters + HK time/date, unique in entity)",
         "tags": [
           "Bills"
         ]
@@ -6115,41 +5954,6 @@
         "tags": [
           "Entity Function Maps"
         ]
-      },
-      "post": {
-        "operationId": "bills_api_config_create_entity_function_map",
-        "parameters": [],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/EntityFunctionMapCreateIn"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "201": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/EntityFunctionMapOut"
-                }
-              }
-            },
-            "description": "Created"
-          }
-        },
-        "security": [
-          {
-            "BearerAuth": []
-          }
-        ],
-        "summary": "Create an entity function map",
-        "tags": [
-          "Entity Function Maps"
-        ]
       }
     },
     "/api/v1/entity-function-maps/functions": {
@@ -6184,51 +5988,6 @@
       }
     },
     "/api/v1/entity-function-maps/{function_id}": {
-      "delete": {
-        "operationId": "bills_api_config_delete_entity_function_map",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "function_id",
-            "required": true,
-            "schema": {
-              "title": "Function Id",
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/MessageOut"
-                }
-              }
-            },
-            "description": "OK"
-          },
-          "404": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorOut"
-                }
-              }
-            },
-            "description": "Not Found"
-          }
-        },
-        "security": [
-          {
-            "BearerAuth": []
-          }
-        ],
-        "summary": "Delete an entity function map",
-        "tags": [
-          "Entity Function Maps"
-        ]
-      },
       "get": {
         "operationId": "bills_api_config_get_entity_function_map",
         "parameters": [
@@ -6273,61 +6032,6 @@
         "tags": [
           "Entity Function Maps"
         ]
-      },
-      "put": {
-        "operationId": "bills_api_config_update_entity_function_map",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "function_id",
-            "required": true,
-            "schema": {
-              "title": "Function Id",
-              "type": "string"
-            }
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/EntityFunctionMapUpdateIn"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/EntityFunctionMapOut"
-                }
-              }
-            },
-            "description": "OK"
-          },
-          "404": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorOut"
-                }
-              }
-            },
-            "description": "Not Found"
-          }
-        },
-        "security": [
-          {
-            "BearerAuth": []
-          }
-        ],
-        "summary": "Update an entity function map",
-        "tags": [
-          "Entity Function Maps"
-        ]
       }
     },
     "/api/v1/entity-functions/": {
@@ -6359,89 +6063,9 @@
         "tags": [
           "Entity Functions"
         ]
-      },
-      "post": {
-        "operationId": "bills_api_config_create_entity_function",
-        "parameters": [],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/EntityFunctionCreateIn"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "201": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/EntityFunctionOut"
-                }
-              }
-            },
-            "description": "Created"
-          }
-        },
-        "security": [
-          {
-            "BearerAuth": []
-          }
-        ],
-        "summary": "Create an entity function",
-        "tags": [
-          "Entity Functions"
-        ]
       }
     },
     "/api/v1/entity-functions/{function_id}": {
-      "delete": {
-        "operationId": "bills_api_config_delete_entity_function",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "function_id",
-            "required": true,
-            "schema": {
-              "title": "Function Id",
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/MessageOut"
-                }
-              }
-            },
-            "description": "OK"
-          },
-          "404": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorOut"
-                }
-              }
-            },
-            "description": "Not Found"
-          }
-        },
-        "security": [
-          {
-            "BearerAuth": []
-          }
-        ],
-        "summary": "Delete an entity function",
-        "tags": [
-          "Entity Functions"
-        ]
-      },
       "get": {
         "operationId": "bills_api_config_get_entity_function",
         "parameters": [
@@ -6483,61 +6107,6 @@
           }
         ],
         "summary": "Get entity function detail",
-        "tags": [
-          "Entity Functions"
-        ]
-      },
-      "put": {
-        "operationId": "bills_api_config_update_entity_function",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "function_id",
-            "required": true,
-            "schema": {
-              "title": "Function Id",
-              "type": "string"
-            }
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/EntityFunctionUpdateIn"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/EntityFunctionOut"
-                }
-              }
-            },
-            "description": "OK"
-          },
-          "404": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorOut"
-                }
-              }
-            },
-            "description": "Not Found"
-          }
-        },
-        "security": [
-          {
-            "BearerAuth": []
-          }
-        ],
-        "summary": "Update an entity function",
         "tags": [
           "Entity Functions"
         ]

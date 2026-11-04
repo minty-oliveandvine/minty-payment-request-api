@@ -276,20 +276,6 @@ class PaymentFilterQuery(Schema):
 # ---------------------------------------------------------------------------
 
 
-class EntityFunctionCreateIn(Schema):
-    function_code: str
-    function_name: str
-    description: str = ""
-    is_active: bool = True
-
-
-class EntityFunctionUpdateIn(Schema):
-    function_code: str | None = None
-    function_name: str | None = None
-    description: str | None = None
-    is_active: bool | None = None
-
-
 class EntityFunctionOut(Schema):
     id: UUID
     function_code: str
@@ -303,19 +289,6 @@ class EntityFunctionOut(Schema):
 # ---------------------------------------------------------------------------
 # Entity Function Maps
 # ---------------------------------------------------------------------------
-
-
-class EntityFunctionMapCreateIn(Schema):
-    entity_function_id: str
-    is_enabled: bool = True
-    settings_json: dict | None = None
-
-
-class EntityFunctionMapUpdateIn(Schema):
-    is_enabled: bool | None = None
-    enabled_at: datetime | None = None
-    disabled_at: datetime | None = None
-    settings_json: dict | None = None
 
 
 class EntityFunctionMapOut(Schema):

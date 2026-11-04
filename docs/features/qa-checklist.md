@@ -141,6 +141,8 @@ endpoint needs a real `user_entity` row before it answers anything.
 - [ ] `GET /api/auth/entitlements` resolution order holds: an explicit
       `entity_function_map` row wins, else the catalogue's `is_active`, else on (for
       entities older than the gating table).
+- [ ] `POST`/`PUT`/`DELETE` on `/api/entity-functions/*` and `/api/entity-function-maps/*`
+      answer 404/405 and change nothing; their `GET`s still answer (removed 2026-11-03).
 - [ ] `PUT /api/entity-bill-accounts/{id}` writes only `entity_bill_account_xero` — Petty
       Cash's own `account_info.status` tick is untouched (regression check: the old mirror,
       removed 2026-10-01, used to untick Petty Cash's codes).

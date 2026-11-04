@@ -182,6 +182,35 @@ class TestAutoStatusCalculation:
         bill.refresh_from_db()
         assert bill.status == "submitted"
 
+    # 2026-11-03: the web's bank slip upload used to create a HKD 0.00 payment with no date to
+    # hold a slip. A payment is money paid, so nothing at or below zero is one.
+    @pytest.mark.parametrize("amount", ["0", "0.00", "-5.00"])
+    @pytest.mark.parametrize("status", ["completed", "pending"])
+    def test_a_payment_of_nothing_is_refused(self, api, user, entity, membership, amount, status):
+        bill = _make_bill(entity, user, amount=50)
+        resp = api.post(
+            f"/api/v1/bills/{bill.id}/payments",
+            data=json.dumps({"amount": amount, "payment_status": status}),
+            content_type="application/json",
+            **_auth(user, entity),
+        )
+        assert resp.status_code == 422
+        assert resp.json()["detail"] == (
+            "The payment amount is still zero. Add the amount that was paid to continue."
+        )
+        assert not Payment.objects.filter(bill=bill).exists()
+
+    def test_a_payment_with_no_amount_is_refused(self, api, user, entity, membership):
+        bill = _make_bill(entity, user, amount=50)
+        resp = api.post(
+            f"/api/v1/bills/{bill.id}/payments",
+            data=json.dumps({"payment_status": "pending", "currency_code": "HKD"}),
+            content_type="application/json",
+            **_auth(user, entity),
+        )
+        assert resp.status_code == 422
+        assert not Payment.objects.filter(bill=bill).exists()
+
     def test_pending_payment_does_not_change_status(
         self, api, user, entity, membership
     ):
@@ -426,6 +455,21 @@ class TestAutoStatusCalculation:
         assert resp.status_code == 201
         bill.refresh_from_db()
         assert bill.status == "paid"
+
+    # 2026-11-03 walk: a voided bill showed its whole amount as still to pay, in the list, the
+    # totals and its own page. Nothing is owed on a void bill.
+    def test_a_voided_bill_owes_nothing(self, api, user, entity, membership):
+        bill = _make_bill(entity, user, amount=1500, status="void")
+        _make_payment(bill, user, 500)
+        headers = _auth(user, entity)
+
+        detail = api.get(f"/api/v1/bills/{bill.id}", **headers).json()
+        listed = api.get("/api/v1/bills/?status=void", **headers).json()
+
+        assert detail["amount"] == "1500.00"
+        assert detail["amount_due"] == "0.00"
+        row = next(b for b in listed if b["id"] == str(bill.id))
+        assert row["amount_due"] == "0.00"
 
     def test_amount_due_decreases_while_amount_stays(
         self, api, user, entity, membership

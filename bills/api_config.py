@@ -26,13 +26,9 @@ from bills.schemas import (
     EntityBillCurrencyCreateIn,
     EntityBillCurrencyOut,
     EntityBillCurrencyUpdateIn,
-    EntityFunctionCreateIn,
-    EntityFunctionMapCreateIn,
     EntityFunctionMapOut,
-    EntityFunctionMapUpdateIn,
     EntityFunctionNameOut,
     EntityFunctionOut,
-    EntityFunctionUpdateIn,
     ErrorOut,
     MessageOut,
 )
@@ -96,19 +92,6 @@ DUPLICATE_XERO_ACCOUNT_MESSAGE = "That Xero account is already in your list of p
 entity_functions_router = Router()
 
 
-@entity_functions_router.post(
-    "/",
-    response={201: EntityFunctionOut},
-    summary="Create an entity function",
-)
-def create_entity_function(request, payload: EntityFunctionCreateIn):
-    check_not_system_superuser(request, "modify configuration")
-    check_edit_bill_settings(request.entity_role)
-    ef = EntityFunction.objects.create(**payload.dict())
-    logger.info("EntityFunction created id=%s", ef.id)
-    return 201, ef
-
-
 @entity_functions_router.get(
     "/",
     response=list[EntityFunctionOut],
@@ -130,69 +113,11 @@ def get_entity_function(request, function_id: str):
         raise Http404("Entity function not found")
 
 
-@entity_functions_router.put(
-    "/{function_id}",
-    response={200: EntityFunctionOut, 404: ErrorOut},
-    summary="Update an entity function",
-)
-def update_entity_function(request, function_id: str, payload: EntityFunctionUpdateIn):
-    check_not_system_superuser(request, "modify configuration")
-    check_edit_bill_settings(request.entity_role)
-    try:
-        ef = EntityFunction.objects.get(id=function_id)
-    except EntityFunction.DoesNotExist:
-        raise Http404("Entity function not found")
-
-    _apply_partial_update(ef, payload.dict(exclude_unset=True))
-    ef.save()
-    logger.info("EntityFunction updated id=%s", ef.id)
-    return ef
-
-
-@entity_functions_router.delete(
-    "/{function_id}",
-    response={200: MessageOut, 404: ErrorOut},
-    summary="Delete an entity function",
-)
-def delete_entity_function(request, function_id: str):
-    check_not_system_superuser(request, "modify configuration")
-    check_edit_bill_settings(request.entity_role)
-    try:
-        ef = EntityFunction.objects.get(id=function_id)
-    except EntityFunction.DoesNotExist:
-        raise Http404("Entity function not found")
-
-    ef.delete()
-    logger.info("EntityFunction deleted id=%s", function_id)
-    return {"message": "Entity function deleted"}
-
-
 # ═══════════════════════════════════════════════════════════════════════════
 # ENTITY FUNCTION MAPS (entity-scoped)
 # ═══════════════════════════════════════════════════════════════════════════
 
 entity_function_maps_router = Router()
-
-
-@entity_function_maps_router.post(
-    "/",
-    response={201: EntityFunctionMapOut},
-    summary="Create an entity function map",
-)
-def create_entity_function_map(request, payload: EntityFunctionMapCreateIn):
-    check_not_system_superuser(request, "modify configuration")
-    check_edit_bill_settings(request.entity_role)
-    efm = EntityFunctionMap.objects.create(
-        entity_id=request.entity_id,
-        entity_function_id=payload.entity_function_id,
-        is_enabled=payload.is_enabled,
-        settings_json=payload.settings_json,
-        created_by=request.auth_user.id,
-    )
-    logger.info(
-        "EntityFunctionMap created entity=%s function=%s", request.entity_id, efm.entity_function_id
-    )
-    return 201, efm
 
 
 @entity_function_maps_router.get(
@@ -236,49 +161,6 @@ def get_entity_function_map(request, function_id: str):
         )
     except (EntityFunctionMap.DoesNotExist, ValidationError):
         raise Http404("Entity function map not found")
-
-
-@entity_function_maps_router.put(
-    "/{function_id}",
-    response={200: EntityFunctionMapOut, 404: ErrorOut},
-    summary="Update an entity function map",
-)
-def update_entity_function_map(
-    request, function_id: str, payload: EntityFunctionMapUpdateIn
-):
-    check_not_system_superuser(request, "modify configuration")
-    check_edit_bill_settings(request.entity_role)
-    try:
-        efm = EntityFunctionMap.objects.get(
-            entity_function_id=function_id, entity_id=request.entity_id
-        )
-    except (EntityFunctionMap.DoesNotExist, ValidationError):
-        raise Http404("Entity function map not found")
-
-    _apply_partial_update(efm, payload.dict(exclude_unset=True))
-    efm.save()
-    logger.info("EntityFunctionMap updated entity=%s function=%s", request.entity_id, function_id)
-    return efm
-
-
-@entity_function_maps_router.delete(
-    "/{function_id}",
-    response={200: MessageOut, 404: ErrorOut},
-    summary="Delete an entity function map",
-)
-def delete_entity_function_map(request, function_id: str):
-    check_not_system_superuser(request, "modify configuration")
-    check_edit_bill_settings(request.entity_role)
-    try:
-        efm = EntityFunctionMap.objects.get(
-            entity_function_id=function_id, entity_id=request.entity_id
-        )
-    except (EntityFunctionMap.DoesNotExist, ValidationError):
-        raise Http404("Entity function map not found")
-
-    efm.delete()
-    logger.info("EntityFunctionMap deleted entity=%s function=%s", request.entity_id, function_id)
-    return {"message": "Entity function map deleted"}
 
 
 # ═══════════════════════════════════════════════════════════════════════════

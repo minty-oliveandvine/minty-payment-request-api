@@ -119,7 +119,9 @@ def _update_bill_status(bill: Bill, user_id: str = "", *, reopen_when_unpaid: bo
 
 
 def get_amount_due(bill: Bill) -> Decimal:
-    """Return the remaining unpaid balance for the bill."""
+    """Return the remaining unpaid balance for the bill (nothing on a voided one)."""
+    if bill.status == Bill.Status.VOID:
+        return Decimal("0.00")
     paid = _completed_total(bill)
     remaining = bill.amount - paid
     return max(remaining, Decimal("0"))
@@ -128,6 +130,12 @@ def get_amount_due(bill: Bill) -> Decimal:
 def create_payment(bill: Bill, data, user_id: str) -> Payment:
     # A payment is in its bill's currency (the company's when the bill has none), never the client's.
     currency_code = bill.currency_code or require_entity_currency_code(bill.entity_id)
+    # A payment is money paid. The web's bank slip upload used to create a 0.00 payment with no
+    # date just to hold a slip (2026-11-03); it no longer does, and nothing else may.
+    if data.amount is None or data.amount <= 0:
+        raise BillValidationError(
+            "The payment amount is still zero. Add the amount that was paid to continue."
+        )
     with transaction.atomic():
         if _status_counts_toward_bill_cap(data.payment_status):
             _check_payment_within_bill_total(bill, data.amount)

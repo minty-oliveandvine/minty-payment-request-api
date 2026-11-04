@@ -1,4 +1,4 @@
-"""PUT /entity-bill-accounts/{id} (Payment Settings ticks) and the function-map DELETE.
+"""PUT /entity-bill-accounts/{id} (Payment Settings ticks), and the module catalogue read-only.
 
 Payment Settings writes only ``entity_bill_account_xero``: ``account_info.status`` is Petty
 Cash's tick state, so unticking here must leave it alone. The last ticked settings-type code
@@ -152,14 +152,49 @@ def test_unknown_account_is_404(api, entity, auth_headers):
     assert _put(api, auth_headers, missing, {"is_active": False}).status_code == 404
 
 
+# Owner, 2026-11-03: the module catalogue (entity_function) and which modules a company has
+# (entity_function_map) are not this service's to write - subscriptions own them. Its six write
+# routes are gone; the reads stay.
 @pytest.mark.django_db
-def test_function_map_delete_returns_200(api, entity, auth_headers):
+@pytest.mark.parametrize(
+    ("method", "path"),
+    [
+        ("post", "/api/v1/entity-functions/"),
+        ("put", "/api/v1/entity-functions/{fn}"),
+        ("delete", "/api/v1/entity-functions/{fn}"),
+        ("post", "/api/v1/entity-function-maps/"),
+        ("put", "/api/v1/entity-function-maps/{fn}"),
+        ("delete", "/api/v1/entity-function-maps/{fn}"),
+    ],
+)
+def test_the_module_catalogue_cannot_be_written(api, entity, auth_headers, method, path):
     fn = EntityFunction.objects.create(
         function_code="PAYMENT_REQUEST", function_name="Payment Request"
     )
-    EntityFunctionMap.objects.create(entity_id=entity.id, entity_function=fn)
+    EntityFunctionMap.objects.create(entity_id=entity.id, entity_function=fn, is_enabled=True)
+    body = {"function_code": "X", "function_name": "X", "entity_function_id": str(fn.id),
+            "is_enabled": False}
 
-    resp = api.delete(f"/api/v1/entity-function-maps/{fn.id}", **auth_headers)
+    resp = getattr(api, method)(
+        path.format(fn=fn.id), data=json.dumps(body), content_type="application/json",
+        **auth_headers,
+    )
 
-    assert resp.status_code == 200, resp.content
-    assert not EntityFunctionMap.objects.filter(entity_id=entity.id).exists()
+    assert resp.status_code in (404, 405), resp.content
+    assert EntityFunction.objects.count() == 1
+    assert EntityFunctionMap.objects.get(entity_id=entity.id).is_enabled is True
+
+
+@pytest.mark.django_db
+def test_the_module_catalogue_can_still_be_read(api, entity, auth_headers):
+    fn = EntityFunction.objects.create(
+        function_code="PAYMENT_REQUEST", function_name="Payment Request"
+    )
+    EntityFunctionMap.objects.create(entity_id=entity.id, entity_function=fn, is_enabled=True)
+
+    assert api.get("/api/v1/entity-functions/", **auth_headers).status_code == 200
+    assert api.get(f"/api/v1/entity-functions/{fn.id}", **auth_headers).status_code == 200
+    assert api.get("/api/v1/entity-function-maps/", **auth_headers).status_code == 200
+    names = api.get("/api/v1/entity-function-maps/functions", **auth_headers)
+    assert names.json() == [{"function_name": "Payment Request"}]
+    assert api.get(f"/api/v1/entity-function-maps/{fn.id}", **auth_headers).status_code == 200

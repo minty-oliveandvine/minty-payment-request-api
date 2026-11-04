@@ -266,11 +266,11 @@ def list_bills(request, filters: Query[BillFilterQuery]):
 @bills_router.get(
     "/suggested-reference/",
     response={200: SuggestedReferenceOut},
-    summary="Suggested bill number (MBI + 3 name letters + HK time/date, unique in entity)",
+    summary="Suggested bill number (MBI + 3 company-name letters + HK time/date, unique in entity)",
 )
 def suggested_bill_reference_endpoint(request):
     check_create_bill(request.entity_role)
-    ref = generate_unique_bill_reference(request.entity_id, request.auth_user)
+    ref = generate_unique_bill_reference(request.entity_id)
     return {"reference": ref}
 
 

@@ -2,7 +2,6 @@ import logging
 from decimal import Decimal
 
 from django.db import transaction
-from minty_db.models import User
 
 from bills.models import Audit, Bill, BillLineItem
 from bills.services.audit_service import log_audit
@@ -65,13 +64,13 @@ def _ensure_reference_unique(
 def _final_reference_for_create(
     entity_id: str, user_id: str, incoming: str | None
 ) -> str:
-    """Use explicit reference if provided; otherwise generate MB… + timestamp (unique per entity)."""
+    """Use explicit reference if provided; otherwise generate MBI + company letters + timestamp
+    (unique per entity)."""
     ref = (incoming or "").strip()
     if ref:
         _ensure_reference_unique(entity_id, ref)
         return ref
-    user = User.objects.get(id=user_id)
-    return generate_unique_bill_reference(entity_id, user)
+    return generate_unique_bill_reference(entity_id)
 
 
 def _fmt(value) -> str:
@@ -216,6 +215,21 @@ def save_bill_draft(data, user_id: str, entity_id: str) -> Bill:
     return bill
 
 
+def _one_line_follows_description(bill: Bill, data) -> None:
+    """A one-line bill's line says what the bill says: the line is what reaches Xero.
+
+    2026-11-03: an edited description reached Xero with the old words, because the edit sent the
+    line's saved text back. A bill of several lines keeps each line its own.
+    """
+    description = getattr(data, "description", None)
+    if description is None:
+        return
+    lines = list(bill.line_items.all()[:2])
+    if len(lines) == 1 and lines[0].description != description:
+        lines[0].description = description
+        lines[0].save(update_fields=["description"])
+
+
 def update_bill_draft(bill: Bill, data, user_id: str) -> Bill:
     if bill.status == Bill.Status.VOIDED:
         raise BillValidationError("You can't edit a voided bill.")
@@ -262,6 +276,7 @@ def update_bill_draft(bill: Bill, data, user_id: str) -> Bill:
                     sort_order=item.sort_order or idx,
                     note=item.note,
                 )
+        _one_line_follows_description(bill, data)
 
         bill.save()
         log_audit(
@@ -405,6 +420,7 @@ def update_bill(bill: Bill, data, user_id: str) -> Bill:
                     sort_order=item.sort_order or idx,
                     note=item.note,
                 )
+        _one_line_follows_description(bill, data)
 
         _fill_missing_currency(bill, required=bill.status == Bill.Status.SUBMITTED)
         bill.save()
