@@ -6,6 +6,7 @@ from datetime import UTC, datetime, timedelta
 import jwt
 from django.conf import settings
 from minty_db.enums import SystemRole
+from minty_shared import tokens
 from ninja import Router, Schema
 
 from core.auth import SelfBearerAuth
@@ -130,7 +131,7 @@ def token_refresh(request):
     }
     # The session id (the subscription notice keys on it) is the only claim carried over:
     # it names the sign-in, which a refresh continues. The token was verified just above.
-    sid = jwt.decode(raw_token, settings.SECRET_KEY, algorithms=["HS256"]).get("sid")
+    sid = tokens.decode_bearer(raw_token, settings.SECRET_KEY).get("sid")
     if sid:
         claims["sid"] = sid
 

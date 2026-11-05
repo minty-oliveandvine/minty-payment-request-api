@@ -197,7 +197,8 @@ def test_expired_token_cannot_be_refreshed(client, user, entity, membership):
             "user_id": user.id,
             "entity_id": entity.id,
             "module": "billing",
-            "exp": datetime.now(UTC) - timedelta(seconds=1),
+            # Past the 60 s clock skew every backend allows (minty_shared.tokens).
+            "exp": datetime.now(UTC) - timedelta(minutes=2),
         },
         settings.SECRET_KEY,
         algorithm="HS256",
@@ -249,3 +250,29 @@ def test_unscoped_token_can_be_refreshed(client, user, entity, membership):
     payload = pyjwt.decode(new_token, settings.SECRET_KEY, algorithms=["HS256"])
     assert payload["user_id"] == user.id
     assert payload.get("entity_id") == ""
+
+
+# ---------------------------------------------------------------------------
+# Clock skew: Flask mints on another host. Every backend allows 60 s (minty_shared.tokens).
+# ---------------------------------------------------------------------------
+
+
+def test_a_token_minted_on_a_clock_a_little_ahead_is_accepted(client, user, entity, membership):
+    """``iat`` 30 s in this host's future: within the skew, so not "not yet valid". Both of the
+    route's decodes (the bearer check and the ``sid`` carry-over) must allow it."""
+    ahead = datetime.now(UTC) + timedelta(seconds=30)
+    token = _make_token(user.id, entity.id, iat=ahead, sid="sign-in-1")
+    response = client.post(REFRESH_URL, **_auth(token, entity.id))
+
+    assert response.status_code == 200, response.content[:300]
+    payload = pyjwt.decode(response.json()["token"], settings.SECRET_KEY, algorithms=["HS256"])
+    assert payload["sid"] == "sign-in-1"
+
+
+def test_a_token_expired_within_the_skew_is_accepted_and_past_it_refused(client, user, entity,
+                                                                         membership):
+    just = _make_token(user.id, entity.id, hours_from_now=-30 / 3600)
+    assert client.post(REFRESH_URL, **_auth(just, entity.id)).status_code == 200
+
+    past = _make_token(user.id, entity.id, hours_from_now=-90 / 3600)
+    assert client.post(REFRESH_URL, **_auth(past, entity.id)).status_code == 401

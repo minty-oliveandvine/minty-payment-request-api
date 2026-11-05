@@ -20,15 +20,14 @@ token columns left ``user``, and billing has no business writing ``user_token``.
 from __future__ import annotations
 
 import logging
-from datetime import UTC, datetime, timedelta
+from datetime import UTC
 
-import jwt
 import requests
 from django.conf import settings
 from django.utils import timezone as django_tz
 from minty_db.enums import EntityStatus
 from minty_db.models import Entity, UserToken
-from minty_shared import logctx
+from minty_shared import tokens
 
 from core.exceptions import BillValidationError
 
@@ -139,22 +138,13 @@ def _request_token_from_flask(entity_id: str) -> str | None:
         )
         return None
 
-    now = datetime.now(tz=UTC)
-    assertion = jwt.encode(
-        {
-            "scope": _TOKEN_SERVICE_SCOPE,
-            "entity_id": str(entity_id),
-            "iat": now,
-            "exp": now + timedelta(seconds=60),
-        },
-        secret,
-        algorithm="HS256",
-    )
+    # Every backend's 60-second assertion (minty_shared.tokens).
+    assertion = tokens.service_assertion(secret, _TOKEN_SERVICE_SCOPE, entity_id)
 
     try:
         resp = requests.post(
             url,
-            headers={"Authorization": f"Bearer {assertion}", **logctx.outgoing_headers()},
+            headers=tokens.assertion_headers(assertion),
             timeout=getattr(settings, "XERO_TOKEN_SERVICE_TIMEOUT", 15),
         )
     except requests.RequestException as exc:

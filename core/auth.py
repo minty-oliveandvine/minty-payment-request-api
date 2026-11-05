@@ -5,7 +5,7 @@ from django.conf import settings
 from django.core.exceptions import ValidationError
 from minty_db.enums import EntityRole, SystemRole
 from minty_db.models import User, UserEntity
-from minty_shared import logctx
+from minty_shared import logctx, tokens
 from ninja.security import HttpBearer
 
 from core.roles import is_superadmin
@@ -91,7 +91,9 @@ class BearerAuth(HttpBearer):
     def authenticate(self, request, token):
         try:
             key = settings.SECRET_KEY
-            payload = jwt.decode(token, key, algorithms=["HS256"])
+            # Every backend's decode (minty_shared.tokens): HS256 with 60 s of clock skew, so a
+            # token minted on a host a little ahead is not refused as "not yet valid".
+            payload = tokens.decode_bearer(token, key)
             user = User.objects.get(id=payload["user_id"])
             user_id = payload["user_id"]
             token_entity_id = (payload.get("entity_id") or "").strip()
