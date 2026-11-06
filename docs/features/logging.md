@@ -27,7 +27,7 @@ Both also go to stderr, which is what Render keeps.
 - **step**: the route's URL name (ninja names every operation) unless code names one with
   `with logctx.log_step("area.action"):` or `@logctx.log_step(...)`. `bills/services/xero_publish_service.py` names `xero.publish_bill`, `xero.upload_attachments` and `xero.upload_bankslip`.
 - **Calls to Flask** send the trace (`logctx.outgoing_headers()`), so Flask's lines for the same
-  request share it: `bills/services/flask_billing_sync.py` (the chart and contact syncs) and `bills/services/xero_token_service.py` (Flask's token service). Calls to Xero and Stripe never do.
+  request share it: `bills/services/xero_sync.py` (accounts-api's Xero sync) and `bills/services/xero_token_service.py` (Flask's token service). Calls to Xero and Stripe never do.
 - **The background bankslip upload** starts its thread through `logctx.carry_context`, so its lines keep the request's trace, user and company.
 - **Context is cleared** at the end of each request (`logctx.reset()`), so a reused worker never
   prints the previous caller.

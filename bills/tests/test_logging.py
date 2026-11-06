@@ -85,12 +85,12 @@ def test_nothing_outlives_the_request(api_client, auth_headers, test_user_entity
 
 
 @pytest.mark.django_db
-def test_calls_to_flask_carry_the_trace(monkeypatch, settings, test_entity):
+def test_the_sync_call_carries_the_trace(monkeypatch, settings, test_entity):
     import requests
 
-    from bills.services import flask_billing_sync
+    from bills.services import xero_sync
 
-    settings.PETTY_CASH_URL = "http://flask.test"
+    settings.XERO_SYNC_URL = "http://accounts.test/api/internal/xero/sync"
     sent = []
 
     def fake_post(url, headers=None, **kwargs):
@@ -98,11 +98,9 @@ def test_calls_to_flask_carry_the_trace(monkeypatch, settings, test_entity):
         return SimpleNamespace(status_code=200, text="", json=lambda: {})
 
     monkeypatch.setattr(requests, "post", fake_post)
-    request = SimpleNamespace(headers={"Authorization": "Bearer t"})
     logctx.start_trace("a1b2c3d4")
     try:
-        flask_billing_sync.trigger_flask_bill_chart_sync(request, str(test_entity.id), force=True)
-        flask_billing_sync.trigger_flask_contact_sync(request, str(test_entity.id), force=True)
+        xero_sync.run_sync(str(test_entity.id))
     finally:
         logctx.reset()
     assert sent and all(h.get("X-Request-ID") == "a1b2c3d4" for h in sent)

@@ -220,17 +220,14 @@ def list_entity_bill_accounts(
 ):
     # The Bill CoA list is rendered SOLELY from entity_bill_account_xero (the
     # query below) — no live Xero read feeds this response. When the Bill
-    # Settings tab opens (include_inactive=true) we still kick off a
-    # background, debounced chart-of-accounts sync so the table is refreshed
-    # for the next load. The Flask endpoint runs it in a daemon thread and
-    # returns immediately, so this render is never blocked on the Xero diff.
-    # force_chart_sync bypasses the per-entity debounce for a manual refresh.
+    # Settings tab opens (include_inactive=true) we still start accounts-api's
+    # sync in the background (debounced), so the table is refreshed for the
+    # next load; this render is never blocked on Xero. force_chart_sync
+    # bypasses the per-entity debounce for a manual refresh.
     if include_inactive or force_chart_sync:
-        from bills.services.flask_billing_sync import trigger_chart_sync_if_changed
+        from bills.services.xero_sync import request_sync
 
-        trigger_chart_sync_if_changed(
-            request, request.entity_id, force=force_chart_sync
-        )
+        request_sync(request.entity_id, force=force_chart_sync)
 
     qs = EntityBillAccountXero.objects.filter(entity_id=request.entity_id)
     if not include_deleted:

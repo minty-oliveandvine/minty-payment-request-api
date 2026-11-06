@@ -157,6 +157,9 @@ if not S3_BUCKET:
 # ---------------------------------------------------------------------------
 XERO_TOKEN_SERVICE_URL = f"{PETTY_CASH_URL}/api/internal/xero/token"
 XERO_TOKEN_SERVICE_TIMEOUT = 15  # seconds
+# accounts-api's one Xero account/contact sync (Phase 4 of the Flask retirement, 2026-11-06), on the
+# same host as the token service (bills/services/xero_sync.py).
+XERO_SYNC_URL = f"{PETTY_CASH_URL}/api/internal/xero/sync"
 
 # ---------------------------------------------------------------------------
 # Logging - one line format for every Minty backend (minty_shared.logctx):

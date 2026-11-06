@@ -46,9 +46,8 @@ The Minty side of the same organisation (the petty-cash report's bank transactio
 ## Chart of accounts and contacts
 
 Minty syncs `entity_bill_account_xero` (the account-code picker) and `xero_contact_sync`
-when a company connects; this service can ask for a refresh — `flask_billing_sync.py`
-posts to Minty's `/api/entities/{id}/billing/sync-chart-accounts`,
-`sync-chart-if-changed` and `sync-contacts-if-changed` (JWT-authenticated; failures are
+when a company connects; this service asks for a refresh through accounts-api's one sync
+(`xero_sync.py`, `POST /api/internal/xero/sync`; see entity-configuration.md - failures are
 logged, never raised). `GET /api/entity-bill-contacts/` returns the dropdown's contacts
 with the same matching rules Minty uses (`contact_service.py`), `POST` creates a contact
 in Xero and caches it.

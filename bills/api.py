@@ -197,13 +197,10 @@ def update_draft_endpoint(request, bill_id: str, payload: BillDraftIn):
 
 @bills_router.get("/", response=list[BillListOut], summary="List bills")
 def list_bills(request, filters: Query[BillFilterQuery]):
-    from bills.services.flask_billing_sync import (
-        trigger_chart_sync_if_changed,
-        trigger_flask_contact_sync,
-    )
+    from bills.services.xero_sync import request_sync
 
-    trigger_chart_sync_if_changed(request, request.entity_id)
-    trigger_flask_contact_sync(request, request.entity_id)
+    # The accounts and contacts the bills choose from, refreshed in the background (debounced).
+    request_sync(request.entity_id)
 
     completed_payment_date = Subquery(
         Payment.objects.filter(

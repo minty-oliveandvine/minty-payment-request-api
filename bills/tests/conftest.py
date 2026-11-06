@@ -28,6 +28,8 @@ def _block_real_token_service_calls(monkeypatch):
         raise requests.ConnectionError("real HTTP blocked in tests")
 
     monkeypatch.setattr("bills.services.xero_token_service.requests.post", _blocked)
+    # The list and settings screens start accounts-api's sync on a thread (bills/services/xero_sync.py).
+    monkeypatch.setattr("bills.services.xero_sync.requests.post", _blocked)
 
 
 @pytest.fixture(autouse=True)

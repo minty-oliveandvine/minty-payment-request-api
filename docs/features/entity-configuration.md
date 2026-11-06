@@ -3,7 +3,7 @@
 The per-company reference data the payment module reads. Most of it is **written by
 Minty** (the module switches, the synced chart and contacts); this service serves it and
 edits the parts that belong to bills. Code: `bills/api_config.py`, `core/entitlements.py`,
-`bills/services/contact_service.py`, `flask_billing_sync.py`; models in `bills/models.py`
+`bills/services/contact_service.py`, `xero_sync.py`; models in `bills/models.py`
 (`entity_function`, `entity_function_map`, `entity_bill_account_xero`, `currency_info`,
 `entity_bill_currency`) — every table is `managed = False` here except the bills' own.
 
@@ -24,8 +24,8 @@ through them.
 
 `entity_bill_account_xero` — the expense accounts the Add Payment dialog offers
 (`account_code`, `account_name`, `account_type`, `is_default`, `is_active`, `sort_order`,
-`xero_account_id`). Minty fills it from the Xero chart when a company connects (and on
-`POST /api/entities/{id}/billing/sync-chart-accounts`); this service lists it and lets
+`xero_account_id`). Minty fills it from the Xero chart when a company connects and on every
+sync accounts-api runs (`POST /api/internal/xero/sync`); this service lists it and lets
 elevated roles edit (`check_edit_bill_settings`). `GET /api/entities/` lists the
 companies the caller may enter (all of them for a super admin, own only otherwise).
 
@@ -78,10 +78,14 @@ too.
 
 ## Keeping the caches fresh
 
-`flask_billing_sync.py` asks Minty to refresh — `trigger_flask_bill_chart_sync`,
-`trigger_chart_sync_if_changed` (compares Xero live against the DB and syncs both modules
-if anything changed), `trigger_flask_contact_sync` — over the JWT-authenticated
-`/api/entities/{id}/billing/sync-*` routes; failures are logged, never raised.
+`xero_sync.py` asks accounts-api's one Xero sync (`POST /api/internal/xero/sync`, a 60-second
+assertion scoped `xero-sync` naming the company; Phase 4 of the Flask retirement, 2026-11-06)
+to refresh the accounts (`account_info`, which the Bill CoA list mirrors) and the contacts
+together. The bill list (`GET /bills/`) and the Bill CoA settings (`include_inactive` or
+`force_chart_sync`) start it on a background thread, debounced per company for 120 s
+(`force_chart_sync` skips the wait); the screens render from the tables at once. Failures are
+logged, never raised. It replaced three calls to Flask's `/api/entities/{id}/billing/sync-*`,
+routes that checked only that the header began with `Bearer `.
 
 ## Tests
 
@@ -89,4 +93,6 @@ if anything changed), `trigger_flask_contact_sync` — over the JWT-authenticate
 PUT leaves `account_info` alone, the 409, the function-map DELETE), `test_entity_bill_contacts_create.py`,
 `test_contact_dedup.py`, `test_contact_list_exact_match.py`, `test_contact_list_parity.py`,
 `test_contact_no_duplicates.py`, `test_account_restoration.py`, `test_depreciatn_account.py`,
-`test_char_schema.py` and `test_schema_name.py` (the schema the models expect).
+`test_char_schema.py` and `test_schema_name.py` (the schema the models expect), `test_xero_sync.py`
+(the sync call: its assertion, failures logged, the background debounce, the two screens that
+start it).
