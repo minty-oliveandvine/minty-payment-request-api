@@ -8,7 +8,7 @@ are its own, everything else is `managed = False` and owned by Minty.
 
 | Feature | Document |
 |---|---|
-| Verifying the bearer token, roles, the permission matrix, the session endpoints, Xero tokens | [authentication.md](authentication.md) — Minty's `docs/features/authentication.md` has the system-wide picture |
+| Verifying the bearer token, roles, the permission matrix, the session endpoints, Xero tokens | [authentication.md](authentication.md) — minty-accounts-api's `docs/features/authentication.md` has the system-wide picture |
 | Bills: draft → submitted → paid, return / void, references, listing, the audit trail | [payment-requests.md](payment-requests.md) |
 | Payments, partial payments, the no-overpayment rule, bank slips to Xero | [payments.md](payments.md) |
 | Attachments in B2, preview proxy, limits | [attachments.md](attachments.md) |

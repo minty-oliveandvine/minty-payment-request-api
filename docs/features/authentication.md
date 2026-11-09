@@ -2,7 +2,7 @@
 
 This service **verifies**; it never signs anyone in. Minty (Flask) mints the token a
 person arrives with; the system-wide picture — the sign-in paths, sessions, the hand-off
-tokens, the Xero OAuth tokens — is `Minty/docs/features/authentication.md`. This page is
+tokens, the Xero OAuth tokens — is `minty-accounts-api/docs/features/authentication.md`. This page is
 what happens once a request reaches `/api/*` here.
 
 ## The bearer token

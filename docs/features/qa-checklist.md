@@ -179,7 +179,7 @@ version of the same walkthrough) and never a live org.
 
 - **Xero's OAuth connect/reconnect flow itself, and refreshing a Xero token** — this
   service deliberately holds no Xero client credentials and never refreshes a token; that's
-  Minty's (`Minty/docs/features/authentication.md` and `xero-integration.md`).
+  minty-accounts-api's (`minty-accounts-api/docs/features/authentication.md` §7 and `accounts-api.md`).
 - **Minting the bearer token / the sign-in flow** — Minty mints it; this service only
   verifies.
 - **Email delivery** — nothing in this service's documented surface sends mail.
