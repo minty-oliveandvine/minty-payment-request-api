@@ -59,7 +59,10 @@ MIDDLEWARE = [
 # ---------------------------------------------------------------------------
 # Cross-module URLs (trailing slashes stripped)
 # ---------------------------------------------------------------------------
-PETTY_CASH_URL = os.environ.get("PETTY_CASH_URL", "http://localhost:8010").rstrip("/")
+# Required outside development (no silent default): locally it is accounts-api on 8002.
+ACCOUNTS_API_URL = (os.environ.get("ACCOUNTS_API_URL") or ("http://localhost:8002" if DEBUG else "")).strip().rstrip("/")
+if not ACCOUNTS_API_URL:
+    raise ImproperlyConfigured("ACCOUNTS_API_URL is required and is not set")
 PAYMENT_REQUEST_WEB_URL = os.environ.get("PAYMENT_REQUEST_WEB_URL", "http://localhost:3020").rstrip("/")
 ONBOARDING_WEB_URL = os.environ.get("ONBOARDING_WEB_URL", "http://localhost:3030").rstrip("/")
 
@@ -155,11 +158,11 @@ if not S3_BUCKET:
 # /connect/token: the Flask app. To obtain a fresh token, this service asks the Flask
 # app's internal token endpoint, authenticated with the shared SECRET_KEY.
 # ---------------------------------------------------------------------------
-XERO_TOKEN_SERVICE_URL = f"{PETTY_CASH_URL}/api/internal/xero/token"
+XERO_TOKEN_SERVICE_URL = f"{ACCOUNTS_API_URL}/api/internal/xero/token"
 XERO_TOKEN_SERVICE_TIMEOUT = 15  # seconds
 # accounts-api's one Xero account/contact sync (Phase 4 of the Flask retirement, 2026-11-06), on the
 # same host as the token service (bills/services/xero_sync.py).
-XERO_SYNC_URL = f"{PETTY_CASH_URL}/api/internal/xero/sync"
+XERO_SYNC_URL = f"{ACCOUNTS_API_URL}/api/internal/xero/sync"
 
 # ---------------------------------------------------------------------------
 # Logging - one line format for every Minty backend (minty_shared.logctx):

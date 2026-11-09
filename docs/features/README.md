@@ -20,7 +20,7 @@ are its own, everything else is `managed = False` and owned by Minty.
 | Manual QA checklist for this service, alongside the automated suites above | [qa-checklist.md](qa-checklist.md) |
 
 Running it: `manage.py runserver 8020` with `.env` (see `.env.example` and the README:
-`APP_ENV`, `SECRET_KEY` shared with Minty, `DATABASE_URL`, `S3_URL`, `PETTY_CASH_URL`,
+`APP_ENV`, `SECRET_KEY` shared with Minty, `DATABASE_URL`, `S3_URL`, `ACCOUNTS_API_URL`,
 `PAYMENT_REQUEST_WEB_URL`, `ONBOARDING_WEB_URL`); the API docs are at `/api/docs`. Tests:
 `pytest` (SQLite by default; with `MINTY_TEST_PG_URI` set, minty-db's plugin builds a Postgres
 from its packaged `01_schema_rebased.sql`). The models are minty-db's (`minty_db.models`, since

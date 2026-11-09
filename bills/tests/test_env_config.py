@@ -103,23 +103,26 @@ def test_s3_url_unset():
 
 
 PLACEHOLDER_S3_URL = "https://k:s@s3.us-east-1.example.invalid/placeholder"
+#: Required outside development; a test that needs it unset passes "".
+PLACEHOLDER_ACCOUNTS_API_URL = "https://accounts-api.example.invalid"
 
 
 def _settings(env: dict) -> subprocess.CompletedProcess:
     code = (
         "import json, config.settings as s; print(json.dumps({k: getattr(s, k) for k in "
-        "('DEBUG', 'DB_SCHEMA', 'DATABASES', 'S3_BUCKET', 'S3_REGION', 'PETTY_CASH_URL', "
+        "('DEBUG', 'DB_SCHEMA', 'DATABASES', 'S3_BUCKET', 'S3_REGION', 'ACCOUNTS_API_URL', "
         "'XERO_TOKEN_SERVICE_URL', 'CORS_ALLOWED_ORIGINS', 'CORS_ALLOWED_ORIGIN_REGEXES', "
         "'PAYMENT_REQUEST_WEB_URL')}))"
     )
     clean = {k: v for k, v in os.environ.items() if k not in {
-        "APP_ENV", "SECRET_KEY", "DATABASE_URL", "S3_URL", "PETTY_CASH_URL",
+        "APP_ENV", "SECRET_KEY", "DATABASE_URL", "S3_URL", "ACCOUNTS_API_URL",
         "PAYMENT_REQUEST_WEB_URL", "ONBOARDING_WEB_URL", "CORS_ALLOWED_ORIGINS", "PREVIEW_ORIGIN_REGEX",
     }}
     # cwd outside the repo so load_dotenv() cannot pick up a developer's .env
     return subprocess.run(
         [sys.executable, "-c", code],
-        env={**clean, "PYTHONPATH": str(ROOT), "S3_URL": PLACEHOLDER_S3_URL, **env},
+        env={**clean, "PYTHONPATH": str(ROOT), "S3_URL": PLACEHOLDER_S3_URL,
+             "ACCOUNTS_API_URL": PLACEHOLDER_ACCOUNTS_API_URL, **env},
         cwd="/",
         capture_output=True,
         text=True,
@@ -167,9 +170,21 @@ def test_settings_read_database_url_and_s3_url():
     assert (s["S3_BUCKET"], s["S3_REGION"]) == ("bucket-1", "us-west-004")
 
 
+def test_accounts_api_url_is_required_outside_development():
+    proc = _settings({"APP_ENV": "production", "SECRET_KEY": "real", "ACCOUNTS_API_URL": ""})
+    assert proc.returncode != 0
+    assert "ImproperlyConfigured" in proc.stderr and "ACCOUNTS_API_URL is required" in proc.stderr
+
+
+def test_accounts_api_url_defaults_to_local_accounts_api_in_development():
+    s = _ok({"APP_ENV": "development", "ACCOUNTS_API_URL": ""})
+    assert s["ACCOUNTS_API_URL"] == "http://localhost:8002"
+    assert s["XERO_TOKEN_SERVICE_URL"] == "http://localhost:8002/api/internal/xero/token"
+
+
 def test_derived_urls_and_cors_default():
-    s = _ok({"APP_ENV": "development", "PETTY_CASH_URL": "http://minty:8010/"})
-    assert s["PETTY_CASH_URL"] == "http://minty:8010"
+    s = _ok({"APP_ENV": "development", "ACCOUNTS_API_URL": "http://minty:8010/"})
+    assert s["ACCOUNTS_API_URL"] == "http://minty:8010"
     assert s["XERO_TOKEN_SERVICE_URL"] == "http://minty:8010/api/internal/xero/token"
     assert s["CORS_ALLOWED_ORIGINS"] == ["http://localhost:3020", "http://localhost:3030"]
     s = _ok({"APP_ENV": "development", "CORS_ALLOWED_ORIGINS": "https://a.example, https://b.example/"})

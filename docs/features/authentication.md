@@ -75,7 +75,7 @@ plus `check_bill_mutable(status)` (a `void` bill accepts nothing). `PermissionDe
 This service **never refreshes** a Xero token. `bills/services/xero_token_service.py`
 uses the stored bundle of the entity's connector (`entities.connected_by_user_id`, else
 the caller's own) while it is unexpired, and otherwise asks Minty:
-`POST {XERO_TOKEN_SERVICE_URL}` (always `{PETTY_CASH_URL}/api/internal/xero/token`) with a
+`POST {XERO_TOKEN_SERVICE_URL}` (always `{ACCOUNTS_API_URL}/api/internal/xero/token`) with a
 60-second assertion JWT (`scope: xero-access-token`, the entity in the signed claims). A
 409 from Minty means "reconnect" and surfaces as *Your Xero connection has expired*.
 There are deliberately no Xero client credentials in this service's settings — holding them
@@ -84,8 +84,8 @@ would make it a second refresher and brick the connection.
 ## Configuration
 
 `APP_ENV` (`development` → `DEBUG`; otherwise the placeholder `SECRET_KEY` refuses to boot),
-`SECRET_KEY` (shared), `PETTY_CASH_URL` (→ `XERO_TOKEN_SERVICE_URL`; `XERO_TOKEN_SERVICE_TIMEOUT`
-is a 15-second constant), `PAYMENT_REQUEST_WEB_URL` / `ONBOARDING_WEB_URL` (CORS default;
+`SECRET_KEY` (shared), `ACCOUNTS_API_URL` (→ `XERO_TOKEN_SERVICE_URL`; required outside development, default
+`http://localhost:8002` there; `XERO_TOKEN_SERVICE_TIMEOUT` is a 15-second constant), `PAYMENT_REQUEST_WEB_URL` / `ONBOARDING_WEB_URL` (CORS default;
 `CORS_ALLOWED_ORIGINS` overrides), `?schema=` on `DATABASE_URL` → `DB_SCHEMA` (the `search_path`).
 `PREVIEW_ORIGIN_REGEX` (optional, unset = off) adds a branch's preview-set origins (`https://pr-<slug>-<app>.dailyminty.com`) to CORS; minty-infra sets it on one environment only, and a value that could let in any other origin refuses to boot (`config/preview_origin.py`, the same file in all three APIs).
 
