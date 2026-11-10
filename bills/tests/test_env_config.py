@@ -178,8 +178,8 @@ def test_accounts_api_url_is_required_outside_development():
 
 def test_accounts_api_url_defaults_to_local_accounts_api_in_development():
     s = _ok({"APP_ENV": "development", "ACCOUNTS_API_URL": ""})
-    assert s["ACCOUNTS_API_URL"] == "http://localhost:8002"
-    assert s["XERO_TOKEN_SERVICE_URL"] == "http://localhost:8002/api/internal/xero/token"
+    assert s["ACCOUNTS_API_URL"] == "http://localhost:8000"
+    assert s["XERO_TOKEN_SERVICE_URL"] == "http://localhost:8000/api/internal/xero/token"
 
 
 def test_derived_urls_and_cors_default():

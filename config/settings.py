@@ -59,8 +59,8 @@ MIDDLEWARE = [
 # ---------------------------------------------------------------------------
 # Cross-module URLs (trailing slashes stripped)
 # ---------------------------------------------------------------------------
-# Required outside development (no silent default): locally it is accounts-api on 8002.
-ACCOUNTS_API_URL = (os.environ.get("ACCOUNTS_API_URL") or ("http://localhost:8002" if DEBUG else "")).strip().rstrip("/")
+# Required outside development (no silent default): locally it is accounts-api on 8000.
+ACCOUNTS_API_URL = (os.environ.get("ACCOUNTS_API_URL") or ("http://localhost:8000" if DEBUG else "")).strip().rstrip("/")
 if not ACCOUNTS_API_URL:
     raise ImproperlyConfigured("ACCOUNTS_API_URL is required and is not set")
 PAYMENT_REQUEST_WEB_URL = os.environ.get("PAYMENT_REQUEST_WEB_URL", "http://localhost:3020").rstrip("/")
