@@ -21,6 +21,7 @@ from minty_shared import logctx
 from bills.models import (
     Audit,
     Bill,
+    BillLine,
     EntityBillAccountXero,
     Payment,
     PaymentAttachment,
@@ -186,6 +187,7 @@ def publish_bill_to_xero(bill_id: str, entity_id: str, user_id: str, access_toke
     if sync.sync_status == XeroBillSync.SyncStatus.SUCCESS:
         bill.published = Bill.PublishStatus.PUBLISHED
         bill.save(update_fields=["published", "status", "updated_at"])
+        _snapshot(bill)
         log_audit(
             bill, Audit.Action.PUBLISHED_TO_XERO, user_id,
             f"Published to Xero. Invoice #{sync.response_invoice_number}",
@@ -294,6 +296,7 @@ def _update_bill_to_xero(
         if sync.sync_status == XeroBillSync.SyncStatus.SUCCESS:
             bill.published = Bill.PublishStatus.PUBLISHED
             bill.save(update_fields=["published", "status", "updated_at"])
+            _snapshot(bill)
             log_audit(
                 bill, Audit.Action.PUBLISHED_TO_XERO, user_id,
                 f"Voided AUTHORISED invoice and recreated as DRAFT #{sync.response_invoice_number}",
@@ -335,6 +338,7 @@ def _update_bill_to_xero(
     if sync.sync_status == XeroBillSync.SyncStatus.SUCCESS:
         bill.published = Bill.PublishStatus.PUBLISHED
         bill.save(update_fields=["published", "status", "updated_at"])
+        _snapshot(bill)
         log_audit(
             bill, Audit.Action.PUBLISHED_TO_XERO, user_id,
             f"Updated Xero invoice #{sync.response_invoice_number}",
@@ -355,6 +359,18 @@ def _update_bill_to_xero(
 
 
 # ─── Helpers ──────────────────────────────────────────────────────────────
+
+
+def _snapshot(bill: Bill) -> None:
+    """What this publish sent, frozen (Xero optional, 2026-11-10): each line's account code and
+    name, and the supplier's name. A published bill shows these; no sync or code change rewrites
+    them, only the next successful publish."""
+    Bill.objects.filter(id=bill.id).update(published_contact_name=bill.contact_name or None)
+    for line in bill.line_items.all():
+        BillLine.objects.filter(id=line.id).update(
+            published_account_code=(line.account_code or "")[:10] or None,
+            published_account_name=line.account_name or None,
+        )
 
 
 def _load_bill(bill_id: str, entity_id: str) -> Bill:

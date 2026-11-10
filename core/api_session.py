@@ -30,6 +30,9 @@ class TokenRefreshOut(Schema):
 
 class XeroStatusOut(Schema):
     connected: bool
+    #: The company keeps its books in Minty with no Xero (Xero optional, 2026-11-10): nothing to
+    #: publish, and its bill codes are its own. The web hides Publish and shows the codes.
+    minty_only: bool = False
 
 
 class EntitlementsOut(Schema):
@@ -200,10 +203,11 @@ def xero_status(request):
     on the entity. The frontend hides the Xero-fed settings (the account codes) when it is
     not live. Read from the database - no live call to the Xero API.
     """
+    from bills.services.books import minty_on_its_own
     from bills.services.xero_token_service import xero_connection_live
 
     connected = xero_connection_live(str(request.entity_id), str(request.auth_user.id))
-    return XeroStatusOut(connected=connected)
+    return XeroStatusOut(connected=connected, minty_only=minty_on_its_own(request.entity_id))
 
 
 @session_router.post(

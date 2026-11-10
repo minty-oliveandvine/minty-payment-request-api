@@ -55,6 +55,7 @@ class TestResolveAccessTokenForEntity:
         Billing does not refresh; the Flask app does, behind an advisory lock.
         """
         test_entity.xero_org_id = "org-tc002"
+        test_entity.status = "connected"
         test_entity.save()
 
         test_entity.connected_by_user_id = test_user.id
@@ -83,6 +84,7 @@ class TestResolveAccessTokenForEntity:
         """TC-XERO-003: When the token service errors (500), billing raises rather than
         falling back to the stale token still sitting in the row."""
         test_entity.xero_org_id = "org-tc003"
+        test_entity.status = "connected"
         test_entity.save()
 
         test_entity.connected_by_user_id = test_user.id
@@ -109,6 +111,7 @@ class TestResolveAccessTokenForEntity:
         """TC-XERO-010: When the stored token is expired, billing requests one from the
         Flask token service and uses it. Billing never contacts Xero itself."""
         test_entity.xero_org_id = "org-tc010"
+        test_entity.status = "connected"
         test_entity.save()
 
         test_entity.connected_by_user_id = test_user.id
@@ -143,6 +146,7 @@ class TestResolveAccessTokenForEntity:
         """TC-XERO-015: entity_id travels inside the signed claims, so a leaked assertion
         cannot be replayed against a different entity."""
         test_entity.xero_org_id = "org-tc015"
+        test_entity.status = "connected"
         test_entity.save()
 
         test_entity.connected_by_user_id = test_user.id
@@ -175,6 +179,7 @@ class TestResolveAccessTokenForEntity:
     ):
         """TC-XERO-016: A 409 from the token service means no usable token exists."""
         test_entity.xero_org_id = "org-tc016"
+        test_entity.status = "connected"
         test_entity.save()
 
         test_entity.connected_by_user_id = test_user.id
@@ -200,6 +205,7 @@ class TestResolveAccessTokenForEntity:
         """TC-XERO-017: If the Flask app is down, billing surfaces a reconnect prompt rather
         than letting a RequestException escape as an unhandled 500."""
         test_entity.xero_org_id = "org-tc017"
+        test_entity.status = "connected"
         test_entity.save()
 
         test_entity.connected_by_user_id = test_user.id
@@ -223,6 +229,7 @@ class TestResolveAccessTokenForEntity:
         validity — and returned an expired token, which Xero rejects with 403
         AuthenticationUnsuccessful instead of a clean reconnect prompt."""
         test_entity.xero_org_id = "org-tc012"
+        test_entity.status = "connected"
         test_entity.save()
 
         test_entity.connected_by_user_id = test_user.id
@@ -252,6 +259,8 @@ class TestResolveAccessTokenForEntity:
         assert not hasattr(settings, "XERO_CLIENT_SECRET")
 
         test_entity.xero_org_id = "org-tc013"
+
+        test_entity.status = "connected"
         test_entity.save()
 
         test_entity.connected_by_user_id = test_user.id
@@ -280,6 +289,7 @@ class TestResolveAccessTokenForEntity:
         """TC-XERO-014: With no client credentials and a still-valid token, billing returns it
         without contacting Xero. This is the normal production path."""
         test_entity.xero_org_id = "org-tc014"
+        test_entity.status = "connected"
         test_entity.save()
 
         test_entity.connected_by_user_id = test_user.id
@@ -303,6 +313,7 @@ class TestResolveAccessTokenForEntity:
         give_xero_token(connector, "connector-at")
         give_xero_token(test_user, "member-at")
         test_entity.xero_org_id = "org-two"
+        test_entity.status = "connected"
         test_entity.connected_by_user_id = connector.id
         test_entity.save()
 
@@ -312,10 +323,29 @@ class TestResolveAccessTokenForEntity:
         mock_post.assert_not_called()
         assert token == "connector-at"
 
+    def test_a_disconnected_company_gets_no_token_even_with_its_organisation_kept(
+        self, test_entity, test_user, test_user_entity
+    ):
+        """A disconnect keeps the organisation (Xero optional, 2026-11-10). The signed-in person's
+        own Xero token must not stand in for the connection the company dropped."""
+        give_xero_token(test_user, "member-at")
+        test_entity.xero_org_id = "org-kept"
+        test_entity.status = "connected"
+        test_entity.status = "disconnected"
+        test_entity.connected_by_user_id = None
+        test_entity.save()
+
+        with patch("bills.services.xero_token_service.requests.post") as mock_post:
+            with pytest.raises(BillValidationError, match="disconnected from Xero"):
+                resolve_xero_access_token_for_entity(test_entity.id, test_user.id)
+
+        mock_post.assert_not_called()
+
     def test_a_token_without_expiry_metadata_is_treated_as_expired(
         self, test_entity, test_user, test_user_entity
     ):
         test_entity.xero_org_id = "org-meta"
+        test_entity.status = "connected"
         test_entity.save()
         give_xero_token(test_user, "no-expiry-at", expires_in=None, obtained_at=django_tz.now())
         row = test_user.token

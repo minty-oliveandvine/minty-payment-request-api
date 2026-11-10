@@ -99,6 +99,10 @@ def _resolve_token(
     if not entity or not entity.xero_org_id:
         logger.warning("Xero: entity %s has no Xero org linked", entity_id)
         return None, "no_org"
+    if entity.status == EntityStatus.DISCONNECTED:
+        # A disconnect keeps the organisation (Xero optional, 2026-11-10): no one's token stands in.
+        logger.warning("Xero: entity %s is disconnected (organisation kept); no token", entity_id)
+        return None, "disconnected"
 
     for user_id in _token_user_candidates(entity, jwt_user_id):
         token = (
@@ -199,6 +203,10 @@ def resolve_xero_access_token_for_entity(
     if failure_reason == "no_org":
         raise BillValidationError(
             "Entity is not linked to a Xero organization. Contact your administrator."
+        )
+    if failure_reason == "disconnected":
+        raise BillValidationError(
+            "This company is disconnected from Xero. Reconnect Xero to publish."
         )
 
     # Fast path: the Flask app refreshes on its own traffic and the result is in

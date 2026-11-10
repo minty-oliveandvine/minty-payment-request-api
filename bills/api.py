@@ -40,6 +40,7 @@ from bills.services.bill_service import (
     update_bill,
     update_bill_draft,
 )
+from bills.services.books import NOT_IN_XERO, minty_on_its_own
 from bills.services.payment_service import get_amount_due
 from bills.services.xero_publish_service import _delete_xero_file, publish_bill_to_xero
 from bills.services.xero_token_service import resolve_xero_access_token_for_entity
@@ -438,6 +439,8 @@ def publish_bill_endpoint(request, bill_id: str):
     check_not_system_superuser(request, "publish bills")
     check_publish_xero(request.entity_role)
     _get_bill_or_404(bill_id, request.entity_id)
+    if minty_on_its_own(request.entity_id):  # Xero optional (2026-11-10): nowhere to publish to
+        return 422, {"detail": NOT_IN_XERO}
 
     access_token = resolve_xero_access_token_for_entity(
         request.entity_id,

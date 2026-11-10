@@ -24,6 +24,7 @@ from django.db import IntegrityError, transaction
 from django.db.models import Q
 from minty_db.models import Entity, XeroContactSync
 
+from bills.services.books import minty_on_its_own
 from bills.services.xero_token_service import resolve_xero_access_token_for_entity
 from core.exceptions import BillValidationError
 
@@ -92,10 +93,12 @@ def _xero_to_bill_contact(contact: dict, entity_id: str, xero_org_id: str) -> di
 
 def _db_to_bill_contact(row: XeroContactSync) -> dict:
     """Normalise a DB row to EntityBillContactOut shape."""
+    # a supplier kept only in Minty (Xero optional, 2026-11-10) has no Xero id: its row id
+    public = row.xero_contact_id or str(row.id)
     return {
-        "id": row.xero_contact_id,
+        "id": public,
         "entity_id": str(row.entity_id) if row.entity_id else None,  # uuid column since C5
-        "xero_contact_id": row.xero_contact_id,
+        "xero_contact_id": public,
         "xero_org_id": row.xero_org_id or None,
         "name": row.name,
         "category": row.category,
@@ -271,6 +274,19 @@ def get_entity_bill_contacts(
     return contacts
 
 
+def _kept_in_minty(entity_id: str, name: str) -> dict:
+    """A company keeping its books in Minty (Xero optional, 2026-11-10): the supplier is Minty's own
+    row, with no Xero call. A name it already has, ignoring case and spaces, is that supplier."""
+    name = " ".join(name.split())
+    folded = name.lower()
+    for row in XeroContactSync.objects.filter(entity_id=entity_id):
+        if " ".join((row.name or "").split()).lower() == folded:
+            return _db_to_bill_contact(row)
+    row = XeroContactSync.objects.create(entity_id=entity_id, name=name, source="user")
+    logger.info("Supplier %s kept in Minty for company %s", row.id, entity_id)
+    return _db_to_bill_contact(row)
+
+
 def create_entity_bill_contact_in_xero(
     entity_id: str,
     *,
@@ -291,6 +307,8 @@ def create_entity_bill_contact_in_xero(
     entity = Entity.objects.filter(id=entity_id).first()
     if not entity:
         raise BillValidationError("I couldn't find that company.")
+    if minty_on_its_own(entity_id):
+        return _kept_in_minty(entity_id, cleaned)
     if entity.status != "connected" or not entity.xero_org_id:
         raise BillValidationError("This company needs to be connected to Xero before I can add contacts.")
 

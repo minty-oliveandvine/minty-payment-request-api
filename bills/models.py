@@ -56,6 +56,8 @@ class Bill(models.Model):
     currency_id = models.UUIDField(null=True, blank=True)
     published = PgEnumField("publish_state", choices=PublishStatus.choices, default=PublishStatus.DRAFT)
     xero_account_code = models.CharField(max_length=20, blank=True, default="")
+    #: What the last successful publish sent as the supplier's name (Xero optional, 2026-11-10).
+    published_contact_name = models.CharField(max_length=255, null=True, blank=True)
     created_by = models.UUIDField(null=True, blank=True, db_index=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -96,7 +98,8 @@ class Bill(models.Model):
         from minty_db.models import XeroContactSync
 
         row = XeroContactSync.objects.filter(id=self.contact_id).only("xero_contact_id").first()
-        value = row.xero_contact_id if row else ""
+        # a supplier kept only in Minty (Xero optional, 2026-11-10) has no Xero id: its row id
+        value = (row.xero_contact_id or str(row.id)) if row else ""
         self._xero_contact_id_cache = (self.contact_id, value)
         return value
 
@@ -118,11 +121,19 @@ class Bill(models.Model):
 
         from minty_db.models import Entity, XeroContactSync
 
+        from bills.services.books import minty_on_its_own
+
         row = (
             XeroContactSync.objects.filter(entity_id=self.entity_id, xero_contact_id=value)
             .only("id").first()
         )
-        if row is None and self.entity_id:
+        if row is None:
+            try:
+                row = (XeroContactSync.objects.filter(entity_id=self.entity_id, xero_contact_id__isnull=True,
+                                                      id=_uuid.UUID(value)).only("id").first())
+            except ValueError:
+                row = None
+        if row is None and self.entity_id and not minty_on_its_own(self.entity_id):
             org = Entity.objects.filter(id=self.entity_id).values_list("xero_org_id", flat=True).first()
             row = XeroContactSync.objects.create(
                 id=_uuid.uuid4(), entity_id=self.entity_id, xero_contact_id=value,
@@ -176,11 +187,40 @@ class BillLine(models.Model):
     line_amount = models.DecimalField(max_digits=14, decimal_places=2, default=0)
     account_code = models.CharField(max_length=20, blank=True, default="")
     account_name = models.CharField(max_length=150, blank=True, default="")
+    #: The line's account by id (Xero optional, 2026-11-10): the company's active account with
+    #: ``account_code``, kept in step by ``save``. The code text goes in CONTRACT.
+    account_id = models.UUIDField(null=True, blank=True)
+    #: What the last successful publish sent (``xero_publish_service._snapshot``); never rewritten
+    #: by a sync or a code change.
+    published_account_code = models.CharField(max_length=10, null=True, blank=True)
+    published_account_name = models.CharField(max_length=150, null=True, blank=True)
     tax_type = models.CharField(max_length=30, blank=True, default="")
     sort_order = models.IntegerField(default=0)
     note = models.TextField(blank=True, default="")
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+
+    def save(self, *args, **kwargs):
+        update_fields = kwargs.get("update_fields")
+        if update_fields is None or "account_code" in update_fields:
+            self.account_id = self._account_for_code()
+            if update_fields is not None:
+                kwargs["update_fields"] = [*update_fields, "account_id"]
+        super().save(*args, **kwargs)
+
+    def _account_for_code(self):
+        """The company's active account with this line's code: Xero's code, or one made in Minty."""
+        code = (self.account_code or "").strip()
+        if not code or not self.bill_id:
+            return None
+        from minty_db.models import AccountInfo
+
+        entity_id = Bill.objects.filter(id=self.bill_id).values_list("entity_id", flat=True).first()
+        if entity_id is None:
+            return None
+        active = AccountInfo.objects.filter(entity_id=entity_id, status="ACTIVE", record_status="active")
+        return (active.filter(xero_code=code).values_list("id", flat=True).first()
+                or active.filter(code=code).values_list("id", flat=True).first())
 
     class Meta:
         managed = False

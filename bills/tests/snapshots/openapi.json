@@ -3006,6 +3006,11 @@
           "connected": {
             "title": "Connected",
             "type": "boolean"
+          },
+          "minty_only": {
+            "default": false,
+            "title": "Minty Only",
+            "type": "boolean"
           }
         },
         "required": [
