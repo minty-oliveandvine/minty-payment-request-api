@@ -608,7 +608,7 @@ def _member_entity_ids(user_id) -> set[str]:
 def list_entities(request):
     if request.is_super_admin:
         all_entities = (
-            Entity.objects.exclude(status="deleted")
+            Entity.objects.filter(archived_at__isnull=True)
             .order_by("name")
             .values("id", "name")
         )
@@ -621,20 +621,20 @@ def list_entities(request):
 
         if user_is_system_superuser:
             return [
-                {"id": e["id"], "name": e["name"], "can_enter": True}
+                {"id": str(e["id"]), "name": e["name"], "can_enter": True}
                 for e in all_entities
             ]
 
         user_entity_ids = _member_entity_ids(str(request.auth_user.id))
         return [
-            {"id": e["id"], "name": e["name"], "can_enter": e["id"] in user_entity_ids}
+            {"id": str(e["id"]), "name": e["name"], "can_enter": str(e["id"]) in user_entity_ids}
             for e in all_entities
         ]
     else:
         rows = (
             Entity.objects.filter(id__in=_member_entity_ids(str(request.auth_user.id)))
-            .exclude(status="deleted")
+            .filter(archived_at__isnull=True)
             .order_by("name")
             .values_list("id", "name")
         )
-        return [{"id": row[0], "name": row[1], "can_enter": True} for row in rows]
+        return [{"id": str(row[0]), "name": row[1], "can_enter": True} for row in rows]

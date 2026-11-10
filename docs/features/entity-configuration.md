@@ -27,7 +27,8 @@ through them.
 `xero_account_id`). Minty fills it from the Xero chart when a company connects and on every
 sync accounts-api runs (`POST /api/internal/xero/sync`); this service lists it and lets
 elevated roles edit (`check_edit_bill_settings`). `GET /api/entities/` lists the
-companies the caller may enter (all of them for a super admin, own only otherwise).
+companies the caller may enter (all of them for a super admin, own only otherwise), never an
+archived one (`archived_at` set; it replaced a dead `status != 'deleted'` filter, 2026-11-10).
 
 `is_active` is the payment module's own tick (Payment Settings). `PUT /{id}` writes only this
 table: Petty Cash's `account_info.status` is Petty Cash's tick state (its publish refuses a

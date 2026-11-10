@@ -25,6 +25,10 @@ For each request the class:
    never from the claim — and attaches `request.auth_user`, `request.entity_id`,
    `request.entity_role`, `request.is_entity_member`, `request.is_system_superuser`,
    `request.is_super_admin`. No row on the entity → 401 for every business endpoint.
+   An **archived** company (`entities.archived_at`, owner 2026-11-10) is checked before the
+   role: it is answered as a company the caller holds no role on - 401 on every business
+   endpoint, a system superuser included, and the `SelfBearerAuth` endpoints carry on with no
+   company at all (`core.auth.is_archived`; `bills/tests/test_archived_entity.py`).
 
 A system superuser (`system_role = superadmin`) with no row on the entity gets a virtual
 `super_admin` role to **read**; every write endpoint calls
