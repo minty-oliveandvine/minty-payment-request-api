@@ -113,7 +113,9 @@ def test_the_rule_reads_setup_mode_and_the_org(test_entity):
     Entity.objects.filter(id=test_entity.id).update(setup_mode="minty")
     assert books.minty_on_its_own(test_entity.id)
     Entity.objects.filter(id=test_entity.id).update(xero_org_id="org-1")
-    assert not books.minty_on_its_own(test_entity.id)
+    assert books.minty_on_its_own(test_entity.id), "an org recorded mid-matching: still Minty's (2026-11-11)"
+    Entity.objects.filter(id=test_entity.id).update(setup_mode="xero")
+    assert not books.minty_on_its_own(test_entity.id), "Finish hands it to Xero's rules"
 
 
 @pytest.mark.django_db

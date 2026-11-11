@@ -13,8 +13,9 @@ BEFORE_XERO = "This payment request is from before Xero was connected, so it sta
 
 
 def minty_on_its_own(entity_id) -> bool:
-    row = Entity.objects.filter(id=entity_id).values_list("setup_mode", "xero_org_id").first()
-    return row is not None and row[0] == "minty" and not row[1]
+    """Minty keeps the books (``setup_mode = 'minty'``) - also while an organisation recorded
+    mid-matching waits for Finish (Settings Phase 2, 2026-11-11), which sets ``'xero'``."""
+    return Entity.objects.filter(id=entity_id, setup_mode="minty").exists()
 
 
 def publish_refusal(entity_id, bill) -> str | None:
