@@ -8,7 +8,7 @@ from minty_db.models import Entity
 
 from bills.models import Bill, CurrencyInfo
 
-NO_CURRENCY = "Your company has no currency set. Choose one in Entity & Integration settings."
+NO_CURRENCY = "Your company has no currency set. Choose one in Settings, under General."
 
 
 @pytest.fixture

@@ -5,7 +5,7 @@ from django.db.models import Subquery
 from core.exceptions import BillValidationError
 
 NO_CURRENCY_MESSAGE = (
-    "Your company has no currency set. Choose one in Entity & Integration settings."
+    "Your company has no currency set. Choose one in Settings, under General."
 )
 
 

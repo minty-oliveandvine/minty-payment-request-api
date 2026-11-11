@@ -116,7 +116,8 @@ def _settings(env: dict) -> subprocess.CompletedProcess:
     )
     clean = {k: v for k, v in os.environ.items() if k not in {
         "APP_ENV", "SECRET_KEY", "DATABASE_URL", "S3_URL", "ACCOUNTS_API_URL",
-        "PAYMENT_REQUEST_WEB_URL", "ONBOARDING_WEB_URL", "CORS_ALLOWED_ORIGINS", "PREVIEW_ORIGIN_REGEX",
+        "PAYMENT_REQUEST_WEB_URL", "ONBOARDING_WEB_URL", "MINTY_WEB_URL", "CORS_ALLOWED_ORIGINS",
+        "PREVIEW_ORIGIN_REGEX",
     }}
     # cwd outside the repo so load_dotenv() cannot pick up a developer's .env
     return subprocess.run(
@@ -186,7 +187,10 @@ def test_derived_urls_and_cors_default():
     s = _ok({"APP_ENV": "development", "ACCOUNTS_API_URL": "http://minty:8010/"})
     assert s["ACCOUNTS_API_URL"] == "http://minty:8010"
     assert s["XERO_TOKEN_SERVICE_URL"] == "http://minty:8010/api/internal/xero/token"
-    assert s["CORS_ALLOWED_ORIGINS"] == ["http://localhost:3020", "http://localhost:3030"]
+    # minty-web holds Payment Settings since 2026-11-10 (owner).
+    assert s["CORS_ALLOWED_ORIGINS"] == ["http://localhost:3020", "http://localhost:3030", "http://localhost:3000"]
+    s = _ok({"APP_ENV": "development", "MINTY_WEB_URL": "https://my.example/"})
+    assert s["CORS_ALLOWED_ORIGINS"][-1] == "https://my.example"
     s = _ok({"APP_ENV": "development", "CORS_ALLOWED_ORIGINS": "https://a.example, https://b.example/"})
     assert s["CORS_ALLOWED_ORIGINS"] == ["https://a.example", "https://b.example"]
 

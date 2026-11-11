@@ -65,15 +65,17 @@ if not ACCOUNTS_API_URL:
     raise ImproperlyConfigured("ACCOUNTS_API_URL is required and is not set")
 PAYMENT_REQUEST_WEB_URL = os.environ.get("PAYMENT_REQUEST_WEB_URL", "http://localhost:3020").rstrip("/")
 ONBOARDING_WEB_URL = os.environ.get("ONBOARDING_WEB_URL", "http://localhost:3030").rstrip("/")
+MINTY_WEB_URL = os.environ.get("MINTY_WEB_URL", "http://localhost:3000").rstrip("/")
 
 # ---------------------------------------------------------------------------
-# CORS — allow the payment-request and onboarding web apps to call the API from the browser.
+# CORS — allow the payment-request, onboarding and hub web apps to call the API from the browser
+# (the hub, minty-web, holds Payment Settings since 2026-11-10, owner).
 # CORS_ALLOWED_ORIGINS (comma-separated) overrides the derived default.
 # ---------------------------------------------------------------------------
 CORS_ALLOWED_ORIGINS = [
     origin.strip().rstrip("/")
     for origin in os.environ.get(
-        "CORS_ALLOWED_ORIGINS", f"{PAYMENT_REQUEST_WEB_URL},{ONBOARDING_WEB_URL}"
+        "CORS_ALLOWED_ORIGINS", f"{PAYMENT_REQUEST_WEB_URL},{ONBOARDING_WEB_URL},{MINTY_WEB_URL}"
     ).split(",")
     if origin.strip()
 ]
