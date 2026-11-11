@@ -143,9 +143,10 @@ endpoint needs a real `user_entity` row before it answers anything.
       entities older than the gating table).
 - [ ] `POST`/`PUT`/`DELETE` on `/api/entity-functions/*` and `/api/entity-function-maps/*`
       answer 404/405 and change nothing; their `GET`s still answer (removed 2026-11-03).
-- [ ] `PUT /api/entity-bill-accounts/{id}` writes only `entity_bill_account_xero` — Petty
-      Cash's own `account_info.status` tick is untouched (regression check: the old mirror,
-      removed 2026-10-01, used to untick Petty Cash's codes).
+- [ ] `PUT /api/entity-bill-accounts/{id}` leaves Petty Cash's own `account_info.status` tick
+      untouched (regression check: the old mirror, removed 2026-10-01, used to untick Petty
+      Cash's codes), and moves the account's `account_module` PAYMENT_REQUEST tick and default
+      with the code (2026-11-11).
 - [ ] Unticking the entity's **last** live code of a `BILL_SETTINGS_ACCOUNT_TYPES` type →
       409 "Keep at least one account code ticked." and nothing is written.
 - [ ] Ticking a replacement code on before ticking the old one off (the sequence the

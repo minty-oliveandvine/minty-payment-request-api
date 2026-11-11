@@ -1,6 +1,7 @@
 """PUT /entity-bill-accounts/{id} (Payment Settings ticks), and the module catalogue read-only.
 
-Payment Settings writes only ``entity_bill_account_xero``: ``account_info.status`` is Petty
+Payment Settings writes ``entity_bill_account_xero`` (and its account's ``account_module``
+PAYMENT_REQUEST row, below): ``account_info.status`` is Petty
 Cash's tick state, so unticking here must leave it alone. The last ticked settings-type code
 cannot be unticked (409, nothing written).
 """
@@ -198,3 +199,85 @@ def test_the_module_catalogue_can_still_be_read(api, entity, auth_headers):
     names = api.get("/api/v1/entity-function-maps/functions", **auth_headers)
     assert names.json() == [{"function_name": "Payment Request"}]
     assert api.get(f"/api/v1/entity-function-maps/{fn.id}", **auth_headers).status_code == 200
+
+
+# ---- account_module PAYMENT_REQUEST follows Payment Settings (2026-11-11) ---------------------------
+#
+# Onboarding's step 8 writes both entity_bill_account_xero and account_module PAYMENT_REQUEST (the
+# Xero-optional design's module tick); a change here must keep the two in step, or the module row
+# drifts. The account is found by its Xero id, else (Minty's own) by its code.
+
+
+def _info(entity, code, *, xero=True):
+    return AccountInfo.objects.create(
+        id=uuid.uuid4(),
+        entity_id=entity.id,
+        type="EXPENSE",
+        name=f"Account {code}",
+        xero_code=code,
+        code=code,
+        status="ACTIVE",
+        xero_account_id=f"xero-{code}" if xero else "",
+    )
+
+
+def _module(info):
+    from minty_db.models import AccountModule
+
+    return AccountModule.objects.filter(account_id=info.id, module_code="PAYMENT_REQUEST").first()
+
+
+@pytest.mark.django_db
+def test_a_tick_change_moves_the_payment_request_module_row(api, entity, auth_headers):
+    _account(entity, "600")
+    untick = _account(entity, "610")
+    info = _info(entity, "610")
+
+    assert _put(api, auth_headers, untick, {"is_active": False}).status_code == 200
+    assert _module(info).is_active is False
+    assert _put(api, auth_headers, untick, {"is_active": True}).status_code == 200
+    assert _module(info).is_active is True
+
+
+@pytest.mark.django_db
+def test_the_default_moves_on_the_module_rows_too(api, entity, auth_headers):
+    first, second = _account(entity, "600"), _account(entity, "610")
+    one, two = _info(entity, "600"), _info(entity, "610")
+
+    assert _put(api, auth_headers, first, {"is_default": True}).status_code == 200
+    assert _module(one).is_default is True
+    assert _put(api, auth_headers, second, {"is_default": True}).status_code == 200
+    assert (_module(one).is_default, _module(two).is_default) == (False, True)
+
+
+@pytest.mark.django_db
+def test_a_minty_account_is_found_by_its_code(api, entity, auth_headers):
+    _account(entity, "600")
+    own = EntityBillAccountXero.objects.create(
+        entity_id=entity.id, account_code="420", account_name="Rent", account_type="EXPENSE",
+        is_active=True, is_deleted=False, xero_account_id="",
+    )
+    info = _info(entity, "420", xero=False)
+    assert _put(api, auth_headers, own, {"is_active": False}).status_code == 200
+    assert _module(info).is_active is False
+
+
+@pytest.mark.django_db
+def test_a_deleted_code_switches_its_module_row_off(api, entity, auth_headers):
+    _account(entity, "600")
+    gone = _account(entity, "610")
+    info = _info(entity, "610")
+    _put(api, auth_headers, gone, {"is_active": True})
+    resp = api.delete(f"/api/v1/entity-bill-accounts/{gone.id}", **auth_headers)
+    assert resp.status_code == 200, resp.content
+    assert (_module(info).is_active, _module(info).is_default) == (False, False)
+
+
+@pytest.mark.django_db
+def test_a_code_with_no_account_changes_no_module_row(api, entity, auth_headers):
+    from minty_db.models import AccountModule
+
+    _account(entity, "600")
+    lone = _account(entity, "610")
+    assert _put(api, auth_headers, lone, {"is_active": False}).status_code == 200
+    assert not AccountModule.objects.filter(entity_id=entity.id).exists()

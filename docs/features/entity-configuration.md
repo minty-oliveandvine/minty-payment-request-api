@@ -30,10 +30,14 @@ elevated roles edit (`check_edit_bill_settings`). `GET /api/entities/` lists the
 companies the caller may enter (all of them for a super admin, own only otherwise), never an
 archived one (`archived_at` set; it replaced a dead `status != 'deleted'` filter, 2026-11-10).
 
-`is_active` is the payment module's own tick (Payment Settings). `PUT /{id}` writes only this
-table: Petty Cash's `account_info.status` is Petty Cash's tick state (its publish refuses a
-non-ACTIVE code), so the old "mirror into account_info" was removed on 2026-10-01 - it unticked
-codes in Petty Cash. **At least one ticked:** a PUT that would untick the entity's last live
+`is_active` is the payment module's own tick (Payment Settings). `PUT /{id}` never touches
+Petty Cash's `account_info.status` (Petty Cash's tick state; its publish refuses a non-ACTIVE
+code), so the old "mirror into account_info" was removed on 2026-10-01 - it unticked codes in Petty
+Cash. **The account's `account_module` PAYMENT_REQUEST row follows (2026-11-11):** `PUT /{id}` and
+`DELETE /{id}` set its `is_active` (live and ticked) and `is_default` (one per company: the others
+are cleared first), in the same transaction (`_mirror_module`), as onboarding's step 8 writes
+both. The account is the `account_info` row with this Xero id, else (a Minty company's own) the
+active one with this code; a code added by hand has none and changes no module row. **At least one ticked:** a PUT that would untick the entity's last live
 (`is_deleted=False`) code of a `BILL_SETTINGS_ACCOUNT_TYPES` type answers **409** "Keep at least
 one account code ticked." and writes nothing (the entity's rows are locked `FOR UPDATE` in id
 order, so two parallel unticks cannot both pass). minty-payment-request-web sends ticks ON before OFF so a

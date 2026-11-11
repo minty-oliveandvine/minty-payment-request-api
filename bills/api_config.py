@@ -2,9 +2,10 @@ import logging
 
 from django.core.exceptions import ValidationError
 from django.db import IntegrityError, transaction
+from django.db.models import Q
 from django.http import Http404
 from minty_db.enums import SystemRole
-from minty_db.models import Entity, User, UserEntity
+from minty_db.models import AccountInfo, AccountModule, Entity, User, UserEntity
 from ninja import Query, Router, Schema
 
 from bills.models import (
@@ -170,6 +171,45 @@ def get_entity_function_map(request, function_id: str):
 entity_bill_accounts_router = Router()
 
 
+def _mirror_module(account: EntityBillAccountXero) -> None:
+    """Keep the account's ``account_module`` PAYMENT_REQUEST row in step with this bill code
+    (2026-11-11). Onboarding's Payment Settings step writes both; the Xero-optional design reads
+    the module row, and this table stays what Payment Request itself reads until its CONTRACT.
+
+    The account is the company's ``account_info`` row with this Xero id, else (a Minty company's
+    own account, no Xero id) the active one with this code. No account - a code added by hand -
+    leaves the module rows alone. Runs inside the caller's transaction."""
+    code = (account.account_code or "").strip()
+    xero_id = (account.xero_account_id or "").strip()
+    rows = AccountInfo.objects.filter(entity_id=account.entity_id)
+    if xero_id:
+        info = rows.filter(xero_account_id=xero_id).first()
+    else:
+        info = (
+            rows.filter(record_status="active")
+            .filter(Q(xero_account_id__isnull=True) | Q(xero_account_id=""))
+            .filter(Q(code=code) | Q(xero_code=code))
+            .first()
+            if code
+            else None
+        )
+    if info is None:
+        return
+    on = bool(account.is_active) and not account.is_deleted
+    default = on and bool(account.is_default)
+    if default:  # one default per module (uq_account_module_default): clear the others first
+        AccountModule.objects.filter(
+            entity_id=account.entity_id, module_code="PAYMENT_REQUEST", is_default=True
+        ).exclude(account_id=info.id).update(is_default=False)
+    values = {"is_active": on, "is_default": default}
+    AccountModule.objects.update_or_create(
+        account_id=info.id,
+        module_code="PAYMENT_REQUEST",
+        defaults=values,
+        create_defaults={**values, "entity_id": account.entity_id},
+    )
+
+
 @entity_bill_accounts_router.post(
     "/",
     response={201: EntityBillAccountXeroOut, 409: ErrorOut},
@@ -308,10 +348,11 @@ def update_entity_bill_account(
 
         _apply_partial_update(account, update_data)
         account.save()
+        _mirror_module(account)
     logger.info("EntityBillAccountXero updated id=%s", account.id)
 
-    # Payment Settings writes only its own table: account_info.status belongs to
-    # Petty Cash (its publish refuses a non-ACTIVE code), so it is never touched here.
+    # account_info.status belongs to Petty Cash (its publish refuses a non-ACTIVE code), so it
+    # is never touched here; only the account's Payment Request module row follows the tick.
     return account
 
 
@@ -332,8 +373,10 @@ def delete_entity_bill_account(request, account_id: str):
     except EntityBillAccountXero.DoesNotExist:
         raise Http404("Entity bill account not found")
 
-    account.is_deleted = True
-    account.save(update_fields=["is_deleted"])
+    with transaction.atomic():
+        account.is_deleted = True
+        account.save(update_fields=["is_deleted"])
+        _mirror_module(account)
     logger.info("EntityBillAccountXero soft-deleted id=%s", account_id)
     return {"message": "Entity bill account deleted"}
 
