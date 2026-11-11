@@ -38,3 +38,12 @@ local `postgres`; Supabase waits for the owner), and Minty's load now does the s
 lookup (`xero_token_service._resolve_token`) refuses it before any token is looked at - _This company
 is disconnected from Xero. Reconnect Xero to publish._ - so a member's own Xero token never stands in
 for the connection the company dropped.
+
+## Connecting Xero later (Settings Phase 2, 2026-11-11)
+
+A Minty company that signs in to Xero is matched first (minty-accounts-api `xero/services/matching.py`):
+until Finish it keeps `setup_mode` `minty` with an organisation recorded, and publishing is refused
+before any Xero call ("Finish matching your accounts to Xero first (Settings, under Integration), then
+publish."). Finish sets `entities.xero_publish_from` to that day (owner: only records from then on go
+to Xero), so a payment request dated before it is refused ("This payment request is from before Xero was connected, so
+it stays in Minty."). NULL - every company connected from the start - is no cut-off.

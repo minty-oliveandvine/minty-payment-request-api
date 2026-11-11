@@ -122,3 +122,29 @@ def test_the_status_says_the_company_keeps_its_books_in_minty(api_client, auth_h
                                                                                    "minty_only": False}
     Entity.objects.filter(id=test_entity.id).update(setup_mode="minty", xero_org_id=None)
     assert api_client.get("/api/v1/auth/xero-status", **auth_headers).json()["minty_only"] is True
+
+
+# ---- connecting Xero later (Settings Phase 2, 2026-11-11) ------------------------------------------
+
+
+@pytest.mark.django_db
+def test_publishing_waits_while_the_accounts_are_being_matched(api_client, auth_headers, test_user_entity,
+                                                               draft_bill, minty):
+    Entity.objects.filter(id=minty.id).update(xero_org_id="org-1", status="disconnected")
+    with patch("bills.api.resolve_xero_access_token_for_entity", side_effect=AssertionError("asked Xero")):
+        resp = api_client.post(f"/api/v1/bills/{draft_bill.id}/publish/", **auth_headers)
+    assert (resp.status_code, resp.json()) == (422, {"detail": books.STILL_MATCHING})
+
+
+@pytest.mark.django_db
+def test_a_bill_from_before_xero_was_connected_stays_in_minty(api_client, auth_headers, test_user_entity,
+                                                              draft_bill, minty):
+    """Finish sets xero_publish_from (owner: only records from then on go to Xero)."""
+    import datetime as dt
+
+    Entity.objects.filter(id=minty.id).update(setup_mode="xero", xero_org_id="org-1", status="connected",
+                                              xero_publish_from=dt.date(2026, 11, 11))
+    type(draft_bill).objects.filter(id=draft_bill.id).update(invoice_date=dt.date(2026, 11, 10))
+    with patch("bills.api.resolve_xero_access_token_for_entity", side_effect=AssertionError("asked Xero")):
+        resp = api_client.post(f"/api/v1/bills/{draft_bill.id}/publish/", **auth_headers)
+    assert (resp.status_code, resp.json()) == (422, {"detail": books.BEFORE_XERO})
