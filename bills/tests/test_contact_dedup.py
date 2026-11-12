@@ -175,57 +175,28 @@ def test_different_uuids_both_appear():
 # ═══════════════════════════════════════════════════════════════════════════
 
 
-def test_db_contact_none_xero_id_skipped():
-    """
-    A DB row with xero_contact_id=None is skipped by the merge helper.
-
-    The guard in _merge_db_contacts_missing_from_live is:
-        cid = (row.xero_contact_id or "").strip().upper()
-        if cid and cid not in seen:   # <-- falsy "" short-circuits here
-            extras.append(...)
-
-    When xero_contact_id is None, cid resolves to "", which is falsy, so the
-    row is neither added to seen nor appended to extras.  Only the live contact
-    is returned.
-    """
+def test_db_contact_none_xero_id_is_listed():
+    """A DB row with no Xero id is the company's own supplier, made while offline (owner,
+    2026-11-12): listed beside the live ones - the next live sync, or the bill's publish, puts it in
+    Xero. (It used to be skipped, hiding it from a connected company's dropdown.)"""
     live = [_make_live("ABC-123")]
     db_row = _make_db_row(None, "No-ID Vendor")
 
     with patch(_PATCH, _patch_qs([db_row])):
         result = _merge_db_contacts_missing_from_live(live, "entity-test", None)
 
-    # Only the live contact should appear; the None-ID DB row is silently skipped.
-    assert len(result) == 1, (
-        f"DB row with None xero_contact_id should be skipped. "
-        f"Got {len(result)}: {[(c['name'], c['xero_contact_id']) for c in result]}"
-    )
-    assert result[0]["xero_contact_id"] == "ABC-123"
+    assert [c["name"] for c in result][-1] == "No-ID Vendor" and len(result) == 2
 
 
-# ═══════════════════════════════════════════════════════════════════════════
-# 6. DB contact with empty-string xero_contact_id — always appended
-# ═══════════════════════════════════════════════════════════════════════════
-
-
-def test_db_contact_empty_string_xero_id_skipped():
-    """
-    A DB row with xero_contact_id='' is treated identically to None — skipped.
-
-    The `or ""` in `(row.xero_contact_id or "").strip().upper()` normalises both
-    None and "" to an empty string.  The falsy `if cid` guard then prevents the
-    row from being appended.  Only the live contact is returned.
-    """
+def test_db_contact_empty_string_xero_id_is_listed_too():
+    """'' is read as None: the company's own supplier, listed."""
     live = [_make_live("ABC-123")]
     db_row = _make_db_row("", "Empty-ID Vendor")
 
     with patch(_PATCH, _patch_qs([db_row])):
         result = _merge_db_contacts_missing_from_live(live, "entity-test", None)
 
-    assert len(result) == 1, (
-        f"DB row with empty xero_contact_id should be skipped. "
-        f"Got {len(result)}: {[(c['name'], c['xero_contact_id']) for c in result]}"
-    )
-    assert result[0]["xero_contact_id"] == "ABC-123"
+    assert len(result) == 2 and result[0]["xero_contact_id"] == "ABC-123"
 
 
 # ═══════════════════════════════════════════════════════════════════════════

@@ -133,6 +133,23 @@ def publish_bill_to_xero(bill_id: str, entity_id: str, user_id: str, access_toke
     if foreign_org_sync is not None and prior_sync is None:
         _reset_for_new_org(bill, foreign_org_sync, xero_org_id)
 
+    # A supplier made while the company was offline (owner, 2026-11-12) has no Xero id, and
+    # ``bill.xero_contact_id`` then falls back to its own row id - which Xero would be sent as the
+    # ContactID. Put it in Xero first: Xero's contact of that name, else a new one.
+    linked = XeroContactSync.objects.filter(id=bill.contact_id).first() if bill.contact_id else None
+    if linked is not None and not linked.xero_contact_id:
+        from bills.services.contact_service import xero_contact_for
+
+        try:
+            contact_id, _name = xero_contact_for(entity, access_token, linked.name)
+        except BillValidationError as refused:
+            raise BillValidationError(
+                f"{linked.name} isn't in Xero yet, and Xero didn't take it: {refused}"
+            ) from None
+        XeroContactSync.objects.filter(id=linked.id).update(xero_contact_id=contact_id, xero_org_id=str(xero_org_id))
+        bill._xero_contact_id_cache = None
+        logger.info("publish: supplier %s put in Xero as %s for bill %s", linked.id, contact_id, bill.id)
+
     # Heal missing xero_contact_id before building any payload
     if not bill.xero_contact_id:
         sync_row = (

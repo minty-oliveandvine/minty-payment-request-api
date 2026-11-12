@@ -43,7 +43,7 @@ def archived(db, member):
     entity = Entity.objects.create(id="8c7f1f36-6d0e-4a3e-9a51-3c1d2f0e9b01", name="Archived Co",
                                    country_code="HK", currency_id=CURRENCY, status="disconnected",
                                    archived_at=timezone.now())
-    UserEntity.objects.create(user=member, entity=entity, role="admin")
+    UserEntity.objects.create(user=member, entity=entity, role="admin", approved=True)
     return entity
 
 
@@ -51,7 +51,7 @@ def archived(db, member):
 def live(db, member):
     entity = Entity.objects.create(id="8c7f1f36-6d0e-4a3e-9a51-3c1d2f0e9b02", name="Live Co",
                                    country_code="HK", currency_id=CURRENCY, status="disconnected")
-    UserEntity.objects.create(user=member, entity=entity, role="admin")
+    UserEntity.objects.create(user=member, entity=entity, role="admin", approved=True)
     return entity
 
 

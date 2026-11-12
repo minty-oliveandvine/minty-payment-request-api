@@ -126,6 +126,7 @@ def fall_user_entity(db, fall_user, fall_entity) -> UserEntity:
         user=fall_user,
         entity=fall_entity,
         role="admin",
+        approved=True,
     )
 
 
@@ -540,3 +541,58 @@ class TestContactFallbackPersistsToDatabase:
         assert (
             bill.xero_contact_id == ""
         ), "A sync row for a different entity must not heal a bill in the wrong entity"
+
+
+@pytest.mark.django_db
+class TestASupplierMadeOfflineGoesToXeroFirst:
+    """Owner, 2026-11-12 (the bug): a supplier made while the company was offline has no Xero id;
+    publish used to send its own row id as the ContactID. Now it is put in Xero first - Xero's
+    contact of that name, else a new one - and the invoice carries that ContactID."""
+
+    def _bill(self, entity, user, row):
+        bill = Bill.objects.create(
+            entity_id=entity.id,
+            contact=row.name,
+            contact_id=row.id,
+            status=Bill.Status.SUBMITTED,
+            amount=Decimal("500.00"),
+            invoice_date=datetime.date(2026, 11, 1),
+            due_date=datetime.date(2026, 11, 30),
+            reference=f"PR-{uuid.uuid4().hex[:6]}",
+            created_by=user.id,
+        )
+        attach_invoice(bill)
+        return bill
+
+    def test_it_is_made_in_xero_and_the_invoice_carries_xeros_id(self, fall_entity, fall_user, fall_user_entity):
+        row = XeroContactSync.objects.create(entity_id=fall_entity.id, name="Kee Wah", source="user")
+        bill = self._bill(fall_entity, fall_user, row)
+        made = MagicMock(status_code=200)
+        made.json.return_value = {"Contacts": [{"ContactID": "x-kee", "Name": "Kee Wah"}]}
+        with (
+            patch("bills.services.contact_service.requests.post", return_value=made),
+            patch(_PUT_PATH, return_value=_xero_200()) as mock_put,
+            patch(_UPLOAD_ATTACHMENTS_PATH),
+            patch(_UPLOAD_BANKSLIPS_PATH),
+        ):
+            publish_bill_to_xero(str(bill.id), fall_entity.id, FAKE_USER_ID, FAKE_ACCESS_TOKEN)
+
+        sent = mock_put.call_args[1]["json"]["Invoices"][0]["Contact"]["ContactID"]
+        assert sent == "x-kee" and sent != str(row.id)
+        row.refresh_from_db()
+        assert (row.xero_contact_id, row.xero_org_id) == ("x-kee", FAKE_ORG_ID)
+
+    def test_xero_refusing_it_names_the_supplier_and_publishes_nothing(
+        self, fall_entity, fall_user, fall_user_entity
+    ):
+        row = XeroContactSync.objects.create(entity_id=fall_entity.id, name="Kee Wah", source="user")
+        bill = self._bill(fall_entity, fall_user, row)
+        refused = MagicMock(status_code=400, text="bad")
+        refused.json.return_value = {"Message": "The contact name Kee Wah is already assigned"}
+        with (
+            patch("bills.services.contact_service.requests.post", return_value=refused),
+            patch(_PUT_PATH) as mock_put,
+            pytest.raises(BillValidationError, match="Kee Wah"),
+        ):
+            publish_bill_to_xero(str(bill.id), fall_entity.id, FAKE_USER_ID, FAKE_ACCESS_TOKEN)
+        mock_put.assert_not_called()

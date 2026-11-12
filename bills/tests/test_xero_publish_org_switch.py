@@ -132,7 +132,7 @@ def switch_user(db) -> User:
 def switch_user_entity(db, switch_user, entity_on_org_b) -> UserEntity:
     return UserEntity.objects.create(
         user=switch_user, entity=entity_on_org_b, role="admin"
-    )
+    , approved=True)
 
 
 @pytest.fixture

@@ -21,7 +21,8 @@ For each request the class:
    (`_attach_unscoped`), which only the endpoints that opt into `SelfBearerAuth`
    (`require_entity_role = False`) accept: `/api/profile/*` and the person-level `/api/auth/*`
    ones (`/entitlements`, `/token/refresh` - not `/xero-status`, which is the company's);
-3. reads the person's **role on that entity from the database** (`user_entity.role`) —
+3. reads the person's **role on that entity from the database** (`user_entity.role`, an
+   **approved** row only since 2026-11-12, as every other API - an unapproved one is no role) —
    never from the claim — and attaches `request.auth_user`, `request.entity_id`,
    `request.entity_role`, `request.is_entity_member`, `request.is_system_superuser`,
    `request.is_super_admin`. No row on the entity → 401 for every business endpoint.
@@ -58,7 +59,9 @@ account is Minty's `DELETE /minty/api/users/me`.
 ## The permission matrix (`core/permissions.py`)
 
 Roles come from `user_entity.role`: `cashier`, `shop_manager`, `accountant`, `admin`,
-`super_admin` (`minty_db.enums.EntityRole`). "Elevated" = accountant and up.
+`super_admin` (`minty_db.enums.EntityRole`). "Elevated" = accountant and up; "every bill role" =
+cashier and up - both on `minty_shared.policy`'s rank ladder (`is_elevated`, `is_bill_role`; v0.5,
+one rule for every API since 2026-11-12, replacing this file's own role sets).
 
 | Action | Allowed |
 |---|---|

@@ -144,7 +144,7 @@ class Command(BaseCommand):
             currency_id=hkd_currency_id,
             status="active",
         )
-        ue = UserEntity.objects.create(user=user, entity=entity, role="admin")
+        ue = UserEntity.objects.create(user=user, entity=entity, role="admin", approved=True)
 
         self.stdout.write(self.style.SUCCESS("Created dev user, entity, and mapping."))
         return user, entity, ue

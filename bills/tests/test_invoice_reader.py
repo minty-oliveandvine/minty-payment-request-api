@@ -224,7 +224,7 @@ def test_two_files_are_refused(api_client, auth_headers, test_user_entity, lists
 
 def test_only_someone_who_may_create_a_bill_may_ask(api_client, auth_headers, test_user, test_entity,
                                                     lists, model):
-    UserEntity.objects.create(user=test_user, entity=test_entity, role="entity_base")
+    UserEntity.objects.create(user=test_user, entity=test_entity, role="entity_base", approved=True)
 
     resp = _extract(api_client, auth_headers)
 

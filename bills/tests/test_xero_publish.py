@@ -141,6 +141,7 @@ def xero_user_entity(db, xero_user, xero_entity) -> UserEntity:
         user=xero_user,
         entity=xero_entity,
         role="admin",
+        approved=True,
     )
 
 

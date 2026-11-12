@@ -49,7 +49,7 @@ def entity(db):
 
 @pytest.fixture
 def membership(db, user, entity):
-    return UserEntity.objects.create(user=user, entity=entity, role="admin")
+    return UserEntity.objects.create(user=user, entity=entity, role="admin", approved=True)
 
 
 def _make_token(user_id, entity_id, *, hours_from_now=4, **extra):
@@ -153,7 +153,7 @@ def test_refresh_keeps_a_non_member_superadmin_view_only(client, superadmin, ent
 
 
 def test_refresh_of_a_member_superadmin_is_not_view_only(client, superadmin, entity):
-    UserEntity.objects.create(user=superadmin, entity=entity, role="admin")
+    UserEntity.objects.create(user=superadmin, entity=entity, role="admin", approved=True)
     token = _make_token(superadmin.id, entity.id, system_role="superadmin")
     payload = _refreshed_payload(client, token, entity.id)
 

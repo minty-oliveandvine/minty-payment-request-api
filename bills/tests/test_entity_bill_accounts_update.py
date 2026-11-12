@@ -51,7 +51,7 @@ def entity(db):
 
 @pytest.fixture
 def auth_headers(user, entity):
-    UserEntity.objects.create(user=user, entity=entity, role="admin")
+    UserEntity.objects.create(user=user, entity=entity, role="admin", approved=True)
     token = pyjwt.encode(
         {"user_id": user.id, "entity_id": entity.id},
         settings.SECRET_KEY,

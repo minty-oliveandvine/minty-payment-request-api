@@ -43,7 +43,7 @@ def entity(db):
 
 @pytest.fixture
 def membership(db, user, entity):
-    return UserEntity.objects.create(user=user, entity=entity, role="admin")
+    return UserEntity.objects.create(user=user, entity=entity, role="admin", approved=True)
 
 
 def _auth(user_id, entity_id):

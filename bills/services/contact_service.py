@@ -22,7 +22,7 @@ import uuid
 import requests
 from django.db import IntegrityError, transaction
 from django.db.models import Q
-from minty_db.models import Entity, XeroContactSync
+from minty_db.models import Entity, XeroContact, XeroContactSync
 
 from bills.services.books import minty_on_its_own
 from bills.services.xero_token_service import resolve_xero_access_token_for_entity
@@ -182,7 +182,7 @@ def _merge_db_contacts_missing_from_live(
         for c in live_contacts
         if (c.get("xero_contact_id") or "").strip()
     }
-    qs = XeroContactSync.objects.filter(entity_id=entity_id)
+    qs = XeroContactSync.objects.filter(entity_id=entity_id, record_status="active", merged_into__isnull=True)
     if xero_org_id is not None:
         # None means "caller did not scope this" and keeps the unfiltered
         # behaviour; the production caller always passes the entity org.
@@ -193,7 +193,11 @@ def _merge_db_contacts_missing_from_live(
     extras: list[dict] = []
     for row in qs.order_by("name"):
         cid = (row.xero_contact_id or "").strip().upper()
-        if cid and cid not in seen:
+        if not cid:
+            # the company's own supplier, made while offline (owner, 2026-11-12): listed too; the
+            # next live sync, or this bill's publish, puts it in Xero
+            extras.append(_db_to_bill_contact(row))
+        elif cid not in seen:
             seen.add(cid)
             extras.append(_db_to_bill_contact(row))
     if not extras:
@@ -252,9 +256,9 @@ def get_entity_bill_contacts(
 
     if contacts is None:
         logger.info("Falling back to DB contacts for entity %s", entity_id)
-        qs = XeroContactSync.objects.filter(entity_id=entity_id).filter(
-            xero_org_scope(xero_org_id)
-        )
+        qs = XeroContactSync.objects.filter(
+            entity_id=entity_id, record_status="active", merged_into__isnull=True
+        ).filter(xero_org_scope(xero_org_id))
         if category:
             categories = [c.strip() for c in category.split(",") if c.strip()]
             qs = qs.filter(category__in=categories)
@@ -274,17 +278,178 @@ def get_entity_bill_contacts(
     return contacts
 
 
+def _key(name) -> str:
+    return " ".join(str(name or "").split()).lower()
+
+
+def held_contact(entity_id: str, name: str) -> XeroContactSync | None:
+    """The company's active supplier of that name (case and inner spaces ignored), if any."""
+    return next(
+        (
+            row
+            for row in XeroContactSync.objects.filter(
+                entity_id=entity_id, record_status="active", merged_into__isnull=True
+            )
+            if _key(row.name) == _key(name)
+        ),
+        None,
+    )
+
+
 def _kept_in_minty(entity_id: str, name: str) -> dict:
-    """A company keeping its books in Minty (Xero optional, 2026-11-10): the supplier is Minty's own
-    row, with no Xero call. A name it already has, ignoring case and spaces, is that supplier."""
-    name = " ".join(name.split())
-    folded = name.lower()
-    for row in XeroContactSync.objects.filter(entity_id=entity_id):
-        if " ".join((row.name or "").split()).lower() == folded:
-            return _db_to_bill_contact(row)
-    row = XeroContactSync.objects.create(entity_id=entity_id, name=name, source="user")
+    """No live connection (owner, 2026-11-12; was: only a company keeping its books in Minty): the
+    supplier is the company's own row, with no Xero call - the next live sync puts it in Xero."""
+    row = XeroContactSync.objects.create(entity_id=entity_id, name=" ".join(name.split()), source="user")
     logger.info("Supplier %s kept in Minty for company %s", row.id, entity_id)
     return _db_to_bill_contact(row)
+
+
+def _xero_refusal(resp) -> str:
+    """Xero's own reason for a refused contact, as a sentence for the person."""
+    try:
+        err_json = resp.json()
+        msg = err_json.get("Detail") or err_json.get("Message")
+        if isinstance(msg, str) and msg.strip():
+            return msg.strip()
+        elements = err_json.get("Elements")
+        if isinstance(elements, list) and elements and isinstance(elements[0], dict):
+            ve = elements[0].get("ValidationErrors")
+            if isinstance(ve, list) and ve and isinstance(ve[0], dict):
+                m = ve[0].get("Message")
+                if isinstance(m, str) and m.strip():
+                    return m.strip()
+    except (ValueError, TypeError, KeyError, AttributeError):
+        pass
+    return "Xero rejected the new contact. Check the name and try again."
+
+
+def xero_contact_for(entity: Entity, access_token: str, name: str) -> tuple[str, str]:
+    """``(ContactID, name)`` in the company's Xero for ``name``: the stored Xero contact of that
+    name the company doesn't hold yet (no duplicate in Xero), else one made there. Raises
+    ``BillValidationError`` with Xero's reason. The "+ Add" and the publish heal share it."""
+    xero_org_id = str(entity.xero_org_id)
+    held = set(
+        XeroContactSync.objects.filter(entity_id=entity.id, xero_contact_id__isnull=False).values_list(
+            "xero_contact_id", flat=True
+        )
+    )
+    copy = next(
+        (
+            c
+            for c in XeroContact.objects.filter(entity_id=entity.id, xero_org_id=xero_org_id, status="ACTIVE")
+            if _key(c.name) == _key(name) and c.xero_guid not in held
+        ),
+        None,
+    )
+    if copy is not None:
+        return copy.xero_guid, " ".join(name.split())[:150]
+    headers = {
+        "Authorization": f"Bearer {access_token}",
+        "Xero-Tenant-Id": xero_org_id,
+        "Accept": "application/json",
+        "Content-Type": "application/json",
+    }
+    try:
+        resp = requests.post(
+            f"{_xero_api_base()}/Contacts", headers=headers, json={"Contacts": [{"Name": name}]}, timeout=30
+        )
+    except requests.RequestException as exc:
+        logger.warning("Xero create contact request failed: %s", exc)
+        raise BillValidationError("Could not reach Xero to create the contact. Try again.") from exc
+    if resp.status_code != 200:
+        logger.warning("Xero create contact returned %s: %s", resp.status_code, (resp.text or "")[:500])
+        raise BillValidationError(_xero_refusal(resp))
+    try:
+        payload = resp.json()
+    except ValueError:
+        raise BillValidationError("Xero replied in a shape I didn't expect. Mind trying again?") from None
+    xero_contacts = payload.get("Contacts") or []
+    xc = xero_contacts[0] if xero_contacts else {}
+    contact_id = (xc.get("ContactID") or "").strip()
+    if not contact_id:
+        raise BillValidationError("Xero didn't confirm that contact. Mind trying again?")
+    return contact_id, (xc.get("Name") or name).strip()[:150]
+
+
+def _active_in_xero(entity: Entity, access_token: str, guid: str) -> None:
+    """Set an archived Xero contact ACTIVE again, and Minty's copy of it with it."""
+    xero_org_id = str(entity.xero_org_id)
+    try:
+        resp = requests.post(
+            f"{_xero_api_base()}/Contacts",
+            headers={
+                "Authorization": f"Bearer {access_token}",
+                "Xero-Tenant-Id": xero_org_id,
+                "Accept": "application/json",
+                "Content-Type": "application/json",
+            },
+            json={"Contacts": [{"ContactID": guid, "ContactStatus": "ACTIVE"}]},
+            timeout=30,
+        )
+    except requests.RequestException as exc:
+        logger.warning("Xero bring-back contact request failed: %s", exc)
+        raise BillValidationError("Could not reach Xero to bring the contact back. Try again.") from exc
+    if resp.status_code != 200:
+        logger.warning("Xero bring-back contact returned %s: %s", resp.status_code, (resp.text or "")[:500])
+        raise BillValidationError(_xero_refusal(resp))
+    XeroContact.objects.filter(entity_id=entity.id, xero_org_id=xero_org_id, xero_guid=guid).update(status="ACTIVE")
+
+
+def _brought_back(entity: Entity, name: str, offline: bool, token_for) -> XeroContactSync | None:
+    """The supplier the company deleted with this name, brought back (onboarding-api's chart rule,
+    owner 2026-11-12): its archived row active again, or Xero's archived contact of the name linked
+    again - ACTIVE in Xero when it is there. Offline, one still linked to Xero waits."""
+    gone = sorted(
+        (
+            row
+            for row in XeroContactSync.objects.filter(
+                entity_id=entity.id, record_status="archived", merged_into__isnull=True
+            )
+            if _key(row.name) == _key(name)
+        ),
+        key=lambda row: not row.xero_contact_id,
+    )
+    if gone:
+        row = gone[0]
+        if row.xero_contact_id:
+            if offline:
+                raise BillValidationError(
+                    f"{row.name} was archived in Xero. Ask an admin to reconnect Xero to bring it back."
+                )
+            _active_in_xero(entity, token_for(), row.xero_contact_id)
+        XeroContactSync.objects.filter(id=row.id).update(record_status="active")
+        row.record_status = "active"
+        logger.info("Supplier %s brought back for company %s", row.id, entity.id)
+        return row
+    if offline:
+        return None
+    held = set(
+        XeroContactSync.objects.filter(entity_id=entity.id, xero_contact_id__isnull=False).values_list(
+            "xero_contact_id", flat=True
+        )
+    )
+    copy = next(
+        (
+            c
+            for c in XeroContact.objects.filter(entity_id=entity.id, xero_org_id=str(entity.xero_org_id)).exclude(
+                status="ACTIVE"
+            )
+            if _key(c.name) == _key(name) and c.xero_guid not in held
+        ),
+        None,
+    )
+    if copy is None:
+        return None
+    _active_in_xero(entity, token_for(), copy.xero_guid)
+    row = XeroContactSync.objects.create(
+        entity_id=entity.id,
+        name=copy.name[:150],
+        xero_contact_id=copy.xero_guid,
+        xero_org_id=str(entity.xero_org_id),
+        xero_contact_link_id=copy.id,
+    )
+    logger.info("Supplier %s brought back from Xero's archive for company %s", row.id, entity.id)
+    return row
 
 
 def create_entity_bill_contact_in_xero(
@@ -293,11 +458,9 @@ def create_entity_bill_contact_in_xero(
     jwt_user_id: str,
     name: str,
 ) -> dict:
-    """Create a supplier/customer contact in Xero and upsert ``xero_contact_sync``.
-
-    Requires the entity to be Xero-connected (same precondition as live GET list).
-    Returns the same dict shape as list items (``EntityBillContactOut``).
-    """
+    """The company's supplier of ``name`` (owner, 2026-11-12: never blocked behind Xero, never a
+    duplicate): the one it has; else, live on Xero, Xero's of that name or a new one made there;
+    else its own Minty row. Returns the list items' shape (``EntityBillContactOut``)."""
     cleaned = (name or "").strip()
     if not cleaned:
         raise BillValidationError("I'll need a contact name here.")
@@ -307,80 +470,28 @@ def create_entity_bill_contact_in_xero(
     entity = Entity.objects.filter(id=entity_id).first()
     if not entity:
         raise BillValidationError("I couldn't find that company.")
-    if minty_on_its_own(entity_id):
+    held = held_contact(entity_id, cleaned)
+    if held is not None:
+        return _db_to_bill_contact(held)
+    offline = minty_on_its_own(entity_id) or entity.status != "connected" or not entity.xero_org_id
+
+    def token_for() -> str:
+        access_token = resolve_xero_access_token_for_entity(entity_id, jwt_user_id)
+        if not access_token:
+            raise BillValidationError("The Xero connection needs reconnecting before I can do that.")
+        return access_token
+
+    back = _brought_back(entity, cleaned, offline, token_for)
+    if back is not None:
+        return _db_to_bill_contact(back)
+    if offline:
         return _kept_in_minty(entity_id, cleaned)
-    if entity.status != "connected" or not entity.xero_org_id:
-        raise BillValidationError("This company needs to be connected to Xero before I can add contacts.")
 
-    access_token = resolve_xero_access_token_for_entity(entity_id, jwt_user_id)
-    if not access_token:
-        raise BillValidationError("The Xero connection needs reconnecting before I can do that.")
-
+    access_token = token_for()
     xero_org_id = str(entity.xero_org_id)
-    url = f"{_xero_api_base()}/Contacts"
-    headers = {
-        "Authorization": f"Bearer {access_token}",
-        "Xero-Tenant-Id": xero_org_id,
-        "Accept": "application/json",
-        "Content-Type": "application/json",
-    }
-    body = {"Contacts": [{"Name": cleaned}]}
+    contact_id, contact_name = xero_contact_for(entity, access_token, cleaned)
 
-    try:
-        resp = requests.post(url, headers=headers, json=body, timeout=30)
-    except requests.RequestException as exc:
-        logger.warning("Xero create contact request failed: %s", exc)
-        raise BillValidationError(
-            "Could not reach Xero to create the contact. Try again."
-        ) from exc
-
-    if resp.status_code != 200:
-        detail = (resp.text or "")[:500]
-        logger.warning(
-            "Xero create contact returned %s: %s",
-            resp.status_code,
-            detail,
-        )
-        try:
-            err_json = resp.json()
-            msg = err_json.get("Detail") or err_json.get("Message")
-            if isinstance(msg, str) and msg.strip():
-                raise BillValidationError(msg.strip())
-            elements = err_json.get("Elements")
-            if isinstance(elements, list) and elements:
-                first = elements[0]
-                if isinstance(first, dict):
-                    ve = first.get("ValidationErrors")
-                    if isinstance(ve, list) and ve:
-                        m = ve[0].get("Message") if isinstance(ve[0], dict) else None
-                        if isinstance(m, str) and m.strip():
-                            raise BillValidationError(m.strip())
-        except BillValidationError:
-            raise
-        except (ValueError, TypeError, KeyError):
-            pass
-        raise BillValidationError(
-            "Xero rejected the new contact. Check the name and try again."
-        )
-
-    try:
-        payload = resp.json()
-    except ValueError:
-        raise BillValidationError("Xero replied in a shape I didn't expect. Mind trying again?")
-
-    xero_contacts = payload.get("Contacts") or []
-    if not xero_contacts:
-        raise BillValidationError("Xero didn't confirm that contact. Mind trying again?")
-    xc = xero_contacts[0]
-    contact_id = (xc.get("ContactID") or "").strip()
-    contact_name = (xc.get("Name") or cleaned).strip()[:150]
-    if not contact_id:
-        raise BillValidationError("Xero didn't confirm that contact. Mind trying again?")
-
-    row = XeroContactSync.objects.filter(
-        entity_id=entity_id,
-        xero_contact_id=contact_id,
-    ).first()
+    row = XeroContactSync.objects.filter(entity_id=entity_id, xero_contact_id=contact_id).first()
     if row is None:
         try:
             with transaction.atomic():
@@ -393,7 +504,7 @@ def create_entity_bill_contact_in_xero(
                     category=None,
                 )
         except IntegrityError:
-            # Flask's sync stored the same contact since the look-up (uq_xcs_entity_contact,
+            # the sync stored the same contact since the look-up (uq_xcs_entity_contact,
             # 2026-11-03): that row is this contact.
             row = XeroContactSync.objects.get(entity_id=entity_id, xero_contact_id=contact_id)
     if (row.name, row.xero_org_id) != (contact_name, xero_org_id):

@@ -110,6 +110,7 @@ def test_user_entity(db, test_user, test_entity):
         user=test_user,
         entity=test_entity,
         role="admin",
+        approved=True,
     )
 
 

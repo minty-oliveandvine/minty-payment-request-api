@@ -17,13 +17,14 @@ def get_entity_role(user_id: str, entity_id: str) -> str | None:
     """Return the user's role for the entity, or None if no access.
 
     ``entity_id`` is a uuid column now: an empty or malformed id (a handoff token with no
-    entity, a hand-typed header) is "no access", not a query error.
+    entity, a hand-typed header) is "no access", not a query error. An unapproved membership is
+    no membership (owner, 2026-11-12), as in every other API.
     """
     if not user_id or not entity_id:
         return None
     try:
         return (
-            UserEntity.objects.filter(user_id=user_id, entity_id=entity_id)
+            UserEntity.objects.filter(user_id=user_id, entity_id=entity_id, approved=True)
             .values_list("role", flat=True)
             .first()
         )

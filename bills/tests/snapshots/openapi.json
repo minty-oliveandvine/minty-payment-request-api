@@ -763,6 +763,24 @@
         "title": "BillOut",
         "type": "object"
       },
+      "BillSettingsRightsOut": {
+        "properties": {
+          "can_edit": {
+            "title": "Can Edit",
+            "type": "boolean"
+          },
+          "view_only": {
+            "title": "View Only",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "can_edit",
+          "view_only"
+        ],
+        "title": "BillSettingsRightsOut",
+        "type": "object"
+      },
       "BillUpdateIn": {
         "properties": {
           "amount": {
@@ -5523,6 +5541,34 @@
           }
         ],
         "summary": "Create an entity bill account",
+        "tags": [
+          "Entity Bill Accounts"
+        ]
+      }
+    },
+    "/api/v1/entity-bill-accounts/rights": {
+      "get": {
+        "description": "Payment Settings draws its controls from this, never from a role read out of the token\n(owner, 2026-11-12): the same checks the writes run - accountant and up\n(``check_edit_bill_settings``), and never Minty staff visiting a company they are not in\n(``check_not_system_superuser``).",
+        "operationId": "bills_api_config_entity_bill_account_rights",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BillSettingsRightsOut"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "summary": "What the caller may do with the account codes",
         "tags": [
           "Entity Bill Accounts"
         ]

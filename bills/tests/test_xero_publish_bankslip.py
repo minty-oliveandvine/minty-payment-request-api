@@ -76,7 +76,7 @@ def user(db) -> User:
 
 @pytest.fixture
 def user_entity(db, user, entity) -> UserEntity:
-    return UserEntity.objects.create(user=user, entity=entity, role="admin")
+    return UserEntity.objects.create(user=user, entity=entity, role="admin", approved=True)
 
 
 @pytest.fixture

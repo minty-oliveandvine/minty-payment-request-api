@@ -25,8 +25,11 @@ through them.
 `entity_bill_account_xero` — the expense accounts the Add Payment dialog offers
 (`account_code`, `account_name`, `account_type`, `is_default`, `is_active`, `sort_order`,
 `xero_account_id`). Minty fills it from the Xero chart when a company connects and on every
-sync accounts-api runs (`POST /api/internal/xero/sync`); this service lists it and lets
-elevated roles edit (`check_edit_bill_settings`). `GET /api/entities/` lists the
+sync accounts-api runs (`POST /api/internal/xero/sync`); this service lists it to cashier and up
+(entity_base is refused, 2026-11-12) and lets elevated roles edit (`check_edit_bill_settings`;
+`bills/tests/test_door_approval.py`). `GET /api/v1/entity-bill-accounts/rights` answers
+`{can_edit, view_only}` from those same checks - minty-web's Payment Settings draws its controls
+from it, never from a role read out of the token (owner, 2026-11-12). `GET /api/entities/` lists the
 companies the caller may enter (all of them for a super admin, own only otherwise), never an
 archived one (`archived_at` set; it replaced a dead `status != 'deleted'` filter, 2026-11-10).
 
@@ -61,6 +64,17 @@ characters is refused (422 "Keep the supplier's name to 100 characters or fewer.
 exact-match rules: `bills/tests/test_contact_*.py`. One cache row per Xero contact per company
 (`uq_xcs_entity_contact`, 2026-11-03): when Minty's sync stored the contact between the look-up
 and the insert, that row is the contact (`bills/tests/test_xero_unique_keys.py`).
+
+**Never blocked behind Xero, never a duplicate (owner, 2026-11-12).** `POST` returns the
+company's active supplier of that name when it has one (case and inner spaces ignored); with no
+live connection (not connected, or still keeping its books in Minty) the supplier is the company's
+own row, no Xero id; live, Xero's contact of that name is linked from the stored copies
+(`xero_contact`) before one is made (`xero_contact_for`). `GET` lists those Minty-only suppliers
+beside the live ones, and leaves archived and merged rows out. **Publish puts a Minty-only supplier
+in Xero first** (`xero_publish_service`): it used to send the row's own id as the `ContactID`
+(`bill.xero_contact_id` falls back to it); now Xero's contact of the name is linked, else made,
+and a refusal names the supplier with Xero's reason, nothing published
+(`bills/tests/test_xero_publish_contact_fallback.py`).
 
 ## Currencies
 

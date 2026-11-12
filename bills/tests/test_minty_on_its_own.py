@@ -150,3 +150,87 @@ def test_a_bill_from_before_xero_was_connected_stays_in_minty(api_client, auth_h
     with patch("bills.api.resolve_xero_access_token_for_entity", side_effect=AssertionError("asked Xero")):
         resp = api_client.post(f"/api/v1/bills/{draft_bill.id}/publish/", **auth_headers)
     assert (resp.status_code, resp.json()) == (422, {"detail": books.BEFORE_XERO})
+
+
+# ---- Phase 3 of the Xero matching (owner, 2026-11-12): a stale match is refused, named ----------------
+
+
+def _connected(entity):
+    Entity.objects.filter(id=entity.id).update(setup_mode="xero", xero_org_id="org-1", status="connected")
+
+
+def _copy(entity, guid, org="org-1"):
+    from django.utils import timezone
+    from minty_db.models import XeroAccount
+
+    XeroAccount.objects.create(entity_id=entity.id, xero_org_id=org, xero_guid=guid, name=guid, xero_type="EXPENSE",
+                               status="ACTIVE", synced_at=timezone.now())
+
+
+def _publish(api_client, auth_headers, bill):
+    with patch("bills.api.resolve_xero_access_token_for_entity", side_effect=AssertionError("asked Xero")):
+        return api_client.post(f"/api/v1/bills/{bill.id}/publish/", **auth_headers)
+
+
+@pytest.mark.django_db
+def test_a_line_on_an_account_of_another_organisation_is_refused_by_name(api_client, auth_headers, test_user_entity,
+                                                                          draft_bill, test_entity):
+    _connected(test_entity)
+    _copy(test_entity, "g-405")
+    _account(test_entity, "469", "Rent", xero_id="old-469")
+    _account(test_entity, "405", "Cleaning", xero_id="g-405")
+    BillLine.objects.create(bill=draft_bill, description="May rent", account_code="469", line_amount=60)
+    BillLine.objects.create(bill=draft_bill, description="Cleaning", account_code="405", line_amount=40)
+
+    resp = _publish(api_client, auth_headers, draft_bill)
+
+    assert (resp.status_code, resp.json()) == (422, {"detail": "Rent (469) isn't matched to your Xero organisation. "
+                                                               "Match it in Settings, under Integration, then "
+                                                               "publish again."})
+
+
+@pytest.mark.django_db
+def test_a_line_on_an_account_archived_in_xero_is_refused_by_name(api_client, auth_headers, test_user_entity,
+                                                                  draft_bill, test_entity):
+    from minty_db.models import XeroAccount
+
+    _connected(test_entity)
+    _copy(test_entity, "g-469")
+    XeroAccount.objects.filter(entity_id=test_entity.id, xero_guid="g-469").update(status="ARCHIVED")
+    _account(test_entity, "469", "Rent", xero_id="g-469")
+    BillLine.objects.create(bill=draft_bill, description="May rent", account_code="469", line_amount=100)
+
+    resp = _publish(api_client, auth_headers, draft_bill)
+
+    assert (resp.status_code, resp.json()) == (422, {"detail": "Rent (469) is archived in Xero. Restore it in Xero "
+                                                               "or choose another account, then publish again."})
+
+
+@pytest.mark.django_db
+def test_a_supplier_of_an_older_organisation_is_not_refused(test_entity, draft_bill):
+    """The census (production's data, 2026-11-12): a bill whose last publish went to another
+    organisation is published fresh into the current one, as it always has."""
+    _connected(test_entity)
+    vendor = XeroContactSync.objects.create(entity_id=test_entity.id, name="Vendor A", xero_contact_id="c-a",
+                                            xero_org_id="org-old")
+    type(draft_bill).objects.filter(id=draft_bill.id).update(contact_id=vendor.id)
+    draft_bill.refresh_from_db()
+    assert books.publish_refusal(test_entity.id, draft_bill) is None
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("reason", ["first", "new_accounts", "new_org"])
+def test_an_open_matching_holds_every_publish(api_client, auth_headers, test_user_entity, draft_bill, test_entity,
+                                              reason):
+    _connected(test_entity)
+    Entity.objects.filter(id=test_entity.id).update(xero_matching=reason)
+    resp = _publish(api_client, auth_headers, draft_bill)
+    assert (resp.status_code, resp.json()) == (422, {"detail": books.STILL_MATCHING})
+
+
+@pytest.mark.django_db
+def test_a_change_of_matches_in_progress_does_not_hold_a_publish(test_entity, draft_bill):
+    _connected(test_entity)
+    Entity.objects.filter(id=test_entity.id).update(xero_matching="change")
+    assert books.publish_refusal(test_entity.id, draft_bill) is None
+

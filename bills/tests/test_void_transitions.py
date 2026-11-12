@@ -61,7 +61,7 @@ def entity(db):
 @pytest.fixture
 def membership(db, user, entity):
     # 'admin' satisfies both ALL_BILL_ROLES and ELEVATED_ROLES
-    return UserEntity.objects.create(user=user, entity=entity, role="admin")
+    return UserEntity.objects.create(user=user, entity=entity, role="admin", approved=True)
 
 
 def _auth(user, entity):
@@ -377,7 +377,7 @@ class TestVoidFromPaid:
     def test_cashier_cannot_void_paid_bill(self, api, user, entity, db):
         """Non-elevated roles must receive 403 when attempting to void a paid bill."""
         UserEntity.objects.filter(user=user, entity=entity).delete()
-        UserEntity.objects.create(user=user, entity=entity, role="cashier")
+        UserEntity.objects.create(user=user, entity=entity, role="cashier", approved=True)
 
         bill = self._make_paid(entity, user)
         resp = api.delete(f"/api/v1/bills/{bill.id}", **_auth(user, entity))

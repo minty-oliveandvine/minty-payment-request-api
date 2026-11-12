@@ -83,6 +83,7 @@ def superuser_membership(db, superuser, member_entity):
         user=superuser,
         entity=member_entity,
         role="super_admin",
+        approved=True,
     )
 
 
@@ -301,7 +302,7 @@ class TestProfileMemberEntityIds:
     ):
         UserEntity.objects.create(
             user=regular_user, entity=member_entity, role="cashier"
-        )
+        , approved=True)
         resp = api.get(
             "/api/v1/profile/me",
             **_auth(regular_user, member_entity),

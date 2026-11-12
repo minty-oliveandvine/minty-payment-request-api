@@ -52,18 +52,18 @@ def entity(db):
 
 @pytest.fixture
 def membership(db, user, entity):
-    return UserEntity.objects.create(user=user, entity=entity, role="admin")
+    return UserEntity.objects.create(user=user, entity=entity, role="admin", approved=True)
 
 
 @pytest.fixture
 def membership_cashier(db, user, entity):
     """Cashier cannot edit/delete paid bills (elevated roles can)."""
-    return UserEntity.objects.create(user=user, entity=entity, role="cashier")
+    return UserEntity.objects.create(user=user, entity=entity, role="cashier", approved=True)
 
 
 @pytest.fixture
 def membership_accountant(db, user, entity):
-    return UserEntity.objects.create(user=user, entity=entity, role="accountant")
+    return UserEntity.objects.create(user=user, entity=entity, role="accountant", approved=True)
 
 
 def _auth(user, entity):

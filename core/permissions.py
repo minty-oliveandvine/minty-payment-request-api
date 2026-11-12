@@ -20,18 +20,27 @@ Matrix:
     └────────────────────────────────────┴───────────────────────────────────────────┘
 """
 
+from minty_shared.policy import Role, role_at_least
+
 from core.exceptions import PermissionDeniedError
 
-ELEVATED_ROLES = frozenset({"accountant", "admin", "super_admin"})
-ALL_BILL_ROLES = frozenset(
-    {"cashier", "shop_manager", "accountant", "admin", "super_admin"}
-)
 PAID_LIKE_STATUSES = frozenset({"paid", "partially_paid"})
 
 
 def normalize_role(role: str) -> str:
     """Lowercase entity role for matrix checks; spaces and hyphens → underscores."""
     return (role or "").strip().lower().replace(" ", "_").replace("-", "_")
+
+
+def is_elevated(role: str) -> bool:
+    """Accountant and up - the "Accountant, Admin, Super Admin" rows of the matrix. The ladder is
+    minty_shared.policy's (owner, 2026-11-12: one rank rule for every API, not this file's own)."""
+    return role_at_least(normalize_role(role), Role.ACCOUNTANT.value)
+
+
+def is_bill_role(role: str) -> bool:
+    """Cashier and up - every bill role."""
+    return role_at_least(normalize_role(role), Role.CASHIER.value)
 
 
 def _require_elevated(role: str, message: str):
@@ -41,7 +50,7 @@ def _require_elevated(role: str, message: str):
     action. The message is passed in rather than derived so each endpoint keeps
     its own exact user-facing wording.
     """
-    if normalize_role(role) not in ELEVATED_ROLES:
+    if not is_elevated(role):
         raise PermissionDeniedError(message)
 
 
@@ -55,14 +64,14 @@ def _check_bill_action(role: str, bill_status: str, elevated_message: str, verb:
     """
     normalized = normalize_role(role)
     if bill_status in PAID_LIKE_STATUSES:
-        if normalized not in ELEVATED_ROLES:
+        if not is_elevated(normalized):
             raise PermissionDeniedError(elevated_message)
-    elif normalized not in ALL_BILL_ROLES:
+    elif not is_bill_role(normalized):
         raise PermissionDeniedError(f"Role '{role}' is not allowed to {verb} bills")
 
 
 def check_create_bill(role: str):
-    if normalize_role(role) not in ALL_BILL_ROLES:
+    if not is_bill_role(role):
         raise PermissionDeniedError(f"Role '{role}' is not allowed to create bills")
 
 
@@ -107,7 +116,7 @@ def check_edit_bill_settings(role: str):
     """Block bill-settings writes for non-elevated roles (Cashier, Shop Manager).
 
     Mirrors the existing cashier-exclusion gate used by check_publish_xero,
-    check_mark_paid, etc.: ELEVATED_ROLES is the canonical "no cashier and no
+    check_mark_paid, etc.: is_elevated is the canonical "no cashier and no
     shop_manager" set, which is the same logic we want for bill settings.
     """
     _require_elevated(

@@ -68,7 +68,7 @@ def entity(db):
 
 def _set_role(user, entity, role):
     UserEntity.objects.filter(user=user, entity=entity).delete()
-    return UserEntity.objects.create(user=user, entity=entity, role=role)
+    return UserEntity.objects.create(user=user, entity=entity, role=role, approved=True)
 
 
 def _auth(user, entity):

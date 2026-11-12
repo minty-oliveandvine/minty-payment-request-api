@@ -49,7 +49,7 @@ def clerk(db, company):
         id="96dc83ad-f6b8-5b7d-aa0a-26f5f76f80c8", email="clerk@minty.com", password="x",
         first_name="Casey", last_name="Clerk", username="clerk", system_role="normal",
     )
-    UserEntity.objects.create(user=user, entity=company, role="admin")
+    UserEntity.objects.create(user=user, entity=company, role="admin", approved=True)
     XeroContactSync.objects.create(
         id=uuid.uuid5(uuid.NAMESPACE_URL, "char-contact"), entity_id=company.id,
         xero_contact_id=XERO_CONTACT, xero_org_id=ORG, name="Acme Supplies",

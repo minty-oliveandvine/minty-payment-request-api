@@ -35,10 +35,10 @@ from bills.schemas import (
 )
 from core.exceptions import PermissionDeniedError
 from core.permissions import (
-    ALL_BILL_ROLES,
     check_edit_bill_settings,
     check_not_system_superuser,
-    normalize_role,
+    is_bill_role,
+    is_elevated,
 )
 
 logger = logging.getLogger("minty-api")
@@ -258,6 +258,12 @@ def list_entity_bill_accounts(
     sync_chart: bool = Query(True),
     force_chart_sync: bool = Query(False),
 ):
+    # Payment Settings' read is cashier and up (owner, 2026-11-12; the settings audit): a member
+    # below that - entity_base - reads nothing here.
+    if not is_bill_role(request.entity_role):
+        raise PermissionDeniedError(
+            f"Role '{request.entity_role}' is not permitted to view account codes"
+        )
     # The Bill CoA list is rendered SOLELY from entity_bill_account_xero (the
     # query below) — no live Xero read feeds this response. When the Bill
     # Settings tab opens (include_inactive=true) we still start accounts-api's
@@ -288,6 +294,27 @@ def list_entity_bill_accounts(
         # exactly the 8 permitted account types.
         qs = qs.filter(account_type__in=BILL_SETTINGS_ACCOUNT_TYPES)
     return list(qs.order_by("sort_order", "account_code"))
+
+
+class BillSettingsRightsOut(Schema):
+    can_edit: bool
+    view_only: bool
+
+
+@entity_bill_accounts_router.get(
+    "/rights",
+    response=BillSettingsRightsOut,
+    summary="What the caller may do with the account codes",
+)
+def entity_bill_account_rights(request):
+    """Payment Settings draws its controls from this, never from a role read out of the token
+    (owner, 2026-11-12): the same checks the writes run - accountant and up
+    (``check_edit_bill_settings``), and never Minty staff visiting a company they are not in
+    (``check_not_system_superuser``)."""
+    view_only = bool(getattr(request, "is_system_superuser", False)) and not getattr(
+        request, "is_entity_member", False
+    )
+    return {"can_edit": is_elevated(request.entity_role) and not view_only, "view_only": view_only}
 
 
 @entity_bill_accounts_router.get(
@@ -398,9 +425,9 @@ entity_bill_contacts_router = Router()
 def list_entity_bill_contacts(request, category: str = None):
     # Equivalent to Flask's XERO_SETTINGS_VIEW permission (min role: cashier).
     # All recognised bill roles satisfy this; entity membership is already
-    # confirmed by BearerAuth.  Roles outside ALL_BILL_ROLES (e.g. a stale
+    # confirmed by BearerAuth.  Roles below cashier (e.g. a stale
     # or unknown role string) are denied here.
-    if normalize_role(request.entity_role) not in ALL_BILL_ROLES:
+    if not is_bill_role(request.entity_role):
         raise PermissionDeniedError(
             f"Role '{request.entity_role}' is not permitted to view contacts"
         )
@@ -421,7 +448,7 @@ def list_entity_bill_contacts(request, category: str = None):
 )
 def create_entity_bill_contact(request, payload: EntityBillContactCreateIn):
     check_not_system_superuser(request, "modify configuration")
-    if normalize_role(request.entity_role) not in ALL_BILL_ROLES:
+    if not is_bill_role(request.entity_role):
         raise PermissionDeniedError(
             f"Role '{request.entity_role}' is not permitted to manage contacts"
         )

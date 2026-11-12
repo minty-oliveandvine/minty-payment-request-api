@@ -42,7 +42,7 @@ def entity(db):
 
 @pytest.fixture
 def user_entity(db, user, entity):
-    return UserEntity.objects.create(user=user, entity=entity, role="admin")
+    return UserEntity.objects.create(user=user, entity=entity, role="admin", approved=True)
 
 
 @pytest.fixture
