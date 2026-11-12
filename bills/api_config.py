@@ -263,8 +263,10 @@ def list_entity_bill_accounts(
     # Settings tab opens (include_inactive=true) we still start accounts-api's
     # sync in the background (debounced), so the table is refreshed for the
     # next load; this render is never blocked on Xero. force_chart_sync
-    # bypasses the per-entity debounce for a manual refresh.
-    if include_inactive or force_chart_sync:
+    # bypasses the per-entity debounce for a manual refresh. sync_chart=false
+    # starts none: the hub reads a company's codes without a live Xero
+    # connection that way (owner, 2026-11-12).
+    if (include_inactive and sync_chart) or force_chart_sync:
         from bills.services.xero_sync import request_sync
 
         request_sync(request.entity_id, force=force_chart_sync)

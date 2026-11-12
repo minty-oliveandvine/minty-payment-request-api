@@ -87,7 +87,8 @@ too.
 assertion scoped `xero-sync` naming the company; Phase 4 of the Flask retirement, 2026-11-06)
 to refresh the accounts (`account_info`, which the Bill CoA list mirrors) and the contacts
 together. The bill list (`GET /bills/`) and the Bill CoA settings (`include_inactive` or
-`force_chart_sync`) start it on a background thread, debounced per company for 120 s
+`force_chart_sync`; `sync_chart=false` starts none - the hub reads a company's codes that way when
+Xero isn't connected, owner 2026-11-12) start it on a background thread, debounced per company for 120 s
 (`force_chart_sync` skips the wait); the screens render from the tables at once. Failures are
 logged, never raised. It replaced three calls to Flask's `/api/entities/{id}/billing/sync-*`,
 routes that checked only that the header began with `Bearer `.

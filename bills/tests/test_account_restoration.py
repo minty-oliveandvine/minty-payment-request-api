@@ -319,3 +319,38 @@ def test_inactive_not_deleted_account_stays_inactive_until_sync(
     assert (
         data[0]["is_active"] is True
     ), "Account should be active after sync matches Xero's ACTIVE state"
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(
+    "query, synced",
+    [
+        ("include_inactive=true", True),
+        ("include_inactive=true&sync_chart=false", False),
+        ("include_inactive=true&sync_chart=false&force_chart_sync=true", True),
+    ],
+)
+def test_sync_chart_false_reads_the_codes_without_asking_xero(
+    api, user_entity, auth_headers, entity, monkeypatch, query, synced
+):
+    """The hub's Payment Settings reads a company's codes without a live Xero connection (owner,
+    2026-11-12): it sends sync_chart=false, so no re-sync is started for a chart that can't sync."""
+    calls = []
+    monkeypatch.setattr(
+        "bills.services.xero_sync.request_sync", lambda entity_id, force=False: calls.append(force)
+    )
+    EntityBillAccountXero.objects.create(
+        entity_id=entity.id,
+        account_code="420",
+        account_name="Rent",
+        account_type="EXPENSE",
+        is_active=True,
+        is_deleted=False,
+        xero_account_id="",
+    )
+
+    resp = api.get(f"/api/v1/entity-bill-accounts/?{query}", **auth_headers)
+
+    assert resp.status_code == 200
+    assert [a["account_code"] for a in json.loads(resp.content)] == ["420"]
+    assert bool(calls) is synced
