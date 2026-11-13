@@ -4,7 +4,7 @@ from botocore.exceptions import ClientError
 from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.db.models import Case, IntegerField, OuterRef, Q, Subquery, Value, When
-from django.http import Http404, StreamingHttpResponse
+from django.http import Http404, HttpResponse, StreamingHttpResponse
 from minty_db.models import Entity
 from ninja import File, Query, Router
 from ninja.files import UploadedFile
@@ -14,6 +14,7 @@ from bills.schemas import (
     BillAttachmentOut,
     BillCreateIn,
     BillDraftIn,
+    BillExportIn,
     BillFilterQuery,
     BillListOut,
     BillOut,
@@ -23,7 +24,7 @@ from bills.schemas import (
     ReturnBillIn,
     SuggestedReferenceOut,
 )
-from bills.services import invoice_reader
+from bills.services import bill_csv, invoice_reader
 from bills.services.attachment_service import (
     _get_s3_client,
     delete_attachment,
@@ -176,6 +177,25 @@ def extract_invoice_endpoint(request, invoice: list[UploadedFile] = File(None)):
     check_create_bill(request.entity_role)
     data, mime = invoice_reader.checked_invoice(invoice)
     return invoice_reader.read_invoice(request.entity_id, str(request.auth_user.id), data, mime)
+
+
+@bills_router.post(
+    "/export.csv",
+    response={404: ErrorOut, 422: ErrorOut},
+    summary="Download the bills the list shows (ticked, or all the filters leave) as a CSV file",
+)
+def export_bills_csv(request, payload: BillExportIn):
+    """``services/bill_csv.py``: the bills ``ids`` names (1 to 2,000, all this company's - else
+    404), as the list shows them: ticked, or every bill the filters leave. Anyone who may list the
+    bills may download them. ``text/csv``, one line per bill."""
+    try:
+        bills, filename = bill_csv.chosen_bills(request.entity_id, payload.ids)
+    except bill_csv.NothingToExport as nothing:
+        return 404, {"detail": nothing.message}
+    resp = HttpResponse(bill_csv.to_csv(bills), content_type="text/csv; charset=utf-8")
+    resp["Content-Disposition"] = f"attachment; filename={filename}"
+    resp["Cache-Control"] = "no-store"
+    return resp
 
 
 @bills_router.put(

@@ -68,6 +68,22 @@ reference, description), `contact`, `amount_min` / `amount_max`, and a date rang
 Payment Requested, Partially Paid, Returned, Paid, Draft, Voided) and its Xero filter
 reads `published` client-side.
 
+## The bills CSV (owner, 2026-11-13)
+
+`POST /api/v1/bills/export.csv` (`bills/services/bill_csv.py`) - the list's "Download CSV". The
+list loads every bill and filters in the browser, so the web app sends `{ids}`: the ticked bills,
+or every bill its filters leave when none are ticked (1 to 2,000 - the list's own cap; any
+status). Anyone who may list the bills may download them. Refusals are `{detail}` sentences: 422
+for no ids or more than 2,000; 404 when an id is not one of this company's bills (the whole
+request, never a quiet skip). The answer is `text/csv; charset=utf-8`, UTF-8 without a BOM, LF,
+one line per bill, by invoice date: `Payment No., Supplier, Invoice Date, Due Date, Submitted
+Date, Status, Description, Account Code, Amount, Unpaid Amount, Paid Date, Currency` - the Status
+pill's label, the line accounts' codes `; `-joined (the bill's own code with no lines), the unpaid
+amount as `get_amount_due` (nothing on a void bill), the newest completed payment's date, two
+decimal places. Four queries for any number of bills. `Content-Disposition` names
+`bills_<day>.csv`; CORS does not expose it, so the web app names the file itself.
+Tests: `bills/tests/test_bill_csv.py`.
+
 ## Every change is audited
 
 `bills/services/audit_service.log_audit` writes a `bill_audit` row for created / edited /

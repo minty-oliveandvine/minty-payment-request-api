@@ -184,6 +184,13 @@ class BillListOut(Schema):
     paid_at: date | None
 
 
+class BillExportIn(Schema):
+    """``POST /bills/export.csv``: the ids of the bills the list shows - the ticked ones, or every
+    bill the filters leave (``services/bill_csv.py``)."""
+
+    ids: list[str]
+
+
 class BillFilterQuery(Schema):
     status: str | None = None
     contact: str | None = None

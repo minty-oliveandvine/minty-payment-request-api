@@ -390,6 +390,23 @@
         "title": "BillDraftIn",
         "type": "object"
       },
+      "BillExportIn": {
+        "description": "``POST /bills/export.csv``: the ids of the bills the list shows - the ticked ones, or every\nbill the filters leave (``services/bill_csv.py``).",
+        "properties": {
+          "ids": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Ids",
+            "type": "array"
+          }
+        },
+        "required": [
+          "ids"
+        ],
+        "title": "BillExportIn",
+        "type": "object"
+      },
       "BillFilterQuery": {
         "properties": {
           "amount_max": {
@@ -3552,6 +3569,54 @@
           }
         ],
         "summary": "Save a new bill as draft (no validation)",
+        "tags": [
+          "Bills"
+        ]
+      }
+    },
+    "/api/v1/bills/export.csv": {
+      "post": {
+        "description": "``services/bill_csv.py``: the bills ``ids`` names (1 to 2,000, all this company's - else\n404), as the list shows them: ticked, or every bill the filters leave. Anyone who may list the\nbills may download them. ``text/csv``, one line per bill.",
+        "operationId": "bills_api_export_bills_csv",
+        "parameters": [],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BillExportIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "summary": "Download the bills the list shows (ticked, or all the filters leave) as a CSV file",
         "tags": [
           "Bills"
         ]
